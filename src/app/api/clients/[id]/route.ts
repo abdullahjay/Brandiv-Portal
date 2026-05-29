@@ -8,13 +8,14 @@ import { updateClientSchema } from "@backend/validators/clientValidator";
 // GET /api/clients/:id
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const client = await getClient(params.id);
+    const { id } = await params;
+    const client = await getClient(id);
     if (!client) return notFound("Client not found");
 
     return ok(client);
@@ -27,7 +28,7 @@ export async function GET(
 // PUT /api/clients/:id
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -37,7 +38,8 @@ export async function PUT(
     const parsed = updateClientSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const client = await updateClient(params.id, parsed.data);
+    const { id } = await params;
+    const client = await updateClient(id, parsed.data);
     if (!client) return notFound("Client not found");
 
     return ok(client);
@@ -50,7 +52,7 @@ export async function PUT(
 // DELETE /api/clients/:id  — soft delete (marks inactive)
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -62,7 +64,8 @@ export async function DELETE(
       return unauthorized("Insufficient permissions");
     }
 
-    const client = await archiveClient(params.id);
+    const { id } = await params;
+    const client = await archiveClient(id);
     if (!client) return notFound("Client not found");
 
     return ok(client);

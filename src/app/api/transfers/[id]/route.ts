@@ -7,14 +7,15 @@ const ALLOWED = ["super_admin", "admin", "finance"];
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
     if (!ALLOWED.includes(session.user.role)) return unauthorized("Insufficient permissions");
 
-    const data = await getTransfer(params.id);
+    const { id } = await params;
+    const data = await getTransfer(id);
     if (!data) return notFound("Transfer not found");
     return ok(data);
   } catch (err) {

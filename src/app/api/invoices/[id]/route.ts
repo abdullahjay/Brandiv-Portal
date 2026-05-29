@@ -5,12 +5,13 @@ import { getInvoice, editInvoice, voidInvoice } from "@backend/services/invoiceS
 import { updateInvoiceSchema } from "@backend/validators/invoiceValidator";
 
 // GET /api/invoices/:id
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const invoice = await getInvoice(params.id);
+    const { id } = await params;
+    const invoice = await getInvoice(id);
     if (!invoice) return notFound("Invoice not found");
     return ok(invoice);
   } catch (err) {
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // PUT /api/invoices/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -28,7 +29,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updateInvoiceSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const invoice = await editInvoice(params.id, parsed.data);
+    const { id } = await params;
+    const invoice = await editInvoice(id, parsed.data);
     if (!invoice) return notFound("Invoice not found");
     return ok(invoice);
   } catch (err) {
@@ -37,7 +39,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE /api/invoices/:id — cancels (soft)
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -47,7 +49,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       return unauthorized("Insufficient permissions");
     }
 
-    const invoice = await voidInvoice(params.id);
+    const { id } = await params;
+    const invoice = await voidInvoice(id);
     if (!invoice) return notFound("Invoice not found");
     return ok(invoice);
   } catch (err) {

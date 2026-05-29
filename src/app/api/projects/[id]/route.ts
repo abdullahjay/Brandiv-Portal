@@ -5,12 +5,13 @@ import { getProject, editProject, archiveProject } from "@backend/services/proje
 import { updateProjectSchema } from "@backend/validators/projectValidator";
 
 // GET /api/projects/:id
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const project = await getProject(params.id);
+    const { id } = await params;
+    const project = await getProject(id);
     if (!project) return notFound("Project not found");
     return ok(project);
   } catch (err) {
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // PUT /api/projects/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -28,7 +29,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updateProjectSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const project = await editProject(params.id, parsed.data);
+    const { id } = await params;
+    const project = await editProject(id, parsed.data);
     if (!project) return notFound("Project not found");
     return ok(project);
   } catch (err) {
@@ -37,7 +39,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE /api/projects/:id — marks as cancelled (soft)
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -47,7 +49,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       return unauthorized("Insufficient permissions");
     }
 
-    const project = await archiveProject(params.id);
+    const { id } = await params;
+    const project = await archiveProject(id);
     if (!project) return notFound("Project not found");
     return ok(project);
   } catch (err) {

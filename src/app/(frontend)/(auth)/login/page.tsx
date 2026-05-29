@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
@@ -37,6 +37,68 @@ export default function LoginPage() {
   }
 
   return (
+    <form onSubmit={handleSubmit}>
+      {error && (
+        <div
+          style={{
+            background: "var(--red-bg)",
+            color: "var(--red)",
+            fontSize: 12,
+            padding: "10px 12px",
+            borderRadius: "var(--rm)",
+            marginBottom: 16,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <div className="frow">
+        <label>Email address</label>
+        <input
+          type="email"
+          placeholder="you@brandivlabs.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+          autoFocus
+        />
+      </div>
+
+      <div className="frow">
+        <label>Password</label>
+        <input
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+      </div>
+
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={loading}
+        style={{ width: "100%", justifyContent: "center", height: 38, marginTop: 4 }}
+      >
+        {loading ? (
+          <>
+            <i className="ti ti-loader-2" style={{ fontSize: 14 }} />
+            Signing in…
+          </>
+        ) : (
+          "Sign in"
+        )}
+      </button>
+    </form>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div
       style={{
         minHeight: "100vh",
@@ -57,7 +119,6 @@ export default function LoginPage() {
           padding: 32,
         }}
       >
-        {/* Brand */}
         <div style={{ marginBottom: 28, textAlign: "center" }}>
           <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)" }}>
             Brandiv Labs
@@ -67,65 +128,9 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div
-            style={{
-              background: "var(--red-bg)",
-              color: "var(--red)",
-              fontSize: 12,
-              padding: "10px 12px",
-              borderRadius: "var(--rm)",
-              marginBottom: 16,
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <div className="frow">
-            <label>Email address</label>
-            <input
-              type="email"
-              placeholder="you@brandivlabs.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              autoFocus
-            />
-          </div>
-
-          <div className="frow">
-            <label>Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={loading}
-            style={{ width: "100%", justifyContent: "center", height: 38, marginTop: 4 }}
-          >
-            {loading ? (
-              <>
-                <i className="ti ti-loader-2" style={{ fontSize: 14 }} />
-                Signing in…
-              </>
-            ) : (
-              "Sign in"
-            )}
-          </button>
-        </form>
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
 
         <div
           style={{

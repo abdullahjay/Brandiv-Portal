@@ -6,7 +6,7 @@ import { getAccountStatement } from "@backend/repositories/accountStatementRepos
 // GET /api/accounts/[id]/statement?period=YYYY-MM  (period is optional)
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +15,8 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const period = searchParams.get("period") ?? undefined;
 
-    const data = await getAccountStatement(params.id, period);
+    const { id } = await params;
+    const data = await getAccountStatement(id, period);
     return ok(data);
   } catch (err) {
     if (err instanceof Error && err.message === "Account not found") {

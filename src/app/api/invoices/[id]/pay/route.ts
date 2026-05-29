@@ -4,12 +4,13 @@ import { ok, unauthorized, notFound, badRequest, serverError } from "@backend/li
 import { payInvoice } from "@backend/services/invoiceService";
 
 // POST /api/invoices/:id/pay
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const invoice = await payInvoice(params.id);
+    const { id } = await params;
+    const invoice = await payInvoice(id);
     if (!invoice) return notFound("Invoice not found");
     return ok(invoice);
   } catch (err) {

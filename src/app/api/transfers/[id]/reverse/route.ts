@@ -5,14 +5,15 @@ import { reverseTransfer } from "@backend/services/transferService";
 
 export async function POST(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
     if (!["super_admin", "admin"].includes(session.user.role)) return unauthorized("Only admins can reverse transfers");
 
-    const reversal = await reverseTransfer(params.id, session.user.id);
+    const { id } = await params;
+    const reversal = await reverseTransfer(id, session.user.id);
     return ok(reversal);
   } catch (err) {
     if (err instanceof Error) {

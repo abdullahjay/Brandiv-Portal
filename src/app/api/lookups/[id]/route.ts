@@ -13,7 +13,7 @@ const updateSchema = z.object({
 });
 
 // PATCH /api/lookups/:id — admin only
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -25,7 +25,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const item = await editLookup(params.id, parsed.data as any);
+    const { id } = await params;
+    const item = await editLookup(id, parsed.data as any);
     return ok(item);
   } catch (err) {
     return serverError(err);

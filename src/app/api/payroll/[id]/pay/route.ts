@@ -4,7 +4,7 @@ import { ok, badRequest, unauthorized, notFound, serverError } from "@backend/li
 import { payPayrollRecord } from "@backend/services/payrollService";
 
 // POST /api/payroll/:id/pay
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -13,7 +13,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       return unauthorized("Insufficient permissions");
     }
 
-    const record = await payPayrollRecord(params.id);
+    const { id } = await params;
+    const record = await payPayrollRecord(id);
     if (!record) return notFound("Payroll record not found");
     return ok(record);
   } catch (err) {

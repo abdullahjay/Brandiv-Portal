@@ -5,7 +5,7 @@ import { getPayrollRecord, editPayrollRecord } from "@backend/services/payrollSe
 import { updatePayrollSchema } from "@backend/validators/payrollValidator";
 
 // GET /api/payroll/:id
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -14,7 +14,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       return unauthorized("Insufficient permissions");
     }
 
-    const record = await getPayrollRecord(params.id);
+    const { id } = await params;
+    const record = await getPayrollRecord(id);
     if (!record) return notFound("Payroll record not found");
     return ok(record);
   } catch (err) {
@@ -23,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // PUT /api/payroll/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -36,7 +37,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updatePayrollSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const record = await editPayrollRecord(params.id, parsed.data);
+    const { id } = await params;
+    const record = await editPayrollRecord(id, parsed.data);
     if (!record) return notFound("Payroll record not found");
     return ok(record);
   } catch (err) {

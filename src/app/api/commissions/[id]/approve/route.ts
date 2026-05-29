@@ -4,7 +4,7 @@ import { ok, unauthorized, notFound, badRequest, serverError } from "@backend/li
 import { approveCommissionById } from "@backend/services/commissionService";
 
 // POST /api/commissions/:id/approve
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -13,7 +13,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       return unauthorized("Insufficient permissions");
     }
 
-    const commission = await approveCommissionById(params.id);
+    const { id } = await params;
+    const commission = await approveCommissionById(id);
     if (!commission) return notFound("Commission not found");
     return ok(commission);
   } catch (err) {

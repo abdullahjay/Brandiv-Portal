@@ -5,12 +5,13 @@ import { getTimeEntry, editTimeEntry, removeTimeEntry } from "@backend/services/
 import { updateTimeEntrySchema } from "@backend/validators/timeEntryValidator";
 
 // GET /api/time-entries/:id
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const entry = await getTimeEntry(params.id);
+    const { id } = await params;
+    const entry = await getTimeEntry(id);
     if (!entry) return notFound("Time entry not found");
 
     const canView =
@@ -26,7 +27,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // PUT /api/time-entries/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -35,7 +36,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updateTimeEntrySchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const entry = await editTimeEntry(params.id, session.user.id, session.user.role, parsed.data);
+    const { id } = await params;
+    const entry = await editTimeEntry(id, session.user.id, session.user.role, parsed.data);
     return ok(entry);
   } catch (err) {
     if (err instanceof Error && err.message.includes("only edit")) {
@@ -49,12 +51,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE /api/time-entries/:id
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    await removeTimeEntry(params.id, session.user.id, session.user.role);
+    const { id } = await params;
+    await removeTimeEntry(id, session.user.id, session.user.role);
     return ok({ deleted: true });
   } catch (err) {
     if (err instanceof Error && err.message.includes("only delete")) {

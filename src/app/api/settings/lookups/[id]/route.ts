@@ -4,7 +4,7 @@ import { ok, badRequest, unauthorized, forbidden, notFound, serverError } from "
 import { updateLookupSchema } from "@backend/validators/settingsValidator";
 import { editLookup, removeLookup } from "@backend/services/settingService";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -16,7 +16,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updateLookupSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const item = await editLookup(params.id, parsed.data);
+    const { id } = await params;
+    const item = await editLookup(id, parsed.data);
     if (!item) return notFound("Lookup not found");
     return ok(item);
   } catch (err) {
@@ -24,7 +25,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -32,7 +33,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     const role = session.user.role as string;
     if (!["super_admin", "admin"].includes(role)) return forbidden();
 
-    const done = await removeLookup(params.id);
+    const { id } = await params;
+    const done = await removeLookup(id);
     if (!done) return notFound("Lookup not found");
     return ok({ deleted: true });
   } catch (err) {

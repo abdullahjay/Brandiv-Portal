@@ -5,12 +5,13 @@ import { getAccount, editAccount, removeAccount } from "@backend/services/accoun
 import { updateAccountSchema } from "@backend/validators/accountValidator";
 
 // GET /api/accounts/:id
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const account = await getAccount(params.id);
+    const { id } = await params;
+    const account = await getAccount(id);
     if (!account) return notFound("Account not found");
     return ok(account);
   } catch (err) {
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // DELETE /api/accounts/:id
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -28,9 +29,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       return unauthorized("Insufficient permissions");
     }
 
-    const deleted = await removeAccount(params.id);
+    const { id } = await params;
+    const deleted = await removeAccount(id);
     if (!deleted) return notFound("Account not found");
-    return ok({ id: params.id });
+    return ok({ id });
   } catch (err) {
     if (err instanceof Error && err.message.includes("Foreign key constraint")) {
       return badRequest("Cannot delete this account — it is linked to clients or commissions.");
@@ -40,7 +42,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 }
 
 // PUT /api/accounts/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -53,7 +55,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updateAccountSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const account = await editAccount(params.id, parsed.data);
+    const { id } = await params;
+    const account = await editAccount(id, parsed.data);
     if (!account) return notFound("Account not found");
     return ok(account);
   } catch (err) {

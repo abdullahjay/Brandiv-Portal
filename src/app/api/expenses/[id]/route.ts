@@ -5,12 +5,13 @@ import { getExpense, editExpense, removeExpense } from "@backend/services/expens
 import { updateExpenseSchema } from "@backend/validators/expenseValidator";
 
 // GET /api/expenses/:id
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const expense = await getExpense(params.id);
+    const { id } = await params;
+    const expense = await getExpense(id);
     if (!expense) return notFound("Expense not found");
     return ok(expense);
   } catch (err) {
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // PUT /api/expenses/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -32,7 +33,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updateExpenseSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const expense = await editExpense(params.id, parsed.data);
+    const { id } = await params;
+    const expense = await editExpense(id, parsed.data);
     if (!expense) return notFound("Expense not found");
     return ok(expense);
   } catch (err) {
@@ -41,7 +43,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE /api/expenses/:id
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -50,7 +52,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       return unauthorized("Insufficient permissions");
     }
 
-    const result = await removeExpense(params.id);
+    const { id } = await params;
+    const result = await removeExpense(id);
     if (!result) return notFound("Expense not found");
     return noContent();
   } catch (err) {

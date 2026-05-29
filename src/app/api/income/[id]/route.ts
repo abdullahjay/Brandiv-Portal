@@ -5,12 +5,13 @@ import { getIncome, editIncome, markCleared } from "@backend/services/incomeServ
 import { updateIncomeSchema } from "@backend/validators/incomeValidator";
 
 // GET /api/income/:id
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const income = await getIncome(params.id);
+    const { id } = await params;
+    const income = await getIncome(id);
     if (!income) return notFound("Income record not found");
     return ok(income);
   } catch (err) {
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // PUT /api/income/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
@@ -28,7 +29,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const parsed = updateIncomeSchema.safeParse(body);
     if (!parsed.success) return badRequest("Validation failed", parsed.error.flatten());
 
-    const income = await editIncome(params.id, parsed.data);
+    const { id } = await params;
+    const income = await editIncome(id, parsed.data);
     if (!income) return notFound("Income record not found");
     return ok(income);
   } catch (err) {
@@ -38,12 +40,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 // POST /api/income/:id/clear handled via separate route below as a convenience
 // PATCH /api/income/:id — mark cleared
-export async function PATCH(_req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return unauthorized();
 
-    const income = await markCleared(params.id);
+    const { id } = await params;
+    const income = await markCleared(id);
     if (!income) return notFound("Income record not found");
     return ok(income);
   } catch (err) {
