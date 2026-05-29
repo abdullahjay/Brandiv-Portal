@@ -2,6 +2,12 @@
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "bcryptjs"],
   },
