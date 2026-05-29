@@ -43,7 +43,7 @@ const nextConfig = {
     if (!isProd) return [];
     return [
       {
-        source: "/(.*)",
+        source: "/:path*",
         has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
         destination: `${process.env.NEXT_PUBLIC_APP_URL}/:path*`,
         permanent: true,
