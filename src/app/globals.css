@@ -2,26 +2,448 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens — Light mode (default) ── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg1: #ffffff;
+  --bg2: #f5f5f3;
+  --bg3: #f0efeb;
+  --t1: #1a1a18;
+  --t2: #6b6b67;
+  --t3: #a0a09a;
+  --b3: rgba(0, 0, 0, 0.09);
+  --b2: rgba(0, 0, 0, 0.16);
+  --rm: 8px;
+  --rl: 12px;
+  --blue: #185fa5;
+  --blue-bg: #e6f1fb;
+  --blue-t: #0c447c;
+  --green: #3b6d11;
+  --green-bg: #eaf3de;
+  --amber: #854f0b;
+  --amber-bg: #faeeda;
+  --red: #a32d2d;
+  --red-bg: #fcebeb;
+  --gray: #5f5e5a;
+  --gray-bg: #f1efe8;
+  --purple: #534ab7;
+  --purple-bg: #eeedfe;
+  --teal: #085041;
+  --teal-bg: #e1f5ee;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
 }
 
+/* ── Dark mode via system preference (when no explicit override) ── */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --bg1: #1e1e1c;
+    --bg2: #2a2a28;
+    --bg3: #141412;
+    --t1: #f0efeb;
+    --t2: #a0a09a;
+    --t3: #6b6b67;
+    --b3: rgba(255, 255, 255, 0.08);
+    --b2: rgba(255, 255, 255, 0.14);
+    --blue-bg: #0c2a45;
+    --green-bg: #1a2e0d;
+    --amber-bg: #2e1e05;
+    --red-bg: #2e0f0f;
+    --gray-bg: #2a2a28;
+    --purple-bg: #1e1b3a;
+    --teal-bg: #0a1e18;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.18);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.30), 0 2px 4px rgba(0,0,0,0.20);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.35), 0 4px 8px rgba(0,0,0,0.25);
   }
+}
+
+/* ── Explicit dark mode ── */
+[data-theme="dark"] {
+  --bg1: #1e1e1c;
+  --bg2: #2a2a28;
+  --bg3: #141412;
+  --t1: #f0efeb;
+  --t2: #a0a09a;
+  --t3: #6b6b67;
+  --b3: rgba(255, 255, 255, 0.08);
+  --b2: rgba(255, 255, 255, 0.14);
+  --blue-bg: #0c2a45;
+  --green-bg: #1a2e0d;
+  --amber-bg: #2e1e05;
+  --red-bg: #2e0f0f;
+  --gray-bg: #2a2a28;
+  --purple-bg: #1e1b3a;
+  --teal-bg: #0a1e18;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.18);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.30), 0 2px 4px rgba(0,0,0,0.20);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.35), 0 4px 8px rgba(0,0,0,0.25);
+}
+
+/* ── Explicit light mode (overrides system dark) ── */
+[data-theme="light"] {
+  --bg1: #ffffff;
+  --bg2: #f5f5f3;
+  --bg3: #f0efeb;
+  --t1: #1a1a18;
+  --t2: #6b6b67;
+  --t3: #a0a09a;
+  --b3: rgba(0, 0, 0, 0.09);
+  --b2: rgba(0, 0, 0, 0.16);
+  --blue-bg: #e6f1fb;
+  --green-bg: #eaf3de;
+  --amber-bg: #faeeda;
+  --red-bg: #fcebeb;
+  --gray-bg: #f1efe8;
+  --purple-bg: #eeedfe;
+  --teal-bg: #e1f5ee;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
+}
+
+/* ── Reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg3);
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--b3);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--b2);
+}
+
+/* ── Focus ring — keyboard nav only ── */
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Reusable component classes ── */
+@layer components {
+  .card {
+    background: var(--bg1);
+    border: 0.5px solid var(--b3);
+    border-radius: var(--rl);
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
   }
+  .card-sm {
+    background: var(--bg1);
+    border: 0.5px solid var(--b3);
+    border-radius: var(--rl);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    height: 32px;
+    padding: 0 14px;
+    background: var(--blue);
+    border: none;
+    border-radius: var(--rm);
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: inherit;
+    transition: background 0.12s, box-shadow 0.12s, transform 0.08s;
+    box-shadow: 0 1px 2px rgba(24,95,165,0.25);
+    letter-spacing: 0.01em;
+  }
+  .btn-primary:hover {
+    background: var(--blue-t);
+    box-shadow: 0 2px 6px rgba(24,95,165,0.35);
+  }
+  .btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-outline {
+    height: 32px;
+    padding: 0 14px;
+    background: transparent;
+    border: 0.5px solid var(--b2);
+    border-radius: var(--rm);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--t1);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: inherit;
+    transition: background 0.12s, border-color 0.12s, transform 0.08s;
+    letter-spacing: 0.01em;
+  }
+  .btn-outline:hover {
+    background: var(--bg2);
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .btn-outline:active {
+    transform: translateY(1px);
+  }
+  .btn-outline:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-ghost {
+    height: 32px;
+    padding: 0 12px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rm);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--t2);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: inherit;
+    transition: background 0.12s, color 0.12s;
+  }
+  .btn-ghost:hover {
+    background: var(--bg2);
+    color: var(--t1);
+  }
+
+  /* ── Badges ── */
+  .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+  }
+  .badge-active,
+  .badge-paid,
+  .badge-approved,
+  .badge-completed,
+  .badge-cleared {
+    background: var(--green-bg);
+    color: var(--green);
+  }
+  .badge-pending {
+    background: var(--amber-bg);
+    color: var(--amber);
+  }
+  .badge-inactive,
+  .badge-done {
+    background: var(--gray-bg);
+    color: var(--gray);
+  }
+  .badge-overdue,
+  .badge-rejected,
+  .badge-cancelled {
+    background: var(--red-bg);
+    color: var(--red);
+  }
+  .badge-info,
+  .badge-new,
+  .badge-lead,
+  .badge-recurring,
+  .badge-draft,
+  .badge-sent {
+    background: var(--blue-bg);
+    color: var(--blue);
+  }
+  .badge-milestone {
+    background: var(--purple-bg);
+    color: var(--purple);
+  }
+  .badge-one-time {
+    background: var(--gray-bg);
+    color: var(--gray);
+  }
+
+  /* ── Form rows ── */
+  .frow {
+    margin-bottom: 14px;
+  }
+  .frow label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--t2);
+    margin-bottom: 5px;
+    letter-spacing: 0.02em;
+  }
+  .frow input,
+  .frow select,
+  .frow textarea {
+    width: 100%;
+    border: 0.5px solid var(--b2);
+    border-radius: var(--rm);
+    padding: 0 10px;
+    font-size: 13px;
+    background: var(--bg1);
+    color: var(--t1);
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .frow input,
+  .frow select {
+    height: 34px;
+  }
+  .frow textarea {
+    padding: 8px 10px;
+    height: 72px;
+    resize: vertical;
+  }
+  .frow input:focus,
+  .frow select:focus,
+  .frow textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(24,95,165,0.12);
+  }
+  .frow input::placeholder,
+  .frow textarea::placeholder {
+    color: var(--t3);
+  }
+
+  /* ── Grid layouts ── */
+  .f2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .f3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* ── Section labels ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--t3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 18px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 0.5px solid var(--b3);
+  }
+
+  /* ── Metric cards ── */
+  .metric-card {
+    background: var(--bg2);
+    border-radius: var(--rm);
+    padding: 14px;
+    border: 0.5px solid var(--b3);
+    transition: box-shadow 0.15s;
+  }
+  .metric-card:hover {
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ── Table rows ── */
+  .trow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 0.5px solid var(--b3);
+    transition: background 0.1s;
+  }
+  .trow:last-child {
+    border-bottom: none;
+  }
+
+  /* ── Icon buttons ── */
+  .ib {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--rm);
+    border: 0.5px solid var(--b3);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--t2);
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    font-size: 15px;
+  }
+  .ib:hover {
+    background: var(--bg2);
+    color: var(--t1);
+    border-color: var(--b2);
+  }
+
+  /* ── Progress bar ── */
+  .com-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bg2);
+    margin-top: 6px;
+  }
+  .com-fill {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--blue);
+    transition: width 0.3s ease;
+  }
+
+  /* ── Skeleton / shimmer loader ── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg2) 25%,
+      var(--bg3) 50%,
+      var(--bg2) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: var(--rm);
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

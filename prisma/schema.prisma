@@ -1,0 +1,694 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  super_admin
+  admin
+  manager
+  staff
+  finance
+}
+
+enum UserStatus {
+  active
+  inactive
+}
+
+enum ClientStatus {
+  active
+  pending
+  inactive
+}
+
+enum ContractStatus {
+  not_sent
+  sent
+  signed
+}
+
+enum CommissionRule {
+  standard
+  custom
+  none
+}
+
+enum ProjectType {
+  one_time
+  recurring
+  milestone
+}
+
+enum ProjectStatus {
+  active
+  pending
+  done
+  cancelled
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  overdue
+  cancelled
+}
+
+enum IncomeStatus {
+  pending
+  cleared
+}
+
+enum TransactionType {
+  income
+  expense
+  payroll
+  commission
+  distribution
+  transfer
+}
+
+enum TransactionStatus {
+  pending
+  cleared
+  approved
+  paid
+  completed
+}
+
+enum AccountType {
+  operating
+  company_reserve
+  stakeholder
+}
+
+enum CommissionStatus {
+  pending
+  approved
+  paid
+}
+
+enum PipelineStage {
+  lead
+  proposal
+  negotiation
+  closed
+}
+
+enum PayrollStatus {
+  pending
+  paid
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+}
+
+// ─── NEXTAUTH TABLES ──────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("auth_accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("auth_verification_tokens")
+}
+
+// ─── CORE TABLES ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(uuid())
+  name         String     @db.VarChar(100)
+  email        String     @unique @db.VarChar(255)
+  passwordHash String?    @db.Text
+  role         UserRole   @default(staff)
+  status       UserStatus @default(active)
+  avatarUrl    String?    @db.Text
+  createdAt    DateTime   @default(now())
+  lastLogin    DateTime?
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // CRM relations
+  managedClients       Client[]               @relation("AccountManager")
+  referredClients      Client[]               @relation("ReferredBy")
+  createdClients       Client[]               @relation("ClientCreatedBy")
+  managedProjects      Project[]
+  payrollRecords       PayrollRecord[]
+  timeEntries          TimeEntry[]
+  ownedAccount         CrmAccount?
+  createdIncome        IncomeRecord[]
+  createdInvoices      Invoice[]
+  distributionRuns     Distribution[]
+  createdTransactions  FinancialTransaction[]
+  createdTransfers     AccountTransfer[]      @relation("TransferCreatedBy")
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+model Client {
+  id               String         @id @default(uuid())
+  companyName      String         @db.VarChar(200)
+  industry         String?        @db.VarChar(100)
+  website          String?        @db.Text
+  contactName      String         @db.VarChar(100)
+  contactTitle     String?        @db.VarChar(100)
+  email            String         @db.VarChar(255)
+  phone            String?        @db.VarChar(50)
+  country          String?        @db.VarChar(100)
+  city             String?        @db.VarChar(100)
+  timezone         String?        @db.VarChar(50)
+  currency         String         @default("USD") @db.VarChar(3)
+  billingAddress   String?        @db.Text
+  taxNumber        String?        @db.VarChar(100)
+  paymentTerms     String?        @db.VarChar(50)
+  contractStatus   ContractStatus @default(not_sent)
+  ndaRequired      Boolean        @default(false)
+  status           ClientStatus   @default(pending)
+  source           String?        @db.VarChar(100)
+  commissionRule          CommissionRule @default(standard)
+  commissionPriorPayments Int           @default(0)
+  notes                   String?       @db.Text
+  createdAt        DateTime       @default(now())
+
+  accountManagerId  String?
+  accountManager    User?       @relation("AccountManager", fields: [accountManagerId], references: [id])
+  referredByUserId  String?
+  referredBy        User?       @relation("ReferredBy", fields: [referredByUserId], references: [id])
+  createdById       String?
+  createdBy         User?       @relation("ClientCreatedBy", fields: [createdById], references: [id])
+  partnerId         String?
+  partner           CrmAccount? @relation("ClientPartner", fields: [partnerId], references: [id])
+
+  projects     Project[]
+  invoices     Invoice[]
+  incomeRecords IncomeRecord[]
+  commissions  Commission[]
+  pipelineDeals PipelineDeal[]
+
+  @@index([accountManagerId])
+  @@index([referredByUserId])
+  @@index([createdById])
+  @@index([partnerId])
+  @@index([status])
+  @@map("clients")
+}
+
+model Project {
+  id              String        @id @default(uuid())
+  name            String        @db.VarChar(200)
+  type            ProjectType
+  status          ProjectStatus @default(pending)
+  valuePkr        BigInt        @default(0)
+  currency        String        @default("USD") @db.VarChar(3)
+  valueOriginal   BigInt        @default(0)
+  progressPct     Int           @default(0)
+  startDate       DateTime?     @db.Date
+  deadline        DateTime?     @db.Date
+  description     String?       @db.Text
+  commissionExempt Boolean      @default(false)
+  billingCycleDay Int?
+  createdAt       DateTime      @default(now())
+
+  clientId  String
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  managerId String?
+  manager   User?  @relation(fields: [managerId], references: [id])
+
+  invoices    Invoice[]
+  milestones  Milestone[]
+  timeEntries TimeEntry[]
+  expenses    Expense[]
+  commissions Commission[]
+
+  @@index([clientId])
+  @@index([managerId])
+  @@index([status])
+  @@map("projects")
+}
+
+model Milestone {
+  id          String    @id @default(uuid())
+  title       String    @db.VarChar(200)
+  dueDate     DateTime? @db.Date
+  completedAt DateTime?
+  valuePkr    BigInt    @default(0)
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("milestones")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  invoiceNumber  String        @unique @db.VarChar(50)
+  currency       String        @default("USD") @db.VarChar(3)
+  subtotal       BigInt        @default(0)
+  taxAmount      BigInt        @default(0)
+  totalAmount    BigInt        @default(0)
+  paymentTerms   String?       @db.VarChar(50)
+  issueDate      DateTime      @db.Date
+  dueDate        DateTime      @db.Date
+  paidAt         DateTime?
+  status         InvoiceStatus @default(draft)
+  notes          String?       @db.Text
+  paymentNumber  Int           @default(1)
+  createdAt      DateTime      @default(now())
+
+  clientId  String
+  client    Client  @relation(fields: [clientId], references: [id])
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+  createdById String?
+  createdBy   User?  @relation(fields: [createdById], references: [id])
+
+  lineItems     InvoiceLineItem[]
+  incomeRecords IncomeRecord[]
+  commissions   Commission[]
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([createdById])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(uuid())
+  description String  @db.Text
+  quantity    Int     @default(1)
+  rate        BigInt  @default(0)
+  amount      BigInt  @default(0)
+  sortOrder   Int     @default(0)
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+model IncomeRecord {
+  id               String       @id @default(uuid())
+  period           String       @db.VarChar(10)
+  originalAmount   BigInt
+  originalCurrency String       @db.VarChar(3)
+  exchangeRate     Decimal      @db.Decimal(12, 4)
+  rateSource       String?      @db.VarChar(100)
+  grossPkr         BigInt
+  whtPct           Decimal      @default(0) @db.Decimal(5, 2)
+  whtAmountPkr     BigInt       @default(0)
+  gstPct           Decimal      @default(0) @db.Decimal(5, 2)
+  gstAmountPkr     BigInt       @default(0)
+  bankChargesPkr   BigInt       @default(0)
+  netPkr           BigInt
+  paymentMethod    String?      @db.VarChar(50)
+  transactionRef   String?      @db.VarChar(200)
+  receivedAt       DateTime
+  status           IncomeStatus @default(pending)
+  incomeType       String?      @db.VarChar(50)
+  notes            String?      @db.Text
+  createdAt        DateTime     @default(now())
+
+  invoiceId           String?
+  invoice             Invoice?    @relation(fields: [invoiceId], references: [id])
+  clientId            String
+  client              Client      @relation(fields: [clientId], references: [id])
+  destinationAccountId String?
+  destinationAccount  CrmAccount? @relation(fields: [destinationAccountId], references: [id])
+  createdById         String?
+  createdBy           User?       @relation(fields: [createdById], references: [id])
+
+  commissions Commission[]
+
+  @@index([clientId])
+  @@index([invoiceId])
+  @@index([destinationAccountId])
+  @@index([createdById])
+  @@index([period])
+  @@map("income_records")
+}
+
+model FinancialTransaction {
+  id               String            @id @default(uuid())
+  txnId            String            @unique @db.VarChar(50)
+  period           String            @db.VarChar(10)
+  type             TransactionType
+  description      String            @db.Text
+  referenceId      String?           @db.Uuid
+  referenceType    String?           @db.VarChar(50)
+  originalAmount   BigInt?
+  originalCurrency String?           @db.VarChar(3)
+  exchangeRate     Decimal?          @db.Decimal(12, 4)
+  pkrAmount        BigInt
+  whtAmount        BigInt            @default(0)
+  status           TransactionStatus @default(pending)
+  periodLocked     Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+
+  fromAccountId String?
+  fromAccount   CrmAccount? @relation("FromAccount", fields: [fromAccountId], references: [id])
+  toAccountId   String?
+  toAccount     CrmAccount? @relation("ToAccount", fields: [toAccountId], references: [id])
+  createdById   String?
+  createdBy     User?       @relation(fields: [createdById], references: [id])
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([createdById])
+  @@index([period])
+  @@index([type])
+  @@map("financial_transactions")
+}
+
+model CrmAccount {
+  id                   String      @id @default(uuid())
+  name                 String      @db.VarChar(100)
+  type                 AccountType
+  sharePct             Decimal     @default(0) @db.Decimal(5, 2)
+  currentBalancePkr    BigInt      @default(0)
+  lifetimeDistPkr      BigInt      @default(0)
+  lifetimeCommPkr      BigInt      @default(0)
+  isDefaultOperating   Boolean     @default(false)
+  createdAt            DateTime    @default(now())
+
+  ownerUserId String? @unique
+  ownerUser   User?   @relation(fields: [ownerUserId], references: [id])
+
+  incomeRecords          IncomeRecord[]
+  transactionsFrom       FinancialTransaction[] @relation("FromAccount")
+  transactionsTo         FinancialTransaction[] @relation("ToAccount")
+  distributionItems      DistributionItem[]
+  commissions            Commission[]           @relation("CommissionAccount")
+  clientsAsPartner       Client[]               @relation("ClientPartner")
+  transfersFrom          AccountTransfer[]      @relation("TransferFrom")
+  transfersTo            AccountTransfer[]      @relation("TransferTo")
+
+  @@map("crm_accounts")
+}
+
+model Commission {
+  id                 String           @id @default(uuid())
+  period             String           @db.VarChar(10)
+  paymentNumber      Int
+  ratePct            Decimal          @db.Decimal(5, 2)
+  baseAmountPkr      BigInt
+  commissionPkr      BigInt
+  status             CommissionStatus @default(pending)
+  createdAt          DateTime         @default(now())
+
+  stakeholderAccountId String
+  stakeholderAccount   CrmAccount   @relation("CommissionAccount", fields: [stakeholderAccountId], references: [id])
+  clientId             String
+  client             Client       @relation(fields: [clientId], references: [id])
+  projectId          String?
+  project            Project?     @relation(fields: [projectId], references: [id])
+  invoiceId          String?
+  invoice            Invoice?     @relation(fields: [invoiceId], references: [id])
+  incomeRecordId     String?
+  incomeRecord       IncomeRecord? @relation(fields: [incomeRecordId], references: [id])
+  paidInDistributionId String?
+  paidInDistribution Distribution? @relation(fields: [paidInDistributionId], references: [id])
+
+  @@index([stakeholderAccountId])
+  @@index([clientId])
+  @@index([projectId])
+  @@index([invoiceId])
+  @@index([incomeRecordId])
+  @@index([paidInDistributionId])
+  @@index([period])
+  @@map("commissions")
+}
+
+model Distribution {
+  id                    String   @id @default(uuid())
+  period                String   @db.VarChar(10)    // YYYY-MM label for grouping, no longer unique
+  label                 String?  @db.VarChar(255)   // optional custom name
+  operatingBalancePkr   BigInt                      // operating account balance at time of run
+  totalCommissionPkr    BigInt   @default(0)
+  totalDistributedPkr   BigInt
+  operatingBalanceAfter BigInt   @default(0)
+  runAt                 DateTime @default(now())
+  notes                 String?  @db.Text
+
+  runById String?
+  runBy   User?  @relation(fields: [runById], references: [id])
+
+  items       DistributionItem[]
+  commissions Commission[]
+
+  @@index([runById])
+  @@index([period])
+  @@map("distributions")
+}
+
+model AccountTransfer {
+  id          String   @id @default(uuid())
+  period      String   @db.VarChar(10)
+  amountPkr   BigInt
+  description String   @db.Text
+  notes       String?  @db.Text
+  status      String   @default("completed") @db.VarChar(20)
+  transferAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  fromAccountId String
+  fromAccount   CrmAccount @relation("TransferFrom", fields: [fromAccountId], references: [id])
+  toAccountId   String
+  toAccount     CrmAccount @relation("TransferTo", fields: [toAccountId], references: [id])
+  createdById   String?
+  createdBy     User?      @relation("TransferCreatedBy", fields: [createdById], references: [id])
+
+  reversalOfId  String?
+  reversalOf    AccountTransfer?  @relation("TransferReversal", fields: [reversalOfId], references: [id])
+  reversals     AccountTransfer[] @relation("TransferReversal")
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([createdById])
+  @@index([reversalOfId])
+  @@index([period])
+  @@map("account_transfers")
+}
+
+model DistributionItem {
+  id                    String  @id @default(uuid())
+  sharePct              Decimal @db.Decimal(5, 2)
+  distributionAmountPkr BigInt
+  commissionAmountPkr   BigInt  @default(0)
+  totalPkr              BigInt
+
+  distributionId String
+  distribution   Distribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  accountId      String
+  account        CrmAccount   @relation(fields: [accountId], references: [id])
+
+  @@index([distributionId])
+  @@index([accountId])
+  @@map("distribution_items")
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String   @db.Text
+  category    String   @db.VarChar(100)
+  amountPkr   BigInt
+  originalAmount BigInt?
+  originalCurrency String? @db.VarChar(3)
+  exchangeRate Decimal? @db.Decimal(12, 4)
+  period      String   @db.VarChar(10)
+  date        DateTime @db.Date
+  receiptUrl  String?  @db.Text
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@index([period])
+  @@map("expenses")
+}
+
+model PayrollRecord {
+  id          String        @id @default(uuid())
+  period      String        @db.VarChar(10)
+  grossPkr    BigInt
+  deductions  BigInt        @default(0)
+  netPkr      BigInt
+  status      PayrollStatus @default(pending)
+  paidAt      DateTime?
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+
+  userId     String?
+  employeeId String?
+  user       User?     @relation(fields: [userId], references: [id])
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  @@index([userId, period])
+  @@index([employeeId, period])
+  @@map("payroll_records")
+}
+
+model Employee {
+  id          String         @id @default(uuid())
+  name        String         @db.VarChar(100)
+  designation String?        @db.VarChar(100)
+  department  String?        @db.VarChar(100)
+  email       String?        @db.VarChar(255)
+  phone       String?        @db.VarChar(50)
+  cnic        String?        @db.VarChar(20)
+  joinDate    DateTime?
+  baseSalary  BigInt?
+  status      EmployeeStatus @default(active)
+  notes       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  payrollRecords PayrollRecord[]
+
+  @@map("employees")
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid())
+  hours       Decimal  @db.Decimal(5, 2)
+  date        DateTime @db.Date
+  description String?  @db.Text
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("time_entries")
+}
+
+model PipelineDeal {
+  id          String        @id @default(uuid())
+  companyName String        @db.VarChar(200)
+  contactName String?       @db.VarChar(100)
+  value       BigInt        @default(0)
+  currency    String        @default("USD") @db.VarChar(3)
+  stage       PipelineStage @default(lead)
+  dealType    String?       @db.VarChar(100)
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@index([stage])
+  @@map("pipeline_deals")
+}
+
+model ExchangeRate {
+  id       String   @id @default(uuid())
+  currency String   @db.VarChar(3)
+  rate     Decimal  @db.Decimal(12, 4)
+  date     DateTime @db.Date
+  source   String?  @db.VarChar(100)
+
+  @@unique([currency, date])
+  @@map("exchange_rates")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String   @db.VarChar(100)
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique @db.VarChar(100)
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ─── LOOKUP (Reference Data) ──────────────────────────────────────────────────
+// Single table for all user-editable dropdown/reference lists.
+// type examples: industry | country | currency | timezone | payment_terms
+//                client_source | budget_range | service | nda_status
+model Lookup {
+  id        String   @id @default(uuid())
+  type      String   @db.VarChar(50)
+  value     String   @db.VarChar(200)
+  label     String   @db.VarChar(200)
+  code      String?  @db.VarChar(20)  // e.g. country ISO code, currency code
+  meta      Json?                      // extra data: symbol, dial_code, etc.
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, value])
+  @@index([type, active])
+  @@map("lookups")
+}
