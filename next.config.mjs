@@ -42,14 +42,15 @@ const nextConfig = {
     ];
   },
 
-  // Redirect HTTP → HTTPS in production
+  // Redirect HTTP → HTTPS in production (only when APP_URL is defined)
   async redirects() {
-    if (!isProd) return [];
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!isProd || !appUrl) return [];
     return [
       {
         source: "/:path*",
         has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
-        destination: `${process.env.NEXT_PUBLIC_APP_URL}/:path*`,
+        destination: `${appUrl}/:path*`,
         permanent: true,
       },
     ];
