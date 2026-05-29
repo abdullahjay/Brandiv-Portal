@@ -3,6 +3,9 @@ import { getSession } from "@backend/lib/auth";
 import { getAllSettings } from "@backend/services/settingService";
 import Sidebar from "@frontend/components/layout/Sidebar";
 
+// Never statically prerender — auth state and DB data are request-time only
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {

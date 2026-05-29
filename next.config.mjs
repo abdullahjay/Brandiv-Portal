@@ -1,6 +1,14 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === "production";
 
+// Ensure NEXTAUTH_URL is never an empty string — next-auth calls new URL() on
+// it at module load time and throws "Invalid URL" when the value is "".
+// At build time (CI / Hostinger postinstall) we only need a syntactically valid
+// placeholder; the real value must be set in the platform's env-var UI.
+if (!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL === "") {
+  process.env.NEXTAUTH_URL = "http://localhost:3000";
+}
+
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
