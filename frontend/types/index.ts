@@ -381,15 +381,21 @@ export interface DistributionPreviewItem {
   accountId: string;
   accountName: string;
   ownerName: string | null;
+  accountType: "stakeholder" | "company_reserve";
   sharePct: number;
+  shareBasis: "total" | "pool";
   distributionAmountPkr: number;
   commissionAmountPkr: number;
   totalPkr: number;
 }
 
 export interface DistributionPreview {
-  operatingBalancePkr: number;  // actual operating account balance (paise)
-  totalCommissionPkr: number;   // all approved commissions (paise)
+  operatingBalancePkr: number;
+  totalCommissionPkr: number;
+  companyReservePct: number;
+  companyReservePoolPkr: number;
+  stakeholderPoolPkr: number;
+  totalStakeholderPct: number;
   totalSharePct: number;
   items: DistributionPreviewItem[];
   warnings: string[];

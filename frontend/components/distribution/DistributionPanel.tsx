@@ -89,15 +89,16 @@ export default function DistributionPanel({ onDistributed }: DistributionPanelPr
             {/* Balance summary */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "0.5px solid var(--b3)" }}>
               {[
-                { label: "Available Balance", value: preview.operatingBalancePkr, color: preview.operatingBalancePkr > 0 ? "var(--blue)" : "var(--t3)", bold: true },
-                { label: "Pending Commissions", value: -preview.totalCommissionPkr, color: preview.totalCommissionPkr > 0 ? "var(--amber, #D97706)" : "var(--t3)" },
-                { label: "Net Distributable", value: preview.operatingBalancePkr - preview.totalCommissionPkr, color: (preview.operatingBalancePkr - preview.totalCommissionPkr) > 0 ? "var(--green)" : "var(--red)", bold: true },
-              ].map(({ label, value, color, bold }) => (
+                { label: "Operating Balance", value: preview.operatingBalancePkr, color: preview.operatingBalancePkr > 0 ? "var(--blue)" : "var(--t3)", bold: true, sub: null },
+                { label: `Company Reserve`, value: preview.companyReservePoolPkr, color: "var(--t2)", bold: false, sub: `${preview.companyReservePct}% of balance` },
+                { label: "Stakeholder Pool", value: preview.stakeholderPoolPkr, color: preview.stakeholderPoolPkr > 0 ? "var(--green)" : "var(--t3)", bold: true, sub: `${(100 - preview.companyReservePct).toFixed(0)}% remaining` },
+              ].map(({ label, value, color, bold, sub }) => (
                 <div key={label} style={{ padding: "12px 14px", borderRight: "0.5px solid var(--b3)" }}>
                   <div style={{ fontSize: 10, color: "var(--t2)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
                   <div style={{ fontSize: 14, fontWeight: bold ? 700 : 500, color }}>
-                    {value < 0 ? "−" : ""}PKR {fmt(value)}
+                    PKR {fmt(value)}
                   </div>
+                  {sub && <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{sub}</div>}
                 </div>
               ))}
             </div>
@@ -117,31 +118,70 @@ export default function DistributionPanel({ onDistributed }: DistributionPanelPr
             {/* Per-account breakdown */}
             {preview.items.length > 0 && (
               <div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 60px 1fr 1fr 1fr", gap: "0 12px", padding: "8px 16px", borderBottom: "0.5px solid var(--b3)", background: "var(--bg2)" }}>
+                {/* Table header */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 1fr 1fr 1fr", gap: "0 12px", padding: "8px 16px", borderBottom: "0.5px solid var(--b3)", background: "var(--bg2)" }}>
                   {["Account", "Share", "Distribution", "Commission", "Total"].map((h) => (
                     <div key={h} style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
                   ))}
                 </div>
-                {preview.items.map((item) => (
-                  <div
-                    key={item.accountId}
-                    style={{ display: "grid", gridTemplateColumns: "1fr 60px 1fr 1fr 1fr", gap: "0 12px", padding: "10px 16px", borderBottom: "0.5px solid var(--b3)", alignItems: "center" }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)" }}>{item.ownerName ?? item.accountName}</div>
-                      {item.ownerName && item.ownerName !== item.accountName && (
-                        <div style={{ fontSize: 11, color: "var(--t2)" }}>{item.accountName}</div>
-                      )}
+
+                {/* Company reserve section */}
+                {preview.items.some((i) => i.accountType === "company_reserve") && (
+                  <>
+                    <div style={{ padding: "5px 16px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Company Reserve — {preview.companyReservePct}% of operating balance
+                      </span>
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--t2)" }}>{item.sharePct}%</div>
-                    <div style={{ fontSize: 12, color: "var(--t1)" }}>PKR {fmt(item.distributionAmountPkr)}</div>
-                    <div style={{ fontSize: 12, color: item.commissionAmountPkr > 0 ? "var(--blue)" : "var(--t3)" }}>
-                      {item.commissionAmountPkr > 0 ? `PKR ${fmt(item.commissionAmountPkr)}` : "—"}
+                    {preview.items.filter((i) => i.accountType === "company_reserve").map((item) => (
+                      <div key={item.accountId} style={{ display: "grid", gridTemplateColumns: "1fr 90px 1fr 1fr 1fr", gap: "0 12px", padding: "10px 16px", borderBottom: "0.5px solid var(--b3)", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)" }}>{item.accountName}</div>
+                          <div style={{ fontSize: 10, color: "var(--t3)" }}>% of total balance</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--t2)" }}>{item.sharePct}%</div>
+                        <div style={{ fontSize: 12, color: "var(--t1)" }}>PKR {fmt(item.distributionAmountPkr)}</div>
+                        <div style={{ fontSize: 12, color: "var(--t3)" }}>—</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(item.totalPkr)}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Stakeholder pool section */}
+                {preview.items.some((i) => i.accountType === "stakeholder") && (
+                  <>
+                    <div style={{ padding: "5px 16px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Stakeholder Pool — PKR {fmt(preview.stakeholderPoolPkr)} ({(100 - preview.companyReservePct).toFixed(0)}% of balance)
+                      </span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(item.totalPkr)}</div>
-                  </div>
-                ))}
-                <div style={{ padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, background: "var(--bg2)" }}>
+                    {preview.items.filter((i) => i.accountType === "stakeholder").map((item) => (
+                      <div key={item.accountId} style={{ display: "grid", gridTemplateColumns: "1fr 90px 1fr 1fr 1fr", gap: "0 12px", padding: "10px 16px", borderBottom: "0.5px solid var(--b3)", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)" }}>{item.ownerName ?? item.accountName}</div>
+                          {item.ownerName && item.ownerName !== item.accountName && (
+                            <div style={{ fontSize: 11, color: "var(--t2)" }}>{item.accountName}</div>
+                          )}
+                          <div style={{ fontSize: 10, color: "var(--t3)" }}>% of pool</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--t2)" }}>{item.sharePct}%</div>
+                        <div style={{ fontSize: 12, color: "var(--t1)" }}>PKR {fmt(item.distributionAmountPkr)}</div>
+                        <div style={{ fontSize: 12, color: item.commissionAmountPkr > 0 ? "var(--blue)" : "var(--t3)" }}>
+                          {item.commissionAmountPkr > 0 ? `PKR ${fmt(item.commissionAmountPkr)}` : "—"}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(item.totalPkr)}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                <div style={{ padding: "8px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg2)" }}>
+                  <span style={{ fontSize: 11, color: "var(--t3)" }}>
+                    {preview.totalStakeholderPct < 100
+                      ? `${(100 - preview.totalStakeholderPct).toFixed(2)}% of pool unallocated → goes to company reserve`
+                      : "Stakeholder pool fully allocated"}
+                  </span>
                   <span style={{ fontSize: 11, color: "var(--t2)" }}>Commissions included · Operating balance zeros after run</span>
                 </div>
               </div>
