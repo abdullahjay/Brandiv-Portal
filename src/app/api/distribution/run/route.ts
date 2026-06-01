@@ -27,7 +27,8 @@ export async function POST(req: Request) {
         msg.includes("zero or negative") ||
         msg.includes("No default operating") ||
         msg.includes("No distribution accounts") ||
-        msg.includes("must equal 100%")
+        msg.includes("must be less than 100%") ||
+        msg.includes("must not exceed 100%")
       ) {
         return badRequest(msg);
       }
