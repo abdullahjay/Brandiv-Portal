@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === "production";
 
 // Ensure NEXTAUTH_URL is never an empty string — next-auth calls new URL() on
@@ -64,7 +68,14 @@ const nextConfig = {
     ];
   },
 
-  poweredByHeader: false, // Remove X-Powered-By header
+  poweredByHeader: false,
+
+  webpack(config) {
+    config.resolve.alias["@"] = path.resolve(__dirname, "src");
+    config.resolve.alias["@frontend"] = path.resolve(__dirname, "frontend");
+    config.resolve.alias["@backend"] = path.resolve(__dirname, "backend");
+    return config;
+  },
 };
 
 export default nextConfig;
