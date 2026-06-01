@@ -56,10 +56,13 @@ export async function updateAccount(id: string, data: UpdateAccountInput) {
   return prisma.crmAccount.update({ where: { id }, data: updates, select: accountSelect });
 }
 
-export async function getTotalDistributionSharePct(excludeId?: string): Promise<number> {
+export async function getTotalSharePctByType(
+  type: "stakeholder" | "company_reserve",
+  excludeId?: string
+): Promise<number> {
   const accounts = await prisma.crmAccount.findMany({
     where: {
-      type: { in: ["stakeholder", "company_reserve"] },
+      type,
       ...(excludeId && { id: { not: excludeId } }),
     },
     select: { sharePct: true },
