@@ -395,6 +395,7 @@ export interface DistributionPreview {
   companyReservePct: number;
   companyReservePoolPkr: number;
   stakeholderPoolPkr: number;
+  stakeholderRemainderPkr: number;
   totalStakeholderPct: number;
   totalSharePct: number;
   items: DistributionPreviewItem[];

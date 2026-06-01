@@ -23,10 +23,11 @@ export interface DistributionPreviewItem {
 export interface DistributionPreview {
   operatingBalancePkr: number;
   totalCommissionPkr: number;
-  companyReservePct: number;     // sum of company_reserve sharePcts
-  companyReservePoolPkr: number; // amount going to company reserve (cut + rounding remainder)
-  stakeholderPoolPkr: number;    // remaining balance available for stakeholders
-  totalStakeholderPct: number;   // sum of stakeholder sharePcts
+  companyReservePct: number;
+  companyReservePoolPkr: number;
+  stakeholderPoolPkr: number;
+  stakeholderRemainderPkr: number;
+  totalStakeholderPct: number;
   totalSharePct: number;
   items: DistributionPreviewItem[];
   warnings: string[];
@@ -188,6 +189,7 @@ export async function previewDistribution(): Promise<DistributionPreview> {
     companyReservePct,
     companyReservePoolPkr: Number(companyReservePoolPkr),
     stakeholderPoolPkr: Number(stakeholderPoolPkr),
+    stakeholderRemainderPkr: Number(remainder > BigInt(0) ? remainder : BigInt(0)),
     totalStakeholderPct,
     totalSharePct: companyReservePct + totalStakeholderPct,
     items,

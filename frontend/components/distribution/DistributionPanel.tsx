@@ -173,15 +173,30 @@ export default function DistributionPanel({ onDistributed }: DistributionPanelPr
                         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(item.totalPkr)}</div>
                       </div>
                     ))}
+
+                    {/* Remainder row — always shown so the user sees where unallocated pool goes */}
+                    {preview.stakeholderRemainderPkr >= 0 && preview.items.some((i) => i.accountType === "company_reserve") && (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 1fr 1fr 1fr", gap: "0 12px", padding: "8px 16px", borderBottom: "0.5px solid var(--b3)", alignItems: "center", background: "var(--bg2)" }}>
+                        <div>
+                          <div style={{ fontSize: 12, fontStyle: "italic", color: "var(--t2)" }}>
+                            Unallocated remainder
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--t3)" }}>
+                            → {preview.items.find((i) => i.accountType === "company_reserve")?.accountName}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--t3)" }}>
+                          {(100 - preview.totalStakeholderPct).toFixed(2)}%
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--t2)" }}>PKR {fmt(preview.stakeholderRemainderPkr)}</div>
+                        <div style={{ fontSize: 12, color: "var(--t3)" }}>—</div>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t2)" }}>PKR {fmt(preview.stakeholderRemainderPkr)}</div>
+                      </div>
+                    )}
                   </>
                 )}
 
-                <div style={{ padding: "8px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg2)" }}>
-                  <span style={{ fontSize: 11, color: "var(--t3)" }}>
-                    {preview.totalStakeholderPct < 100
-                      ? `${(100 - preview.totalStakeholderPct).toFixed(2)}% of pool unallocated → goes to company reserve`
-                      : "Stakeholder pool fully allocated"}
-                  </span>
+                <div style={{ padding: "8px 16px", display: "flex", justifyContent: "flex-end", background: "var(--bg2)" }}>
                   <span style={{ fontSize: 11, color: "var(--t2)" }}>Commissions included · Operating balance zeros after run</span>
                 </div>
               </div>
