@@ -31,6 +31,7 @@ function downloadPayslip(record: PayrollRecord, companyName = "Brandiv Labs") {
   const department = record.employee?.department ?? "";
   const period = fmtPeriod(record.period);
   const gross = fmt(record.grossPkr);
+  const tax = fmt(record.taxPkr);
   const deductions = fmt(record.deductions);
   const net = fmt(record.netPkr);
   const paidAt = record.paidAt ? new Date(record.paidAt).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) : "—";
@@ -75,7 +76,8 @@ function downloadPayslip(record: PayrollRecord, companyName = "Brandiv Labs") {
   <div class="section-title">Earnings &amp; Deductions</div>
   <table>
     <tr><td>Gross Salary</td><td>PKR ${gross}</td></tr>
-    ${Number(record.deductions) > 0 ? `<tr><td>Deductions</td><td style="color:#dc2626">− PKR ${deductions}</td></tr>` : ""}
+    ${Number(record.taxPkr) > 0 ? `<tr><td>Income Tax</td><td style="color:#d97706">− PKR ${tax}</td></tr>` : ""}
+    ${Number(record.deductions) > 0 ? `<tr><td>Other Deductions</td><td style="color:#dc2626">− PKR ${deductions}</td></tr>` : ""}
     <tr class="total-row"><td>Net Payable</td><td>PKR ${net}</td></tr>
   </table>
 </div>
@@ -106,6 +108,7 @@ interface RowState {
   designation: string;
   department: string;
   grossStr: string;
+  taxStr: string;
   deductStr: string;
   checked: boolean;
   alreadyPaid: boolean;
@@ -158,6 +161,7 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
           designation: emp.designation ?? "",
           department: emp.department ?? "",
           grossStr: basePkr > 0 ? String(basePkr) : "",
+          taxStr: "0",
           deductStr: "0",
           checked: !already,
           alreadyPaid: already,
@@ -178,7 +182,7 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
     if (!open) { setResult(null); setConfirmOpen(false); setError(null); }
   }, [open]);
 
-  function updateRow(idx: number, field: "grossStr" | "deductStr", value: string) {
+  function updateRow(idx: number, field: "grossStr" | "taxStr" | "deductStr", value: string) {
     setRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
   }
 
@@ -193,8 +197,9 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
   const selectedRows = rows.filter((r) => r.checked && !r.alreadyPaid);
   const allChecked = rows.filter((r) => !r.alreadyPaid).every((r) => r.checked);
   const totalGross = selectedRows.reduce((s, r) => s + (parseFloat(r.grossStr) || 0) * 100, 0);
+  const totalTax = selectedRows.reduce((s, r) => s + (parseFloat(r.taxStr) || 0) * 100, 0);
   const totalDeduct = selectedRows.reduce((s, r) => s + (parseFloat(r.deductStr) || 0) * 100, 0);
-  const totalNet = totalGross - totalDeduct;
+  const totalNet = totalGross - totalTax - totalDeduct;
   const invalidCount = selectedRows.filter((r) => !(parseFloat(r.grossStr) > 0)).length;
   const validToRun = selectedRows.length - invalidCount;
 
@@ -208,6 +213,7 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
         .map((r) => ({
           employeeId: r.employeeId,
           grossPkr: parseFloat(r.grossStr),
+          taxPkr: parseFloat(r.taxStr) || 0,
           deductions: parseFloat(r.deductStr) || 0,
         }));
       const res = await runPayrollBatchRequest(period, entries);
@@ -276,8 +282,8 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
-                    {["Employee", "Gross", "Deductions", "Net Paid", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 1 && i <= 3 ? "right" : "left" }}>{h}</th>
+                    {["Employee", "Gross", "Tax", "Deductions", "Net Paid", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "8px 14px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 1 && i <= 4 ? "right" : "left" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -299,6 +305,7 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
                           </div>
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--t2)" }}>PKR {fmt(r.grossPkr)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--amber, #d97706)" }}>{r.taxPkr > 0 ? `− PKR ${fmt(r.taxPkr)}` : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--red)" }}>{r.deductions > 0 ? `− PKR ${fmt(r.deductions)}` : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, fontWeight: 700, color: "var(--green)" }}>PKR {fmt(r.netPkr)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
@@ -330,6 +337,7 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
                 </div>
                 <div style={{ marginLeft: "auto", display: "flex", gap: 20, fontSize: 12 }}>
                   <span style={{ color: "var(--t2)" }}>Gross: <strong style={{ color: "var(--t1)" }}>PKR {fmt(totalGross)}</strong></span>
+                  {totalTax > 0 && <span style={{ color: "var(--t2)" }}>Tax: <strong style={{ color: "var(--amber, #d97706)" }}>PKR {fmt(totalTax)}</strong></span>}
                   <span style={{ color: "var(--t2)" }}>Deductions: <strong style={{ color: "var(--red)" }}>PKR {fmt(totalDeduct)}</strong></span>
                   <span style={{ color: "var(--t2)" }}>Net: <strong style={{ color: "var(--blue)" }}>PKR {fmt(totalNet)}</strong></span>
                 </div>
@@ -364,17 +372,18 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
                           style={{ cursor: "pointer", width: 14, height: 14 }}
                         />
                       </th>
-                      {["Employee", "Gross Salary (PKR)", "Deductions (PKR)", "Net Payable", "Status"].map((h, i) => (
-                        <th key={i} style={{ padding: "8px 10px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 1 && i <= 3 ? "right" : "left" }}>{h}</th>
+                      {["Employee", "Gross (PKR)", "Tax (PKR)", "Deductions (PKR)", "Net Payable", "Status"].map((h, i) => (
+                        <th key={i} style={{ padding: "8px 10px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 1 && i <= 4 ? "right" : "left" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row, idx) => {
-                      const gross = (parseFloat(row.grossStr) || 0) * 100;
-                      const deduct = (parseFloat(row.deductStr) || 0) * 100;
-                      const net = gross - deduct;
                       const missingGross = row.checked && !row.alreadyPaid && !(parseFloat(row.grossStr) > 0);
+                      const gross = (parseFloat(row.grossStr) || 0) * 100;
+                      const rowTax = (parseFloat(row.taxStr) || 0) * 100;
+                      const deduct = (parseFloat(row.deductStr) || 0) * 100;
+                      const net = gross - rowTax - deduct;
 
                       return (
                         <tr
@@ -408,7 +417,7 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: "10px 10px", width: 160 }}>
+                          <td style={{ padding: "10px 10px", width: 140 }}>
                             <input
                               type="number"
                               min="0"
@@ -421,7 +430,19 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
                             />
                             {missingGross && <div style={{ fontSize: 10, color: "var(--red)", marginTop: 2, textAlign: "right" }}>Required</div>}
                           </td>
-                          <td style={{ padding: "10px 10px", width: 140 }}>
+                          <td style={{ padding: "10px 10px", width: 120 }}>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={row.taxStr}
+                              onChange={(e) => updateRow(idx, "taxStr", e.target.value)}
+                              disabled={row.alreadyPaid}
+                              placeholder="0"
+                              style={inputS}
+                            />
+                          </td>
+                          <td style={{ padding: "10px 10px", width: 120 }}>
                             <input
                               type="number"
                               min="0"
@@ -429,6 +450,7 @@ export default function RunPayrollModal({ open, onClose, onCompleted }: RunPayro
                               value={row.deductStr}
                               onChange={(e) => updateRow(idx, "deductStr", e.target.value)}
                               disabled={row.alreadyPaid}
+                              placeholder="0"
                               style={inputS}
                             />
                           </td>

@@ -27,6 +27,7 @@ interface FormData {
   employeeId: string;
   period: string;
   grossPkr: string;
+  taxPkr: string;
   deductions: string;
   notes: string;
 }
@@ -54,6 +55,7 @@ const EMPTY: FormData = {
   employeeId: "",
   period: currentPeriod(),
   grossPkr: "",
+  taxPkr: "0",
   deductions: "0",
   notes: "",
 };
@@ -96,8 +98,9 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
   }
 
   const gross = parseFloat(form.grossPkr) || 0;
+  const tax = parseFloat(form.taxPkr) || 0;
   const deductions = parseFloat(form.deductions) || 0;
-  const netPkr = Math.max(0, gross - deductions);
+  const netPkr = Math.max(0, gross - tax - deductions);
 
   const selectedEmployee = form.type === "employee"
     ? employees.find((e) => e.id === form.employeeId)
@@ -109,8 +112,8 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
     try {
       const payload =
         form.type === "employee"
-          ? { employeeId: form.employeeId, period: form.period, grossPkr: gross, deductions, notes: form.notes || undefined }
-          : { userId: form.userId, period: form.period, grossPkr: gross, deductions, notes: form.notes || undefined };
+          ? { employeeId: form.employeeId, period: form.period, grossPkr: gross, taxPkr: tax, deductions, notes: form.notes || undefined }
+          : { userId: form.userId, period: form.period, grossPkr: gross, taxPkr: tax, deductions, notes: form.notes || undefined };
 
       const record = await createPayrollRequest(payload);
       onCreated(record);
@@ -233,7 +236,17 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
             placeholder="e.g. 150000"
           />
         </Field>
-        <Field label="Deductions (PKR)">
+        <Field label="Income tax (PKR)">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={form.taxPkr}
+            onChange={(e) => set("taxPkr", e.target.value)}
+            placeholder="0"
+          />
+        </Field>
+        <Field label="Other deductions (PKR)">
           <input
             type="number"
             min="0"
@@ -246,11 +259,19 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
       </div>
 
       {gross > 0 && (
-        <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 11, color: "var(--green)" }}>Net payable</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>
-            PKR {netPkr.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tax > 0 || deductions > 0 ? 6 : 0 }}>
+            <div style={{ fontSize: 11, color: "var(--green)" }}>Net payable</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>
+              PKR {netPkr.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
           </div>
+          {(tax > 0 || deductions > 0) && (
+            <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", display: "flex", gap: 12 }}>
+              {tax > 0 && <span>Tax: PKR {tax.toLocaleString()}</span>}
+              {deductions > 0 && <span>Deductions: PKR {deductions.toLocaleString()}</span>}
+            </div>
+          )}
         </div>
       )}
 

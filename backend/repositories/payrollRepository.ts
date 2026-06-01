@@ -7,6 +7,7 @@ const payrollSelect = {
   id: true,
   period: true,
   grossPkr: true,
+  taxPkr: true,
   deductions: true,
   netPkr: true,
   status: true,
@@ -46,9 +47,10 @@ export async function findPayrollById(id: string) {
 }
 
 export async function createPayrollRecord(input: CreatePayrollInput) {
-  const grossPkr = BigInt(Math.round(input.grossPkr * AMOUNT_MULTIPLIER));
+  const grossPkr   = BigInt(Math.round(input.grossPkr * AMOUNT_MULTIPLIER));
+  const taxPkr     = BigInt(Math.round((input.taxPkr ?? 0) * AMOUNT_MULTIPLIER));
   const deductions = BigInt(Math.round((input.deductions ?? 0) * AMOUNT_MULTIPLIER));
-  const netPkr = grossPkr - deductions;
+  const netPkr     = grossPkr - taxPkr - deductions;
 
   return prisma.payrollRecord.create({
     data: {
@@ -56,6 +58,7 @@ export async function createPayrollRecord(input: CreatePayrollInput) {
       employeeId: input.employeeId ?? null,
       period: input.period,
       grossPkr,
+      taxPkr,
       deductions,
       netPkr,
       notes: input.notes ?? null,
@@ -68,22 +71,26 @@ export async function createPayrollRecord(input: CreatePayrollInput) {
 export async function updatePayrollRecord(id: string, input: UpdatePayrollInput) {
   const current = await prisma.payrollRecord.findUnique({
     where: { id },
-    select: { grossPkr: true, deductions: true },
+    select: { grossPkr: true, taxPkr: true, deductions: true },
   });
   if (!current) return null;
 
   const grossPkr = input.grossPkr !== undefined
     ? BigInt(Math.round(input.grossPkr * AMOUNT_MULTIPLIER))
     : current.grossPkr;
+  const taxPkr = input.taxPkr !== undefined
+    ? BigInt(Math.round(input.taxPkr * AMOUNT_MULTIPLIER))
+    : current.taxPkr;
   const deductions = input.deductions !== undefined
     ? BigInt(Math.round(input.deductions * AMOUNT_MULTIPLIER))
     : current.deductions;
-  const netPkr = grossPkr - deductions;
+  const netPkr = grossPkr - taxPkr - deductions;
 
   return prisma.payrollRecord.update({
     where: { id },
     data: {
       grossPkr,
+      taxPkr,
       deductions,
       netPkr,
       ...(input.notes !== undefined && { notes: input.notes }),
@@ -95,11 +102,28 @@ export async function updatePayrollRecord(id: string, input: UpdatePayrollInput)
 export async function markPayrollPaid(id: string) {
   const record = await prisma.payrollRecord.findUnique({
     where: { id },
-    select: { netPkr: true },
+    select: {
+      netPkr: true,
+      grossPkr: true,
+      taxPkr: true,
+      deductions: true,
+      period: true,
+      notes: true,
+      employee: { select: { name: true } },
+      user: { select: { name: true } },
+    },
   });
   if (!record) return null;
 
   const paidAt = new Date();
+  const period = record.period;
+  const recipientName = record.employee?.name ?? record.user?.name ?? "Employee";
+  const expensePeriod = `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, "0")}`;
+  const expenseNotes = [
+    `Tax: PKR ${(Number(record.taxPkr) / 100).toLocaleString()}`,
+    `Deductions: PKR ${(Number(record.deductions) / 100).toLocaleString()}`,
+    `Net paid: PKR ${(Number(record.netPkr) / 100).toLocaleString()}`,
+  ].join(" · ");
 
   const operatingAccount = await prisma.crmAccount.findFirst({
     where: { type: "operating", isDefaultOperating: true },
@@ -113,13 +137,24 @@ export async function markPayrollPaid(id: string) {
       select: payrollSelect,
     });
 
-    // Deduct from operating account balance
     if (operatingAccount) {
       await tx.crmAccount.update({
         where: { id: operatingAccount.id },
         data: { currentBalancePkr: { decrement: record.netPkr } },
       });
     }
+
+    // Auto-create expense entry for this salary payment
+    await tx.expense.create({
+      data: {
+        description: `Salary — ${recipientName} (${period})`,
+        category: "Salaries",
+        amountPkr: record.grossPkr,
+        period: expensePeriod,
+        date: paidAt,
+        notes: expenseNotes,
+      },
+    });
 
     return updated;
   });
@@ -142,7 +177,7 @@ export async function payrollDuplicate(userId: string | undefined, employeeId: s
 export async function getPayrollSummaryByPeriod(period: string) {
   return prisma.payrollRecord.aggregate({
     where: { period },
-    _sum: { grossPkr: true, deductions: true, netPkr: true },
+    _sum: { grossPkr: true, taxPkr: true, deductions: true, netPkr: true },
     _count: true,
   });
 }
@@ -150,6 +185,7 @@ export async function getPayrollSummaryByPeriod(period: string) {
 export async function runPayrollBatch(input: RunPayrollInput) {
   const { period, entries } = input;
   const paidAt = new Date();
+  const expensePeriod = `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, "0")}`;
 
   return prisma.$transaction(async (tx) => {
     const operatingAccount = await tx.crmAccount.findFirst({
@@ -172,13 +208,21 @@ export async function runPayrollBatch(input: RunPayrollInput) {
       if (exists > 0) { skipped++; continue; }
 
       const grossPkr   = BigInt(Math.round(entry.grossPkr * AMOUNT_MULTIPLIER));
+      const taxPkr     = BigInt(Math.round((entry.taxPkr ?? 0) * AMOUNT_MULTIPLIER));
       const deductions = BigInt(Math.round((entry.deductions ?? 0) * AMOUNT_MULTIPLIER));
-      const netPkr     = grossPkr - deductions;
+      const netPkr     = grossPkr - taxPkr - deductions;
+
+      // Fetch recipient name for expense description
+      const recipient = entry.employeeId
+        ? await tx.employee.findUnique({ where: { id: entry.employeeId }, select: { name: true } })
+        : await tx.user.findUnique({ where: { id: entry.userId! }, select: { name: true } });
+      const recipientName = recipient?.name ?? "Employee";
 
       const record = await tx.payrollRecord.create({
         data: {
           period,
           grossPkr,
+          taxPkr,
           deductions,
           netPkr,
           status: "paid",
@@ -188,6 +232,24 @@ export async function runPayrollBatch(input: RunPayrollInput) {
           employeeId: entry.employeeId ?? null,
         },
         select: payrollSelect,
+      });
+
+      // Auto-create expense entry for this salary
+      const expenseNotes = [
+        `Tax: PKR ${(Number(taxPkr) / 100).toLocaleString()}`,
+        `Deductions: PKR ${(Number(deductions) / 100).toLocaleString()}`,
+        `Net paid: PKR ${(Number(netPkr) / 100).toLocaleString()}`,
+      ].join(" · ");
+
+      await tx.expense.create({
+        data: {
+          description: `Salary — ${recipientName} (${period})`,
+          category: "Salaries",
+          amountPkr: grossPkr,
+          period: expensePeriod,
+          date: paidAt,
+          notes: expenseNotes,
+        },
       });
 
       created.push(record);

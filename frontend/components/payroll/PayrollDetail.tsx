@@ -45,6 +45,7 @@ function downloadPayslip(record: PayrollRecord) {
   const department = record.employee?.department ?? "";
   const period = fmtPeriod(record.period);
   const gross = (record.grossPkr / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const tax = (record.taxPkr / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
   const deductions = (record.deductions / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
   const net = (record.netPkr / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
   const paidAt = record.paidAt ? new Date(record.paidAt).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) : "—";
@@ -84,7 +85,8 @@ function downloadPayslip(record: PayrollRecord) {
   <div class="section-title">Earnings &amp; Deductions</div>
   <table>
     <tr><td>Gross Salary</td><td>PKR ${gross}</td></tr>
-    ${record.deductions > 0 ? `<tr><td>Deductions</td><td style="color:#dc2626">− PKR ${deductions}</td></tr>` : ""}
+    ${record.taxPkr > 0 ? `<tr><td>Income Tax</td><td style="color:#d97706">− PKR ${tax}</td></tr>` : ""}
+    ${record.deductions > 0 ? `<tr><td>Other Deductions</td><td style="color:#dc2626">− PKR ${deductions}</td></tr>` : ""}
     <tr class="total-row"><td>Net Payable</td><td>PKR ${net}</td></tr>
   </table>
 </div>
@@ -152,6 +154,7 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
   if (!record) return null;
 
   const grossPkr = record.grossPkr / 100;
+  const taxPkr = record.taxPkr / 100;
   const deductions = record.deductions / 100;
   const netPkr = record.netPkr / 100;
   const name = getRecipientName(record);
@@ -240,7 +243,7 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
       {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
         {/* Metric cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 18 }}>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Gross Salary</div>
             <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)" }}>
@@ -248,7 +251,13 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
             </div>
           </div>
           <div className="metric-card">
-            <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Deductions</div>
+            <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Income Tax</div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: taxPkr > 0 ? "var(--amber, #d97706)" : "var(--t3)" }}>
+              {taxPkr > 0 ? `− PKR ${fmt(taxPkr)}` : "None"}
+            </div>
+          </div>
+          <div className="metric-card">
+            <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Other Deductions</div>
             <div style={{ fontSize: 16, fontWeight: 500, color: deductions > 0 ? "var(--red)" : "var(--t3)" }}>
               {deductions > 0 ? `− PKR ${fmt(deductions)}` : "None"}
             </div>
@@ -268,9 +277,15 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
               <span>Gross salary</span>
               <span style={{ color: "var(--t1)" }}>PKR {fmt(grossPkr)}</span>
             </div>
+            {taxPkr > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingTop: 5, paddingBottom: 5 }}>
+                <span>Income tax</span>
+                <span style={{ color: "var(--amber, #d97706)" }}>− PKR {fmt(taxPkr)}</span>
+              </div>
+            )}
             {deductions > 0 && (
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingTop: 5, paddingBottom: 5 }}>
-                <span>Deductions</span>
+                <span>Other deductions</span>
                 <span style={{ color: "var(--red)" }}>− PKR {fmt(deductions)}</span>
               </div>
             )}

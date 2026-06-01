@@ -562,6 +562,7 @@ model PayrollRecord {
   id          String        @id @default(uuid())
   period      String        @db.VarChar(10)
   grossPkr    BigInt
+  taxPkr      BigInt        @default(0)
   deductions  BigInt        @default(0)
   netPkr      BigInt
   status      PayrollStatus @default(pending)

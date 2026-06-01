@@ -9,6 +9,7 @@ export const runPayrollSchema = z.object({
           employeeId: z.string().uuid().optional(),
           userId: z.string().uuid().optional(),
           grossPkr: z.number().positive("Gross must be positive"),
+          taxPkr: z.number().min(0).default(0),
           deductions: z.number().min(0).default(0),
           notes: z.string().optional().nullable(),
         })
@@ -26,6 +27,7 @@ export const createPayrollSchema = z
     employeeId: z.string().uuid("Invalid employee ID").optional(),
     period: z.string().regex(/^\d{4}-\d{2}$/, "Period must be YYYY-MM format"),
     grossPkr: z.coerce.number().positive("Gross amount must be greater than 0"),
+    taxPkr: z.coerce.number().min(0).default(0),
     deductions: z.coerce.number().min(0).default(0),
     notes: z.string().optional().nullable(),
   })
@@ -36,6 +38,7 @@ export const createPayrollSchema = z
 
 export const updatePayrollSchema = z.object({
   grossPkr: z.coerce.number().positive().optional(),
+  taxPkr: z.coerce.number().min(0).optional(),
   deductions: z.coerce.number().min(0).optional(),
   notes: z.string().optional().nullable(),
 });

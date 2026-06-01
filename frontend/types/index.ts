@@ -471,6 +471,7 @@ export interface PayrollRunEntry {
   employeeId?: string;
   userId?: string;
   grossPkr: number;
+  taxPkr?: number;
   deductions: number;
   notes?: string | null;
 }
@@ -485,6 +486,7 @@ export interface PayrollRecord {
   id: string;
   period: string;
   grossPkr: number;
+  taxPkr: number;
   deductions: number;
   netPkr: number;
   status: "pending" | "paid";
@@ -500,6 +502,7 @@ export interface CreatePayrollInput {
   employeeId?: string;
   period: string;
   grossPkr: number;
+  taxPkr?: number;
   deductions?: number;
   notes?: string | null;
 }
