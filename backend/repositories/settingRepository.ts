@@ -65,5 +65,5 @@ export async function deleteLookup(id: string): Promise<void> {
 }
 
 export async function lookupExists(id: string): Promise<boolean> {
-  return (await prisma.lookup.count({ where: { id } })) > 0;
+  return !!(await prisma.lookup.findUnique({ where: { id }, select: { id: true } }));
 }

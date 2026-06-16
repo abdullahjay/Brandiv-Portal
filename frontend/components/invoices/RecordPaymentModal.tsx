@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import { createIncomeRequest } from "@frontend/hooks/useIncome";
 import { DEFAULT_FX_RATES } from "@frontend/constants";
-import type { Invoice, ApiResponse, Client, CrmAccount } from "@frontend/types";
+import type { Invoice, ApiResponse, Client, CrmAccount, Project } from "@frontend/types";
 
 interface RecordPaymentModalProps {
   open: boolean;
@@ -80,10 +80,12 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
   const [operatingAccount, setOperatingAccount] = useState<CrmAccount | null>(null);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsChecked, setAccountsChecked] = useState(false);
+  const [managingPartner, setManagingPartner] = useState<{ id: string; name: string } | null>(null);
+  const [managingRatePct, setManagingRatePct] = useState(10);
 
   // Reset and pre-fill when modal opens
   useEffect(() => {
-    if (!open) { setError(null); return; }
+    if (!open) { setError(null); setManagingPartner(null); return; }
     const amount = invoice.totalAmount / 100;
     const currency = invoice.currency;
     const rate = currency === "PKR" ? "1" : String(DEFAULT_FX_RATES[currency] ?? "");
@@ -126,6 +128,22 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
             .then((r) => r.json())
             .then((json: ApiResponse<Client>) => { if (json.success) setClientData(json.data!); })
         : Promise.resolve(),
+      invoice.project?.id
+        ? fetch(`/api/projects/${invoice.project.id}`)
+            .then((r) => r.json())
+            .then((json: ApiResponse<Project>) => {
+              if (json.success && json.data?.managingPartner) setManagingPartner(json.data.managingPartner);
+            })
+        : Promise.resolve(),
+      fetch("/api/settings")
+        .then((r) => r.json())
+        .then((json: ApiResponse<Record<string, unknown>>) => {
+          if (json.success && json.data) {
+            const rate = Number((json.data as Record<string, unknown>).managing_commission_rate ?? 10);
+            if (!isNaN(rate) && rate > 0) setManagingRatePct(rate);
+          }
+        })
+        .catch(() => {}),
     ]).catch(() => {
       setAccountsChecked(true);
       setAccountsLoading(false);
@@ -161,6 +179,8 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
   const hasCommission = clientData?.commissionRule !== "none" && !!clientData?.partner;
   const commissionRate = invoice.paymentNumber === 1 ? COMMISSION_RATES.first : COMMISSION_RATES.recurring;
   const estimatedCommissionPkr = hasCommission ? netPkr * commissionRate / 100 : 0;
+  const hasManagingCommission = hasCommission && !!managingPartner;
+  const managingCommissionPkr = hasManagingCommission ? netPkr * managingRatePct / 100 : 0;
 
   async function handleSubmit() {
     if (!invoice.client?.id || !operatingAccount) return;
@@ -178,7 +198,7 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
         whtPct: parseFloat(form.whtPct) || 0,
         gstPct: parseFloat(form.gstPct) || 0,
         bankChargesPkr: parseFloat(form.bankChargesPkr) || 0,
-        paymentMethod: form.paymentMethod || undefined,
+        paymentMethod: form.paymentMethod,
         transactionRef: form.transactionRef || undefined,
         receivedAt: form.receivedAt,
         incomeType: form.incomeType || undefined,
@@ -198,7 +218,8 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
     form.originalAmount && parseFloat(form.originalAmount) > 0 &&
     form.exchangeRate && parseFloat(form.exchangeRate) > 0 &&
     form.receivedAt &&
-    netPkr > 0
+    netPkr > 0 &&
+    form.paymentMethod
   );
 
   const footer = !operatingAccount && accountsChecked ? (
@@ -282,7 +303,7 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
           </div>
 
           <div className="f2">
-            <Field label="Payment method">
+            <Field label="Payment method" required>
               <select value={form.paymentMethod} onChange={(e) => set("paymentMethod", e.target.value)}>
                 <option value="">Select method</option>
                 {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -366,15 +387,31 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
 
           {/* Commission preview */}
           {hasCommission && netPkr > 0 && (
-            <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
-              <i className="ti ti-percentage" style={{ fontSize: 14, color: "var(--green)", flexShrink: 0, marginTop: 1 }} />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "var(--green)" }}>
-                  Commission will be calculated for {clientData?.partner?.name}
+            <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", marginTop: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                <i className="ti ti-percentage" style={{ fontSize: 12 }} /> Commission breakdown
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
+                  <span>
+                    {clientData?.partner?.name}
+                    <span style={{ opacity: 0.7, fontSize: 11, marginLeft: 5 }}>
+                      {commissionRate}% · {invoice.paymentNumber === 1 ? "first payment" : "recurring"}
+                    </span>
+                  </span>
+                  <span style={{ fontWeight: 600 }}>PKR {fmt(estimatedCommissionPkr)}</span>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2, opacity: 0.85 }}>
-                  {commissionRate}% {invoice.paymentNumber === 1 ? "(first payment)" : "(recurring)"} of net PKR ≈ PKR {fmt(estimatedCommissionPkr)}
-                </div>
+                {hasManagingCommission && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
+                    <span>
+                      {managingPartner?.name}
+                      <span style={{ opacity: 0.7, fontSize: 11, marginLeft: 5 }}>
+                        {managingRatePct}% · managing
+                      </span>
+                    </span>
+                    <span style={{ fontWeight: 600 }}>PKR {fmt(managingCommissionPkr)}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}

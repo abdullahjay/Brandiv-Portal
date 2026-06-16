@@ -1,6 +1,7 @@
 // Commission rates (as percentages)
 export const COMMISSION_RATE_FIRST = 15;
 export const COMMISSION_RATE_RECURRING = 5;
+export const MANAGING_COMMISSION_RATE = 10;
 
 // Default currency
 export const DEFAULT_CURRENCY = "PKR";

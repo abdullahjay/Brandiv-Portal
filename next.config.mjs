@@ -1,9 +1,24 @@
 /** @type {import('next').NextConfig} */
 import path from "path";
 import { fileURLToPath } from "url";
+import withPWAInit from "@ducanh2912/next-pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === "production";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  disable: !isProd,
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+  fallbacks: {
+    document: "/offline",
+  },
+});
 
 // Ensure NEXTAUTH_URL is never an empty string — next-auth calls new URL() on
 // it at module load time and throws "Invalid URL" when the value is "".
@@ -78,4 +93,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

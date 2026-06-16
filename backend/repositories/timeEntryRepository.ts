@@ -123,16 +123,10 @@ export async function getTimeEntrySummary(filters: {
   if (filters.userId) where.userId = filters.userId;
   if (filters.projectId) where.projectId = filters.projectId;
 
-  const result = await prisma.timeEntry.aggregate({
-    where,
-    _sum: { hours: true },
-    _count: { id: true },
-  });
-
-  const billable = await prisma.timeEntry.aggregate({
-    where: { ...where, billable: true },
-    _sum: { hours: true },
-  });
+  const [result, billable] = await Promise.all([
+    prisma.timeEntry.aggregate({ where, _sum: { hours: true }, _count: { id: true } }),
+    prisma.timeEntry.aggregate({ where: { ...where, billable: true }, _sum: { hours: true } }),
+  ]);
 
   return {
     totalHours: Number(result._sum.hours ?? 0),

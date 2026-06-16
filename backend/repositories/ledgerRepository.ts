@@ -2,7 +2,7 @@ import { prisma } from "@backend/lib/prisma";
 
 export interface LedgerRow {
   id: string;
-  type: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer";
+  type: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer" | "adjustment";
   date: string;
   period: string;
   description: string;
@@ -14,62 +14,99 @@ export interface LedgerRow {
 
 export interface LedgerQuery {
   period?: string;
-  type?: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer";
+  type?: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer" | "adjustment";
   page: number;
   pageSize: number;
 }
 
+// Per-type cap when no period filter is active — prevents full-table scan on unbounded queries
+const LEDGER_UNFILTERED_CAP = 500;
+
 export async function listLedgerEntries(q: LedgerQuery) {
   const periodWhere = q.period ? { period: q.period } : {};
+  const cap = q.period ? undefined : LEDGER_UNFILTERED_CAP;
 
-  const [incomes, expenses, payrolls, distributions, commissions, transfers] = await Promise.all([
+  const [incomes, expenses, payrolls, distributions, commissions, transfers, adjustments] = await Promise.all([
     !q.type || q.type === "income"
       ? prisma.incomeRecord.findMany({
           where: periodWhere,
-          include: {
+          select: {
+            id: true, period: true, incomeType: true, netPkr: true, status: true, receivedAt: true,
             client: { select: { companyName: true } },
             invoice: { select: { invoiceNumber: true } },
           },
+          orderBy: { receivedAt: "desc" },
+          take: cap,
         })
       : [],
 
     !q.type || q.type === "expense"
-      ? prisma.expense.findMany({ where: periodWhere })
+      ? prisma.expense.findMany({
+          where: periodWhere,
+          select: { id: true, period: true, category: true, description: true, amountPkr: true, date: true },
+          orderBy: { date: "desc" },
+          take: cap,
+        })
       : [],
 
     !q.type || q.type === "payroll"
       ? prisma.payrollRecord.findMany({
           where: periodWhere,
-          include: {
+          select: {
+            id: true, period: true, netPkr: true, status: true, paidAt: true, createdAt: true,
             user: { select: { name: true } },
             employee: { select: { name: true } },
           },
+          orderBy: { createdAt: "desc" },
+          take: cap,
         })
       : [],
 
     !q.type || q.type === "distribution"
       ? prisma.distribution.findMany({
           where: q.period ? { period: q.period } : {},
+          select: { id: true, period: true, totalDistributedPkr: true, runAt: true },
+          orderBy: { runAt: "desc" },
+          take: cap,
         })
       : [],
 
     !q.type || q.type === "commission"
       ? prisma.commission.findMany({
           where: periodWhere,
-          include: {
+          select: {
+            id: true, period: true, commissionType: true, commissionPkr: true, status: true, createdAt: true,
             stakeholderAccount: { select: { name: true } },
             client: { select: { companyName: true } },
+            project: { select: { name: true } },
           },
+          orderBy: { createdAt: "desc" },
+          take: cap,
         })
       : [],
 
     !q.type || q.type === "transfer"
       ? prisma.accountTransfer.findMany({
           where: periodWhere,
-          include: {
+          select: {
+            id: true, period: true, amountPkr: true, description: true, status: true, transferAt: true,
             fromAccount: { select: { name: true } },
             toAccount:   { select: { name: true } },
           },
+          orderBy: { transferAt: "desc" },
+          take: cap,
+        })
+      : [],
+
+    !q.type || q.type === "adjustment"
+      ? prisma.accountAdjustment.findMany({
+          where: periodWhere,
+          select: {
+            id: true, period: true, amountPkr: true, note: true, adjustedAt: true,
+            account: { select: { name: true } },
+          },
+          orderBy: { adjustedAt: "desc" },
+          take: cap,
         })
       : [],
   ]);
@@ -113,7 +150,7 @@ export async function listLedgerEntries(q: LedgerQuery) {
       _date: r.paidAt ?? r.createdAt,
       date: (r.paidAt ?? r.createdAt).toISOString(),
       period: r.period,
-      description: "Salary",
+      description: `Salary — ${r.user?.name ?? r.employee?.name ?? "Employee"} (${r.period})`,
       party: r.user?.name ?? r.employee?.name ?? "Employee",
       reference: null,
       pkrAmount: -Number(r.netPkr),
@@ -137,13 +174,16 @@ export async function listLedgerEntries(q: LedgerQuery) {
   }
 
   for (const r of commissions) {
+    const isManaging = r.commissionType === "managing";
     rows.push({
       id: r.id,
       type: "commission",
       _date: r.createdAt,
       date: r.createdAt.toISOString(),
       period: r.period,
-      description: "Commission accrued",
+      description: isManaging
+        ? `Managing commission — ${r.stakeholderAccount.name}${r.project ? ` (${r.project.name})` : ""}`
+        : "Commission accrued",
       party: r.stakeholderAccount.name,
       reference: r.client.companyName,
       pkrAmount: -Number(r.commissionPkr),
@@ -163,6 +203,21 @@ export async function listLedgerEntries(q: LedgerQuery) {
       reference: null,
       pkrAmount: Number(r.amountPkr),
       status: r.status,
+    });
+  }
+
+  for (const r of adjustments) {
+    rows.push({
+      id: r.id,
+      type: "adjustment",
+      _date: r.adjustedAt,
+      date: r.adjustedAt.toISOString(),
+      period: r.period,
+      description: r.note ?? "Balance adjustment",
+      party: r.account.name,
+      reference: null,
+      pkrAmount: Number(r.amountPkr),
+      status: "completed",
     });
   }
 

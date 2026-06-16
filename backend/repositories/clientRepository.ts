@@ -133,6 +133,5 @@ export async function deleteClient(id: string) {
 }
 
 export async function clientExists(id: string): Promise<boolean> {
-  const count = await prisma.client.count({ where: { id } });
-  return count > 0;
+  return !!(await prisma.client.findUnique({ where: { id }, select: { id: true } }));
 }

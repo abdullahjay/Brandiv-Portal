@@ -14,6 +14,7 @@ export const createProjectSchema = z.object({
   commissionExempt: z.boolean().default(false),
   billingCycleDay: z.coerce.number().int().min(1).max(31).optional().nullable(),
   managerId: z.string().uuid().optional().nullable(),
+  managingPartnerId: z.string().uuid().optional().nullable(),
 });
 
 export const updateProjectSchema = createProjectSchema.partial().omit({ clientId: true });

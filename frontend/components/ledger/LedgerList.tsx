@@ -5,7 +5,7 @@ import { useLedger } from "@frontend/hooks/useLedger";
 import PeriodSelect from "@frontend/components/ui/PeriodSelect";
 import type { LedgerEntry } from "@frontend/types";
 
-type TypeFilter = "all" | "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer";
+type TypeFilter = "all" | "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer" | "adjustment";
 
 function currentPeriod() {
   const now = new Date();
@@ -27,6 +27,7 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
   distribution: { label: "Distribution", color: "#7c3aed",       bg: "#ede9fe",          icon: "ti-arrows-split"     },
   commission:   { label: "Commission",   color: "var(--blue)",   bg: "var(--blue-bg)",   icon: "ti-percentage"       },
   transfer:     { label: "Transfer",     color: "#0891b2",       bg: "#cffafe",          icon: "ti-transfer"         },
+  adjustment:   { label: "Adjustment",   color: "#854d0e",       bg: "#fef9c3",          icon: "ti-adjustments-horizontal" },
 };
 
 const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
@@ -45,6 +46,7 @@ const TYPE_PILLS: { key: TypeFilter; label: string }[] = [
   { key: "distribution", label: "Distributions" },
   { key: "commission",   label: "Commissions" },
   { key: "transfer",     label: "Transfers" },
+  { key: "adjustment",   label: "Adjustments" },
 ];
 
 function exportCSV(entries: LedgerEntry[], period: string) {

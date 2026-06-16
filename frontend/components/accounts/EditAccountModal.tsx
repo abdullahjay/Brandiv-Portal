@@ -28,6 +28,7 @@ export default function EditAccountModal({ open, account, onClose, onUpdated }: 
   const [sharePct, setSharePct] = useState("0");
   const [ownerUserId, setOwnerUserId] = useState("");
   const [isDefaultOperating, setIsDefaultOperating] = useState(false);
+  const [balanceOverride, setBalanceOverride] = useState("");
   const [users, setUsers] = useState<UserOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export default function EditAccountModal({ open, account, onClose, onUpdated }: 
     setSharePct(String(account.sharePct));
     setOwnerUserId(account.ownerUserId ?? "");
     setIsDefaultOperating(account.isDefaultOperating);
+    setBalanceOverride("");
     setError(null);
   }, [open, account]);
 
@@ -54,11 +56,13 @@ export default function EditAccountModal({ open, account, onClose, onUpdated }: 
     setSaving(true);
     setError(null);
     try {
+      const parsed = parseFloat(balanceOverride);
       const updated = await updateAccountRequest(account.id, {
         name: name.trim(),
         ...((account.type === "stakeholder" || account.type === "company_reserve") && { sharePct: parseFloat(sharePct) || 0 }),
         ...(account.type === "stakeholder" && { ownerUserId: ownerUserId || null }),
         ...(account.type === "operating" && { isDefaultOperating }),
+        ...(balanceOverride !== "" && !isNaN(parsed) && parsed >= 0 && { currentBalancePkr: parsed }),
       });
       onUpdated(updated);
       onClose();
@@ -123,6 +127,22 @@ export default function EditAccountModal({ open, account, onClose, onUpdated }: 
           </label>
         </div>
       )}
+
+      <div style={{ borderTop: "0.5px solid var(--b3)", paddingTop: 14, marginTop: 6 }}>
+        <Field label="Set balance to (PKR)">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={balanceOverride}
+            onChange={(e) => setBalanceOverride(e.target.value)}
+            placeholder={`Current: PKR ${(account.currentBalancePkr / 100).toLocaleString("en-PK", { maximumFractionDigits: 0 })}`}
+          />
+        </Field>
+        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: -10 }}>
+          Leave blank to keep current balance. Entering a value directly overwrites it.
+        </div>
+      </div>
     </Modal>
   );
 }

@@ -18,6 +18,8 @@ const listSelect = {
   createdAt: true,
   client: { select: { id: true, companyName: true, currency: true } },
   manager: { select: { id: true, name: true } },
+  managingPartnerId: true,
+  managingPartner: { select: { id: true, name: true } },
   _count: { select: { timeEntries: true, invoices: true, milestones: true } },
 } satisfies Prisma.ProjectSelect;
 
@@ -95,6 +97,7 @@ export async function createProject(data: CreateProjectInput) {
     startDate,
     deadline,
     managerId,
+    managingPartnerId,
     clientId,
     ...rest
   } = data;
@@ -108,6 +111,7 @@ export async function createProject(data: CreateProjectInput) {
       valueOriginal: valueOriginalBigInt,
       clientId,
       managerId: managerId ?? null,
+      managingPartnerId: managingPartnerId ?? null,
       startDate: startDate ? new Date(startDate) : null,
       deadline: deadline ? new Date(deadline) : null,
     },
@@ -116,7 +120,7 @@ export async function createProject(data: CreateProjectInput) {
 }
 
 export async function updateProject(id: string, data: UpdateProjectInput) {
-  const { valueOriginal, startDate, deadline, managerId, ...rest } = data;
+  const { valueOriginal, startDate, deadline, managerId, managingPartnerId, ...rest } = data;
 
   const updates: Prisma.ProjectUpdateInput = { ...rest };
 
@@ -126,10 +130,13 @@ export async function updateProject(id: string, data: UpdateProjectInput) {
   if (startDate !== undefined) updates.startDate = startDate ? new Date(startDate) : null;
   if (deadline !== undefined) updates.deadline = deadline ? new Date(deadline) : null;
   if (managerId !== undefined) updates.manager = managerId ? { connect: { id: managerId } } : { disconnect: true };
+  if (managingPartnerId !== undefined) {
+    updates.managingPartner = managingPartnerId ? { connect: { id: managingPartnerId } } : { disconnect: true };
+  }
 
   return prisma.project.update({ where: { id }, data: updates, select: detailSelect });
 }
 
 export async function projectExists(id: string): Promise<boolean> {
-  return (await prisma.project.count({ where: { id } })) > 0;
+  return !!(await prisma.project.findUnique({ where: { id }, select: { id: true } }));
 }

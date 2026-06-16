@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import { useProject, updateProjectRequest } from "@frontend/hooks/useProjects";
 import { useAllLookups, lookupOptions } from "@frontend/hooks/useLookups";
-import type { Project } from "@frontend/types";
+import type { Project, CrmAccount, ApiResponse } from "@frontend/types";
 
 interface EditProjectModalProps {
   open: boolean;
@@ -23,6 +23,7 @@ interface FormData {
   startDate: string;
   deadline: string;
   description: string;
+  managingPartnerId: string;
   commissionExempt: boolean;
 }
 
@@ -57,6 +58,7 @@ function projectToForm(p: Project): FormData {
     startDate: p.startDate ? p.startDate.slice(0, 10) : "",
     deadline: p.deadline ? p.deadline.slice(0, 10) : "",
     description: p.description ?? "",
+    managingPartnerId: p.managingPartnerId ?? "",
     commissionExempt: p.commissionExempt ?? false,
   };
 }
@@ -80,6 +82,15 @@ export default function EditProjectModal({
   const [form, setForm] = useState<FormData | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stakeholders, setStakeholders] = useState<CrmAccount[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/accounts?type=stakeholder")
+      .then((r) => r.json())
+      .then((json: ApiResponse<CrmAccount[]>) => { if (json.success) setStakeholders(json.data!); })
+      .catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     if (project) setForm(projectToForm(project));
@@ -109,6 +120,7 @@ export default function EditProjectModal({
         deadline: form.deadline || undefined,
         description: form.description || undefined,
         commissionExempt: form.commissionExempt,
+        managingPartnerId: form.managingPartnerId || null,
       });
       onUpdated(updated);
       onClose();
@@ -267,6 +279,21 @@ export default function EditProjectModal({
               placeholder="Project scope and details…"
             />
           </Field>
+
+          <Field label="Managing partner">
+            <select
+              value={form.managingPartnerId}
+              onChange={(e) => set("managingPartnerId", e.target.value)}
+            >
+              <option value="">None</option>
+              {stakeholders.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </Field>
+          <div style={{ fontSize: 11, color: "var(--t3)", marginTop: -10, marginBottom: 4 }}>
+            The partner responsible for managing this project. A managing commission will be calculated automatically when income is recorded.
+          </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
             <input

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const runPayrollSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, "Period must be YYYY-MM"),
+  markAsPaid: z.boolean().optional().default(false),
   entries: z
     .array(
       z

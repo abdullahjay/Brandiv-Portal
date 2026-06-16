@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPkr } from "@frontend/lib/currency";
 import { usePnL } from "@frontend/hooks/useStatements";
 
 function fmt(n: number) {
@@ -33,7 +34,7 @@ function Row({ label, value, color, bold, indent, note }: {
         {note && <span style={{ fontSize: 11, color: "var(--t3)", marginLeft: 8 }}>{note}</span>}
       </div>
       <span style={{ fontSize: 13, fontWeight: bold ? 700 : 500, color: color ?? "var(--t1)" }}>
-        {value < 0 ? "−" : ""}PKR {fmt(value)}
+        {fmtPkr(value)}
       </span>
     </div>
   );
@@ -82,7 +83,7 @@ export default function PLStatement({ period }: Props) {
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "var(--t2)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color }}>PKR {fmt(value)}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color }}>{fmtPkr(value)}</div>
             {label === "Net Profit" && (
               <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 3 }}>
                 {data.grossMarginPct.toFixed(1)}% margin
@@ -201,7 +202,7 @@ export default function PLStatement({ period }: Props) {
         <div style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)" }}>Net Profit / (Loss)</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: data.netProfitPkr >= 0 ? "var(--blue)" : "var(--red)" }}>
-            {data.netProfitPkr < 0 ? "−" : ""}PKR {fmt(data.netProfitPkr)}
+            {fmtPkr(data.netProfitPkr)}
           </span>
         </div>
         <div style={{ padding: "0 20px 14px", display: "flex", gap: 20 }}>

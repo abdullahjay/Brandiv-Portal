@@ -29,16 +29,39 @@ export async function findAccountById(id: string) {
   return prisma.crmAccount.findUnique({ where: { id }, select: accountSelect });
 }
 
+function currentPeriod() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function createAccount(data: CreateAccountInput) {
-  return prisma.crmAccount.create({
-    data: {
-      name: data.name,
-      type: data.type,
-      sharePct: data.sharePct ?? 0,
-      isDefaultOperating: data.isDefaultOperating ?? false,
-      ownerUserId: data.ownerUserId ?? null,
-    },
-    select: accountSelect,
+  const openingBalance = BigInt(Math.round((data.openingBalancePkr ?? 0) * 100));
+
+  return prisma.$transaction(async (tx) => {
+    const account = await tx.crmAccount.create({
+      data: {
+        name: data.name,
+        type: data.type,
+        sharePct: data.sharePct ?? 0,
+        isDefaultOperating: data.isDefaultOperating ?? false,
+        ownerUserId: data.ownerUserId ?? null,
+        currentBalancePkr: openingBalance,
+      },
+      select: accountSelect,
+    });
+
+    if (openingBalance !== BigInt(0)) {
+      await tx.accountAdjustment.create({
+        data: {
+          accountId: account.id,
+          amountPkr: openingBalance,
+          note: "Opening balance",
+          period: currentPeriod(),
+        },
+      });
+    }
+
+    return account;
   });
 }
 
@@ -53,6 +76,30 @@ export async function updateAccount(id: string, data: UpdateAccountInput) {
       ? { connect: { id: data.ownerUserId } }
       : { disconnect: true };
   }
+
+  if (data.currentBalancePkr !== undefined) {
+    const newBalance = BigInt(Math.round(data.currentBalancePkr * 100));
+    updates.currentBalancePkr = newBalance;
+
+    return prisma.$transaction(async (tx) => {
+      const current = await tx.crmAccount.findUnique({ where: { id }, select: { currentBalancePkr: true } });
+      const delta = current ? newBalance - current.currentBalancePkr : newBalance;
+
+      if (delta !== BigInt(0)) {
+        await tx.accountAdjustment.create({
+          data: {
+            accountId: id,
+            amountPkr: delta,
+            note: "Balance adjustment",
+            period: currentPeriod(),
+          },
+        });
+      }
+
+      return tx.crmAccount.update({ where: { id }, data: updates, select: accountSelect });
+    });
+  }
+
   return prisma.crmAccount.update({ where: { id }, data: updates, select: accountSelect });
 }
 
@@ -71,7 +118,7 @@ export async function getTotalSharePctByType(
 }
 
 export async function accountExists(id: string): Promise<boolean> {
-  return (await prisma.crmAccount.count({ where: { id } })) > 0;
+  return !!(await prisma.crmAccount.findUnique({ where: { id }, select: { id: true } }));
 }
 
 export async function deleteAccount(id: string): Promise<void> {

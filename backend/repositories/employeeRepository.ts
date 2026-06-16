@@ -13,6 +13,7 @@ const EMPLOYEE_SELECT = {
   cnic: true,
   joinDate: true,
   baseSalary: true,
+  defaultTaxPkr: true,
   status: true,
   notes: true,
   createdAt: true,
@@ -62,7 +63,8 @@ export async function createEmployee(data: CreateEmployeeInput) {
       phone: data.phone ?? null,
       cnic: data.cnic ?? null,
       joinDate: data.joinDate ? new Date(data.joinDate) : null,
-      baseSalary: data.baseSalary != null ? BigInt(Math.round(data.baseSalary * AMOUNT_MULTIPLIER)) : null,
+      baseSalary:    data.baseSalary    != null ? BigInt(Math.round(data.baseSalary    * AMOUNT_MULTIPLIER)) : null,
+      defaultTaxPkr: data.defaultTaxPkr != null ? BigInt(Math.round(data.defaultTaxPkr * AMOUNT_MULTIPLIER)) : null,
       status: data.status ?? "active",
       notes: data.notes ?? null,
     },
@@ -79,7 +81,8 @@ export async function updateEmployee(id: string, data: UpdateEmployeeInput) {
   if (data.phone !== undefined) updateData.phone = data.phone ?? null;
   if (data.cnic !== undefined) updateData.cnic = data.cnic ?? null;
   if (data.joinDate !== undefined) updateData.joinDate = data.joinDate ? new Date(data.joinDate) : null;
-  if (data.baseSalary !== undefined) updateData.baseSalary = data.baseSalary != null ? BigInt(Math.round(data.baseSalary * AMOUNT_MULTIPLIER)) : null;
+  if (data.baseSalary    !== undefined) updateData.baseSalary    = data.baseSalary    != null ? BigInt(Math.round(data.baseSalary    * AMOUNT_MULTIPLIER)) : null;
+  if (data.defaultTaxPkr !== undefined) updateData.defaultTaxPkr = data.defaultTaxPkr != null ? BigInt(Math.round(data.defaultTaxPkr * AMOUNT_MULTIPLIER)) : null;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.notes !== undefined) updateData.notes = data.notes ?? null;
 
@@ -87,7 +90,7 @@ export async function updateEmployee(id: string, data: UpdateEmployeeInput) {
 }
 
 export async function employeeExists(id: string): Promise<boolean> {
-  return (await prisma.employee.count({ where: { id } })) > 0;
+  return !!(await prisma.employee.findUnique({ where: { id }, select: { id: true } }));
 }
 
 export async function deleteEmployee(id: string): Promise<void> {

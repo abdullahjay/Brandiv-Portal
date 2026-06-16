@@ -154,6 +154,8 @@ export interface Project {
   createdAt: string;
   client?: { id: string; companyName: string; currency: string };
   manager?: { id: string; name: string } | null;
+  managingPartnerId?: string | null;
+  managingPartner?: { id: string; name: string } | null;
   _count?: { timeEntries: number; invoices: number; milestones: number };
   milestones?: ProjectMilestone[];
   invoices?: ClientInvoice[];
@@ -191,6 +193,7 @@ export interface CreateProjectInput {
   commissionExempt?: boolean;
   billingCycleDay?: number;
   managerId?: string;
+  managingPartnerId?: string | null;
 }
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
@@ -199,6 +202,9 @@ export interface Invoice {
   invoiceNumber: string;
   currency: string;
   subtotal: number;
+  discountType: string;
+  discountValue: number;
+  discountAmount: number;
   taxAmount: number;
   totalAmount: number;
   paymentTerms: string | null;
@@ -230,6 +236,8 @@ export interface CreateInvoiceInput {
   issueDate: string;
   dueDate: string;
   paymentTerms?: string | null;
+  discountType?: "pct" | "amount";
+  discountValue?: number;
   taxPct?: number;
   paymentNumber?: number;
   notes?: string | null;
@@ -257,6 +265,7 @@ export interface CreateAccountInput {
   sharePct?: number;
   isDefaultOperating?: boolean;
   ownerUserId?: string | null;
+  openingBalancePkr?: number;
 }
 
 // ─── Income ───────────────────────────────────────────────────────────────────
@@ -333,6 +342,7 @@ export interface CreateIncomeInput {
 export interface Commission {
   id: string;
   period: string;
+  commissionType: string;
   paymentNumber: number;
   ratePct: number;
   baseAmountPkr: number;
@@ -480,6 +490,7 @@ export interface PayrollRunResult {
   created: number;
   skipped: number;
   records: PayrollRecord[];
+  alreadyPaid: string[]; // names of employees who had paid records — skipped
 }
 
 export interface PayrollRecord {
@@ -537,7 +548,7 @@ export interface CreateTimeEntryInput {
 // ─── Ledger ───────────────────────────────────────────────────────────────────
 export interface LedgerEntry {
   id: string;
-  type: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer";
+  type: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer" | "adjustment";
   date: string;
   period: string;
   description: string;
@@ -605,6 +616,36 @@ export interface CashFlowStatement {
   operatingBalancePkr: number | null;
 }
 
+// ─── Employee Compensation History ────────────────────────────────────────────
+export interface EmployeeCompensation {
+  id: string;
+  employeeId: string;
+  effectiveFrom: string;
+  baseSalary: number;
+  defaultTaxPkr: number;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface EmployeeWithCompensations {
+  id: string;
+  name: string;
+  designation: string | null;
+  department: string | null;
+  baseSalary: number | null;
+  defaultTaxPkr: number | null;
+  status: "active" | "inactive";
+  compensations: EmployeeCompensation[];
+}
+
+export interface EffectiveCompensation {
+  employeeId: string;
+  name: string;
+  baseSalary: number | null;
+  defaultTaxPkr: number | null;
+  effectiveFrom: string | null;
+}
+
 // ─── Employees ────────────────────────────────────────────────────────────────
 export interface Employee {
   id: string;
@@ -616,6 +657,7 @@ export interface Employee {
   cnic: string | null;
   joinDate: string | null;
   baseSalary: number | null;
+  defaultTaxPkr: number | null;
   status: "active" | "inactive";
   notes: string | null;
   createdAt: string;

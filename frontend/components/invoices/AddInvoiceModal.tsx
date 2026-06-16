@@ -27,6 +27,8 @@ interface FormData {
   issueDate: string;
   dueDate: string;
   paymentTerms: string;
+  discountType: "pct" | "amount";
+  discountValue: string;
   taxPct: string;
   paymentNumber: string;
   notes: string;
@@ -83,6 +85,8 @@ const EMPTY_FORM: FormData = {
   issueDate: today,
   dueDate: in30,
   paymentTerms: "Net 30",
+  discountType: "pct",
+  discountValue: "",
   taxPct: "0",
   paymentNumber: "1",
   notes: "",
@@ -164,9 +168,14 @@ export default function AddInvoiceModal({
   }
 
   const subtotal = form.lineItems.reduce((s, item) => s + lineTotal(item), 0);
+  const discountValue = parseFloat(form.discountValue) || 0;
+  const discountAmount = form.discountType === "pct"
+    ? Math.min(subtotal * discountValue / 100, subtotal)
+    : Math.min(discountValue, subtotal);
+  const discountedSubtotal = subtotal - discountAmount;
   const taxPct = parseFloat(form.taxPct) || 0;
-  const taxAmount = subtotal * taxPct / 100;
-  const totalAmount = subtotal + taxAmount;
+  const taxAmount = discountedSubtotal * taxPct / 100;
+  const totalAmount = discountedSubtotal + taxAmount;
 
   async function handleSubmit() {
     if (!form.clientId) return;
@@ -180,6 +189,8 @@ export default function AddInvoiceModal({
         issueDate: form.issueDate,
         dueDate: form.dueDate,
         paymentTerms: form.paymentTerms || undefined,
+        discountType: form.discountType,
+        discountValue,
         taxPct,
         paymentNumber: parseInt(form.paymentNumber, 10) || 1,
         notes: form.notes || undefined,
@@ -252,21 +263,22 @@ export default function AddInvoiceModal({
             }
           </select>
         </Field>
-        <Field label="Payment #">
-          <input type="number" min="1" value={form.paymentNumber} onChange={(e) => set("paymentNumber", e.target.value)} />
-        </Field>
-        <Field label="Tax (%)">
-          <input type="number" min="0" max="100" step="0.5" value={form.taxPct} onChange={(e) => set("taxPct", e.target.value)} />
-        </Field>
-      </div>
-
-      <div className="f2">
         <Field label="Issue date" required>
           <input type="date" value={form.issueDate} onChange={(e) => set("issueDate", e.target.value)} />
         </Field>
         <Field label="Due date" required>
           <input type="date" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
         </Field>
+      </div>
+
+      <div className="f3">
+        <Field label="Payment #">
+          <input type="number" min="1" value={form.paymentNumber} onChange={(e) => set("paymentNumber", e.target.value)} />
+        </Field>
+        <Field label="Tax (%)">
+          <input type="number" min="0" max="100" step="0.5" value={form.taxPct} onChange={(e) => set("taxPct", e.target.value)} placeholder="0" />
+        </Field>
+        <div />
       </div>
 
       <Field label="Payment terms">
@@ -363,25 +375,65 @@ export default function AddInvoiceModal({
         })}
       </div>
 
-      <button className="btn-outline" style={{ height: 28, fontSize: 11, width: "100%", marginBottom: 4 }} onClick={addLine}>
+      <button className="btn-outline" style={{ height: 28, fontSize: 11, width: "100%", marginBottom: 10 }} onClick={addLine}>
         <i className="ti ti-plus" style={{ fontSize: 11 }} /> Add line item
       </button>
 
+      {/* Discount row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: "8px 10px", background: "var(--bg2)", borderRadius: "var(--rm)", border: "0.5px solid var(--b3)" }}>
+        <span style={{ fontSize: 12, color: "var(--t2)", minWidth: 56, flexShrink: 0 }}>Discount</span>
+        <div style={{ display: "flex", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", overflow: "hidden", flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => set("discountType", "pct")}
+            style={{ padding: "4px 10px", fontSize: 12, background: form.discountType === "pct" ? "var(--blue)" : "transparent", color: form.discountType === "pct" ? "white" : "var(--t2)", border: "none", cursor: "pointer", fontWeight: 500 }}
+          >%</button>
+          <button
+            type="button"
+            onClick={() => set("discountType", "amount")}
+            style={{ padding: "4px 10px", fontSize: 12, background: form.discountType === "amount" ? "var(--blue)" : "transparent", color: form.discountType === "amount" ? "white" : "var(--t2)", border: "none", cursor: "pointer", fontWeight: 500 }}
+          >{form.currency}</button>
+        </div>
+        <input
+          type="number"
+          min="0"
+          step={form.discountType === "pct" ? "0.5" : "0.01"}
+          max={form.discountType === "pct" ? "100" : undefined}
+          value={form.discountValue}
+          onChange={(e) => set("discountValue", e.target.value)}
+          placeholder="0"
+          style={{ width: 90, height: 30, fontSize: 12 }}
+        />
+        {discountAmount > 0 && (
+          <span style={{ fontSize: 12, color: "var(--red)", marginLeft: 4 }}>
+            = − {form.currency} {discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        )}
+      </div>
+
       {/* Totals */}
       <div style={{ background: "var(--blue-bg)", border: "0.5px solid #85B7EB", borderRadius: "var(--rm)", padding: "10px 14px", marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--t2)", marginBottom: 4 }}>
-          <span>Subtotal</span>
-          <span style={{ fontWeight: 500 }}>{form.currency} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-        {taxPct > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--t2)", marginBottom: 4 }}>
-            <span>Tax ({taxPct}%)</span>
-            <span>{form.currency} {taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--t2)" }}>
+            <span>Subtotal</span>
+            <span style={{ fontWeight: 500 }}>{form.currency} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
-        )}
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "var(--blue)", borderTop: "0.5px solid #85B7EB", paddingTop: 8, marginTop: 4 }}>
-          <span>Total</span>
-          <span>{form.currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          {discountAmount > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--red)" }}>
+              <span>{form.discountType === "pct" ? `Discount (${discountValue}%)` : "Discount"}</span>
+              <span>− {form.currency} {discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          )}
+          {taxPct > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--t2)" }}>
+              <span>Tax ({taxPct}%){discountAmount > 0 ? " on discounted" : ""}</span>
+              <span>{form.currency} {taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "var(--blue)", borderTop: "0.5px solid #85B7EB", paddingTop: 8, marginTop: 2 }}>
+            <span>Total</span>
+            <span>{form.currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
         </div>
       </div>
 

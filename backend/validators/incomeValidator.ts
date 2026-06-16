@@ -11,7 +11,7 @@ export const createIncomeSchema = z.object({
   whtPct: z.coerce.number().min(0).max(100).default(0),
   gstPct: z.coerce.number().min(0).max(100).default(0),
   bankChargesPkr: z.coerce.number().min(0).default(0),
-  paymentMethod: z.string().max(50).optional().nullable(),
+  paymentMethod: z.string().min(1, "Payment method is required").max(50),
   transactionRef: z.string().max(200).optional().nullable(),
   receivedAt: z.string().min(1, "Received date is required"),
   incomeType: z.string().max(50).optional().nullable(),

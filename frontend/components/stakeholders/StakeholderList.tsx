@@ -1,10 +1,7 @@
 "use client";
 
+import { fmtPkr } from "@frontend/lib/currency";
 import type { CrmAccount } from "@frontend/types";
-
-function fmt(n: number) {
-  return (n / 100).toLocaleString("en-PK", { maximumFractionDigits: 0 });
-}
 
 interface StakeholderListProps {
   stakeholders: CrmAccount[];
@@ -91,7 +88,7 @@ export default function StakeholderList({ stakeholders, selected, onSelect, onAd
                     {s.name}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>
-                    {Number(s.sharePct)}% share · PKR {fmt(s.currentBalancePkr)}
+                    {Number(s.sharePct)}% share · {fmtPkr(s.currentBalancePkr)}
                   </div>
                 </div>
               </div>

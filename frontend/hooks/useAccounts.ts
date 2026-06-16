@@ -40,7 +40,7 @@ export async function createAccountRequest(body: CreateAccountInput): Promise<Cr
   return json.data!;
 }
 
-export async function updateAccountRequest(id: string, body: Partial<CreateAccountInput>): Promise<CrmAccount> {
+export async function updateAccountRequest(id: string, body: Partial<CreateAccountInput> & { currentBalancePkr?: number }): Promise<CrmAccount> {
   const res = await fetch(`/api/accounts/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

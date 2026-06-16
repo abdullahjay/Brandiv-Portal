@@ -8,6 +8,9 @@ const listSelect = {
   invoiceNumber: true,
   currency: true,
   subtotal: true,
+  discountType: true,
+  discountValue: true,
+  discountAmount: true,
   taxAmount: true,
   totalAmount: true,
   paymentTerms: true,
@@ -29,6 +32,14 @@ const detailSelect = {
     orderBy: { sortOrder: "asc" as const },
   },
 } satisfies Prisma.InvoiceSelect;
+
+function computeDiscount(subtotal: bigint, type: string, value: number): bigint {
+  if (value <= 0) return BigInt(0);
+  const raw = type === "amount"
+    ? BigInt(Math.round(value * AMOUNT_MULTIPLIER))
+    : BigInt(Math.round(Number(subtotal) * value / 100));
+  return raw > subtotal ? subtotal : raw;
+}
 
 export async function findManyInvoices(input: ListInvoicesInput) {
   const { status, clientId, projectId, search, page, pageSize } = input;
@@ -85,14 +96,18 @@ export async function generateInvoiceNumber(): Promise<string> {
 }
 
 export async function createInvoice(input: CreateInvoiceInput, invoiceNumber: string) {
-  const { clientId, projectId, currency, issueDate, dueDate, paymentTerms, taxPct, paymentNumber, notes, lineItems } = input;
+  const { clientId, projectId, currency, issueDate, dueDate, paymentTerms, discountType, discountValue, taxPct, paymentNumber, notes, lineItems } = input;
 
   const subtotal = lineItems.reduce((sum, item) => {
     return sum + BigInt(Math.round(item.rate * AMOUNT_MULTIPLIER)) * BigInt(item.quantity);
   }, BigInt(0));
 
-  const taxAmount = BigInt(Math.round(Number(subtotal) * taxPct / 100));
-  const totalAmount = subtotal + taxAmount;
+  const effectiveDiscountType = discountType ?? "pct";
+  const effectiveDiscountValue = discountValue ?? 0;
+  const discountAmount = computeDiscount(subtotal, effectiveDiscountType, effectiveDiscountValue);
+  const discountedSubtotal = subtotal - discountAmount;
+  const taxAmount = BigInt(Math.round(Number(discountedSubtotal) * taxPct / 100));
+  const totalAmount = discountedSubtotal + taxAmount;
 
   return prisma.invoice.create({
     data: {
@@ -104,6 +119,9 @@ export async function createInvoice(input: CreateInvoiceInput, invoiceNumber: st
       dueDate: new Date(dueDate),
       paymentTerms: paymentTerms ?? null,
       subtotal,
+      discountType: effectiveDiscountType,
+      discountValue: effectiveDiscountValue,
+      discountAmount,
       taxAmount,
       totalAmount,
       paymentNumber: paymentNumber ?? 1,
@@ -123,7 +141,7 @@ export async function createInvoice(input: CreateInvoiceInput, invoiceNumber: st
 }
 
 export async function updateInvoice(id: string, input: UpdateInvoiceInput) {
-  const { projectId, currency, issueDate, dueDate, paymentTerms, taxPct, paymentNumber, notes, lineItems } = input;
+  const { projectId, currency, issueDate, dueDate, paymentTerms, discountType, discountValue, taxPct, paymentNumber, notes, lineItems } = input;
 
   const updates: Prisma.InvoiceUpdateInput = {};
 
@@ -136,16 +154,23 @@ export async function updateInvoice(id: string, input: UpdateInvoiceInput) {
   if (projectId !== undefined) {
     updates.project = projectId ? { connect: { id: projectId } } : { disconnect: true };
   }
+  if (discountType !== undefined) updates.discountType = discountType;
+  if (discountValue !== undefined) updates.discountValue = discountValue;
 
   if (lineItems !== undefined) {
     const subtotal = lineItems.reduce((sum, item) => {
       return sum + BigInt(Math.round(item.rate * AMOUNT_MULTIPLIER)) * BigInt(item.quantity);
     }, BigInt(0));
+    const effectiveDiscountType = discountType ?? "pct";
+    const effectiveDiscountValue = discountValue ?? 0;
+    const discountAmount = computeDiscount(subtotal, effectiveDiscountType, effectiveDiscountValue);
+    const discountedSubtotal = subtotal - discountAmount;
     const effectiveTaxPct = taxPct ?? 0;
-    const taxAmount = BigInt(Math.round(Number(subtotal) * effectiveTaxPct / 100));
-    const totalAmount = subtotal + taxAmount;
+    const taxAmount = BigInt(Math.round(Number(discountedSubtotal) * effectiveTaxPct / 100));
+    const totalAmount = discountedSubtotal + taxAmount;
 
     updates.subtotal = subtotal;
+    updates.discountAmount = discountAmount;
     updates.taxAmount = taxAmount;
     updates.totalAmount = totalAmount;
     updates.lineItems = {
@@ -158,12 +183,18 @@ export async function updateInvoice(id: string, input: UpdateInvoiceInput) {
         sortOrder: idx,
       })),
     };
-  } else if (taxPct !== undefined) {
-    const current = await prisma.invoice.findUnique({ where: { id }, select: { subtotal: true } });
+  } else if (discountType !== undefined || discountValue !== undefined || taxPct !== undefined) {
+    const current = await prisma.invoice.findUnique({ where: { id }, select: { subtotal: true, discountType: true, discountValue: true } });
     if (current) {
-      const taxAmount = BigInt(Math.round(Number(current.subtotal) * taxPct / 100));
+      const effectiveDiscountType = discountType ?? current.discountType;
+      const effectiveDiscountValue = discountValue ?? current.discountValue;
+      const discountAmount = computeDiscount(current.subtotal, effectiveDiscountType, effectiveDiscountValue);
+      const discountedSubtotal = current.subtotal - discountAmount;
+      const effectiveTaxPct = taxPct ?? 0;
+      const taxAmount = BigInt(Math.round(Number(discountedSubtotal) * effectiveTaxPct / 100));
+      updates.discountAmount = discountAmount;
       updates.taxAmount = taxAmount;
-      updates.totalAmount = current.subtotal + taxAmount;
+      updates.totalAmount = discountedSubtotal + taxAmount;
     }
   }
 
@@ -195,5 +226,5 @@ export async function cancelInvoice(id: string) {
 }
 
 export async function invoiceExists(id: string): Promise<boolean> {
-  return (await prisma.invoice.count({ where: { id } })) > 0;
+  return !!(await prisma.invoice.findUnique({ where: { id }, select: { id: true } }));
 }
