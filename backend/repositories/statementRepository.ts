@@ -120,7 +120,7 @@ export async function getPnLStatement(period: string) {
 // ─── Cash Flow Statement ──────────────────────────────────────────────────────
 
 export async function getCashFlowStatement(period: string) {
-  const [incomes, expenses, payrolls, distribution] = await Promise.all([
+  const [incomes, expenses, payrolls, distribution, operatingAccount] = await Promise.all([
     prisma.incomeRecord.findMany({
       where: { period },
       include: { client: { select: { companyName: true } }, invoice: { select: { invoiceNumber: true } } },
@@ -142,6 +142,11 @@ export async function getCashFlowStatement(period: string) {
     }),
 
     prisma.distribution.findFirst({ where: { period } }),
+
+    prisma.crmAccount.findFirst({
+      where: { isDefaultOperating: true },
+      select: { name: true, currentBalancePkr: true },
+    }),
   ]);
 
   const inflows = incomes.map((r) => ({
@@ -200,12 +205,6 @@ export async function getCashFlowStatement(period: string) {
   const totalInflowPkr = inflows.reduce((s, r) => s + r.amountPkr, 0);
   const totalOutflowPkr = outflows.reduce((s, r) => s + r.amountPkr, 0);
   const netCashFlowPkr = totalInflowPkr - totalOutflowPkr;
-
-  // Current operating account balance (live)
-  const operatingAccount = await prisma.crmAccount.findFirst({
-    where: { isDefaultOperating: true },
-    select: { name: true, currentBalancePkr: true },
-  });
 
   return {
     period,

@@ -223,5 +223,5 @@ export async function clearIncomeRecord(id: string) {
 }
 
 export async function incomeExists(id: string): Promise<boolean> {
-  return (await prisma.incomeRecord.count({ where: { id } })) > 0;
+  return !!(await prisma.incomeRecord.findUnique({ where: { id }, select: { id: true } }));
 }

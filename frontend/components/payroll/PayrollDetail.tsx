@@ -3,13 +3,22 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Badge from "@frontend/components/ui/Badge";
-import { payPayrollRequest } from "@frontend/hooks/usePayroll";
+import { payPayrollRequest, revertPayrollRequest, updatePayrollRequest } from "@frontend/hooks/usePayroll";
 import type { PayrollRecord } from "@frontend/types";
 
 interface PayrollDetailProps {
   record: PayrollRecord | null;
   loading: boolean;
   onPaid: () => void;
+  onReverted?: () => void;
+  onUpdated?: (record: PayrollRecord) => void;
+}
+
+interface EditForm {
+  grossPkr: string;
+  taxPkr: string;
+  deductions: string;
+  notes: string;
 }
 
 function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
@@ -45,6 +54,7 @@ function downloadPayslip(record: PayrollRecord) {
   const department = record.employee?.department ?? "";
   const period = fmtPeriod(record.period);
   const gross = (record.grossPkr / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const tax = (record.taxPkr / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
   const deductions = (record.deductions / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
   const net = (record.netPkr / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
   const paidAt = record.paidAt ? new Date(record.paidAt).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) : "—";
@@ -84,7 +94,8 @@ function downloadPayslip(record: PayrollRecord) {
   <div class="section-title">Earnings &amp; Deductions</div>
   <table>
     <tr><td>Gross Salary</td><td>PKR ${gross}</td></tr>
-    ${record.deductions > 0 ? `<tr><td>Deductions</td><td style="color:#dc2626">− PKR ${deductions}</td></tr>` : ""}
+    ${record.taxPkr > 0 ? `<tr><td>Income Tax</td><td style="color:#d97706">− PKR ${tax}</td></tr>` : ""}
+    ${record.deductions > 0 ? `<tr><td>Other Deductions</td><td style="color:#dc2626">− PKR ${deductions}</td></tr>` : ""}
     <tr class="total-row"><td>Net Payable</td><td>PKR ${net}</td></tr>
   </table>
 </div>
@@ -110,12 +121,26 @@ function getRecipientName(record: PayrollRecord): string {
   return record.user?.name ?? record.employee?.name ?? "Unknown";
 }
 
-export default function PayrollDetail({ record, loading, onPaid }: PayrollDetailProps) {
+export default function PayrollDetail({ record, loading, onPaid, onReverted, onUpdated }: PayrollDetailProps) {
   const { data: session } = useSession();
   const [acting, setActing] = useState(false);
+  const [reverting, setReverting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmRevert, setConfirmRevert] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm>({ grossPkr: "", taxPkr: "", deductions: "", notes: "" });
+  const [saving, setSaving] = useState(false);
 
-  const canPay = ["super_admin", "admin", "finance"].includes(session?.user?.role ?? "");
+  const canPay    = ["super_admin", "admin", "finance"].includes(session?.user?.role ?? "");
+  const canRevert = ["super_admin", "admin"].includes(session?.user?.role ?? "");
+
+  // Reset edit mode when navigating to a different record
+  const [lastRecordId, setLastRecordId] = useState<string | null>(null);
+  if (record && record.id !== lastRecordId) {
+    setLastRecordId(record.id);
+    setEditing(false);
+    setActionError(null);
+  }
 
   async function handlePay() {
     if (!record) return;
@@ -130,6 +155,59 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
       setActing(false);
     }
   }
+
+  async function handleRevert() {
+    if (!record) return;
+    setReverting(true);
+    setActionError(null);
+    setConfirmRevert(false);
+    try {
+      await revertPayrollRequest(record.id);
+      if (onReverted) onReverted(); else onPaid();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Revert failed");
+    } finally {
+      setReverting(false);
+    }
+  }
+
+  function openEdit() {
+    if (!record) return;
+    setEditForm({
+      grossPkr: String(record.grossPkr / 100),
+      taxPkr: String(record.taxPkr / 100),
+      deductions: String(record.deductions / 100),
+      notes: record.notes ?? "",
+    });
+    setActionError(null);
+    setEditing(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!record) return;
+    const gross = parseFloat(editForm.grossPkr);
+    const tax = parseFloat(editForm.taxPkr);
+    const ded = parseFloat(editForm.deductions);
+    if (isNaN(gross) || gross <= 0) { setActionError("Gross salary must be greater than 0"); return; }
+    setSaving(true);
+    setActionError(null);
+    try {
+      const updated = await updatePayrollRequest(record.id, {
+        grossPkr: gross,
+        taxPkr: isNaN(tax) ? 0 : tax,
+        deductions: isNaN(ded) ? 0 : ded,
+        notes: editForm.notes || null,
+      });
+      setEditing(false);
+      if (onUpdated) onUpdated(updated); else onPaid();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const canEdit = ["super_admin", "admin", "finance"].includes(session?.user?.role ?? "");
 
   if (!record && !loading) {
     return (
@@ -152,6 +230,7 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
   if (!record) return null;
 
   const grossPkr = record.grossPkr / 100;
+  const taxPkr = record.taxPkr / 100;
   const deductions = record.deductions / 100;
   const netPkr = record.netPkr / 100;
   const name = getRecipientName(record);
@@ -213,6 +292,39 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {actionError && <span style={{ fontSize: 11, color: "var(--red)" }}>{actionError}</span>}
+          {record.status === "pending" && canEdit && !editing && (
+            <button
+              className="btn-outline"
+              onClick={openEdit}
+              style={{ display: "flex", alignItems: "center", gap: 5, height: 32 }}
+            >
+              <i className="ti ti-pencil" style={{ fontSize: 12 }} />
+              Edit
+            </button>
+          )}
+          {editing && (
+            <>
+              <button
+                className="btn-outline"
+                onClick={() => { setEditing(false); setActionError(null); }}
+                disabled={saving}
+                style={{ height: 32, fontSize: 12 }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleSaveEdit}
+                disabled={saving}
+                style={{ display: "flex", alignItems: "center", gap: 5, height: 32 }}
+              >
+                {saving
+                  ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> Saving…</>
+                  : <><i className="ti ti-check" style={{ fontSize: 12 }} /> Save changes</>
+                }
+              </button>
+            </>
+          )}
           {record.status === "paid" && (
             <button
               className="btn-outline"
@@ -222,6 +334,38 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
               <i className="ti ti-file-download" style={{ fontSize: 12 }} />
               Payslip
             </button>
+          )}
+          {record.status === "paid" && canRevert && !confirmRevert && (
+            <button
+              onClick={() => setConfirmRevert(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 5, height: 32,
+                padding: "0 12px", border: "0.5px solid var(--b3)",
+                borderRadius: "var(--rm)", background: "var(--bg2)",
+                color: "var(--t2)", fontSize: 12, cursor: "pointer",
+              }}
+            >
+              <i className="ti ti-rotate-left" style={{ fontSize: 12 }} />
+              Revert
+            </button>
+          )}
+          {record.status === "paid" && canRevert && confirmRevert && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--red-bg)", border: "0.5px solid var(--red)", borderRadius: "var(--rm)", padding: "4px 10px" }}>
+              <span style={{ fontSize: 11, color: "var(--red)", fontWeight: 500 }}>Revert to pending?</span>
+              <button
+                onClick={handleRevert}
+                disabled={reverting}
+                style={{ fontSize: 11, fontWeight: 600, color: "var(--red)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}
+              >
+                {reverting ? "…" : "Yes"}
+              </button>
+              <button
+                onClick={() => setConfirmRevert(false)}
+                style={{ fontSize: 11, color: "var(--t3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}
+              >
+                No
+              </button>
+            </div>
           )}
           {record.status === "pending" && canPay && (
             <button
@@ -239,47 +383,118 @@ export default function PayrollDetail({ record, loading, onPaid }: PayrollDetail
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-        {/* Metric cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
-          <div className="metric-card">
-            <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Gross Salary</div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)" }}>
-              PKR {fmt(grossPkr)}
-            </div>
-          </div>
-          <div className="metric-card">
-            <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Deductions</div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: deductions > 0 ? "var(--red)" : "var(--t3)" }}>
-              {deductions > 0 ? `− PKR ${fmt(deductions)}` : "None"}
-            </div>
-          </div>
-          <div className="metric-card">
-            <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Net Payable</div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--green)" }}>
-              PKR {fmt(netPkr)}
-            </div>
-          </div>
-        </div>
-
-        {/* Payroll breakdown */}
-        <Section title="Salary breakdown">
-          <div style={{ fontSize: 12, color: "var(--t2)", lineHeight: 2 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingBottom: 5 }}>
-              <span>Gross salary</span>
-              <span style={{ color: "var(--t1)" }}>PKR {fmt(grossPkr)}</span>
-            </div>
-            {deductions > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingTop: 5, paddingBottom: 5 }}>
-                <span>Deductions</span>
-                <span style={{ color: "var(--red)" }}>− PKR {fmt(deductions)}</span>
+        {editing ? (
+          /* ── Edit mode ─────────────────────────────────────────────────── */
+          <Section title="Edit payroll record">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="frow">
+                <label>Gross Salary (PKR) <span style={{ color: "var(--red)" }}>*</span></label>
+                <input
+                  type="number" min="0" step="1"
+                  value={editForm.grossPkr}
+                  onChange={(e) => setEditForm((f) => ({ ...f, grossPkr: e.target.value }))}
+                  placeholder="e.g. 150000"
+                />
               </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8 }}>
-              <span style={{ fontWeight: 600, color: "var(--t1)", fontSize: 13 }}>Net payable</span>
-              <span style={{ fontWeight: 700, color: "var(--green)", fontSize: 14 }}>PKR {fmt(netPkr)}</span>
+              <div className="frow">
+                <label>Income Tax (PKR)</label>
+                <input
+                  type="number" min="0" step="1"
+                  value={editForm.taxPkr}
+                  onChange={(e) => setEditForm((f) => ({ ...f, taxPkr: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="frow">
+                <label>Other Deductions (PKR)</label>
+                <input
+                  type="number" min="0" step="1"
+                  value={editForm.deductions}
+                  onChange={(e) => setEditForm((f) => ({ ...f, deductions: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="frow" style={{ gridColumn: "1 / -1" }}>
+                <label>Notes</label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Any notes…"
+                  style={{ minHeight: 60 }}
+                />
+              </div>
             </div>
-          </div>
-        </Section>
+            {/* Live net preview */}
+            {(() => {
+              const g = parseFloat(editForm.grossPkr) || 0;
+              const t = parseFloat(editForm.taxPkr) || 0;
+              const d = parseFloat(editForm.deductions) || 0;
+              const n = Math.max(0, g - t - d);
+              return g > 0 ? (
+                <div style={{ marginTop: 14, background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 12, color: "var(--green)" }}>Net payable</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>PKR {n.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                </div>
+              ) : null;
+            })()}
+          </Section>
+        ) : (
+          <>
+            {/* ── View mode: Metric cards ─────────────────────────────────── */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 18 }}>
+              <div className="metric-card">
+                <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Gross Salary</div>
+                <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)" }}>
+                  PKR {fmt(grossPkr)}
+                </div>
+              </div>
+              <div className="metric-card">
+                <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Income Tax</div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: taxPkr > 0 ? "var(--amber, #d97706)" : "var(--t3)" }}>
+                  {taxPkr > 0 ? `− PKR ${fmt(taxPkr)}` : "None"}
+                </div>
+              </div>
+              <div className="metric-card">
+                <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Other Deductions</div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: deductions > 0 ? "var(--red)" : "var(--t3)" }}>
+                  {deductions > 0 ? `− PKR ${fmt(deductions)}` : "None"}
+                </div>
+              </div>
+              <div className="metric-card">
+                <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Net Payable</div>
+                <div style={{ fontSize: 18, fontWeight: 600, color: "var(--green)" }}>
+                  PKR {fmt(netPkr)}
+                </div>
+              </div>
+            </div>
+
+            {/* Payroll breakdown */}
+            <Section title="Salary breakdown">
+              <div style={{ fontSize: 12, color: "var(--t2)", lineHeight: 2 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingBottom: 5 }}>
+                  <span>Gross salary</span>
+                  <span style={{ color: "var(--t1)" }}>PKR {fmt(grossPkr)}</span>
+                </div>
+                {taxPkr > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingTop: 5, paddingBottom: 5 }}>
+                    <span>Income tax</span>
+                    <span style={{ color: "var(--amber, #d97706)" }}>− PKR {fmt(taxPkr)}</span>
+                  </div>
+                )}
+                {deductions > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingTop: 5, paddingBottom: 5 }}>
+                    <span>Other deductions</span>
+                    <span style={{ color: "var(--red)" }}>− PKR {fmt(deductions)}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8 }}>
+                  <span style={{ fontWeight: 600, color: "var(--t1)", fontSize: 13 }}>Net payable</span>
+                  <span style={{ fontWeight: 700, color: "var(--green)", fontSize: 14 }}>PKR {fmt(netPkr)}</span>
+                </div>
+              </div>
+            </Section>
+          </>
+        )}
 
         {/* Recipient details */}
         <Section title="Details">

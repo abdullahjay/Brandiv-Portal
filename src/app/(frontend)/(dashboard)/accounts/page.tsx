@@ -1,20 +1,18 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { fmtPkr, pkrColor } from "@frontend/lib/currency";
 import Topbar from "@frontend/components/layout/Topbar";
 import AddAccountModal from "@frontend/components/accounts/AddAccountModal";
 import EditAccountModal from "@frontend/components/accounts/EditAccountModal";
 import { useAccounts } from "@frontend/hooks/useAccounts";
 import { useDistributionPreview, useDistributions, runDistributionRequest } from "@frontend/hooks/useDistribution";
-import type { CrmAccount, DistributionRecord, DistributionPreview } from "@frontend/types";
+import type { CrmAccount, DistributionPreview, DistributionRecord } from "@frontend/types";
+
+type Tab = "accounts" | "distribution";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function periodLabel(p: string) {
-  if (!p) return p;
-  return new Date(p + "-01").toLocaleString("default", { month: "long", year: "numeric" });
-}
 
 function fmt(n: number) {
   return (Math.abs(n) / 100).toLocaleString("en-PK", { maximumFractionDigits: 0 });
@@ -22,388 +20,254 @@ function fmt(n: number) {
 
 function fmtCompact(n: number) {
   const v = Math.abs(n) / 100;
-  if (v >= 1_000_000) return `PKR ${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `PKR ${Math.round(v / 1_000)}K`;
-  return `PKR ${Math.round(v)}`;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+  if (v >= 1_000) return `${Math.round(v / 1_000)}K`;
+  return `${Math.round(v)}`;
 }
 
 function fmtDate(s: string) {
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-const PALETTE = [
-  { bg: "#EFF6FF", fg: "#3B82F6" },
-  { bg: "#F0FDF4", fg: "#16A34A" },
-  { bg: "#FFFBEB", fg: "#92400E" },
-  { bg: "#F5F3FF", fg: "#7C3AED" },
-  { bg: "#FFF1F2", fg: "#BE123C" },
-  { bg: "#ECFEFF", fg: "#0891B2" },
-];
-
-function useColorMap(accounts: CrmAccount[]) {
-  return useMemo(() => {
-    const map = new Map<string, { bg: string; fg: string }>();
-    let si = 0;
-    accounts.forEach((a) => {
-      if (a.type === "operating") {
-        map.set(a.id, { bg: "var(--blue-bg)", fg: "var(--blue)" });
-      } else if (a.type === "company_reserve") {
-        map.set(a.id, { bg: "var(--bg2)", fg: "var(--t2)" });
-      } else {
-        map.set(a.id, PALETTE[si++ % PALETTE.length]);
-      }
-    });
-    return map;
-  }, [accounts]);
+function periodLabel(p: string) {
+  if (!p) return p;
+  return new Date(p + "-01").toLocaleString("default", { month: "long", year: "numeric" });
 }
 
 function initials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-// ─── Operating Balance Card ───────────────────────────────────────────────────
+const TYPE_META = {
+  operating:       { label: "Operating",       color: "var(--blue)",  bg: "var(--blue-bg)",  icon: "ti-building-bank" },
+  company_reserve: { label: "Company Reserve", color: "#6D28D9",       bg: "#EDE9FE",         icon: "ti-safe" },
+  stakeholder:     { label: "Stakeholder",     color: "var(--green)", bg: "var(--green-bg)", icon: "ti-user-circle" },
+};
 
-function OperatingCard({
-  account,
-  preview,
-  previewLoading,
-}: {
-  account: CrmAccount | null;
-  preview: DistributionPreview | null;
-  previewLoading: boolean;
+// ─── Metric Card ──────────────────────────────────────────────────────────────
+
+function MetricCard({ icon, label, value, sub, iconColor, iconBg }: {
+  icon: string; label: string; value: string; sub?: string; iconColor: string; iconBg: string;
 }) {
-  if (!account) {
-    return (
-      <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: 24, display: "flex", flexDirection: "column", gap: 8, alignItems: "center", justifyContent: "center", minHeight: 160 }}>
-        <i className="ti ti-building-bank" style={{ fontSize: 28, color: "var(--t3)" }} />
-        <div style={{ fontSize: 12, color: "var(--t3)" }}>No operating account</div>
-      </div>
-    );
-  }
-
-  const balance = account.currentBalancePkr;
-  const isPositive = balance > 0;
-
   return (
-    <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "22px 24px", borderLeft: `3px solid ${isPositive ? "var(--blue)" : "var(--t3)"}` }}>
-      <div style={{ fontSize: 11, color: "var(--t3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
-        Operating account balance
+    <div style={{
+      background: "var(--bg1)", border: "0.5px solid var(--b3)",
+      borderRadius: "var(--rl)", padding: "18px 20px",
+      display: "flex", alignItems: "center", gap: 16,
+      boxShadow: "var(--shadow-sm)",
+    }}>
+      <div style={{
+        width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+        background: iconBg, display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 22, color: iconColor }} />
       </div>
-      <div style={{ fontSize: 30, fontWeight: 700, color: balance < 0 ? "var(--red)" : "var(--t1)", marginBottom: 2 }}>
-        {balance < 0 ? "−" : ""}PKR {fmt(balance)}
-      </div>
-      <div style={{ fontSize: 11, color: "var(--t3)", marginBottom: 18 }}>
-        {isPositive ? "Available to distribute anytime" : "No funds available for distribution"}
-      </div>
-
-      {previewLoading ? (
-        <div style={{ display: "flex", gap: 6, alignItems: "center", color: "var(--t3)", fontSize: 11 }}>
-          <i className="ti ti-loader-2" style={{ fontSize: 13 }} /> Loading breakdown…
+      <div>
+        <div style={{ fontSize: 11, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+          {label}
         </div>
-      ) : preview && preview.totalCommissionPkr > 0 ? (
-        <div style={{ display: "flex", gap: 20 }}>
-          <div>
-            <div style={{ fontSize: 10, color: "var(--t3)" }}>Pending commissions</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--amber, #D97706)" }}>
-              {fmtCompact(preview.totalCommissionPkr)}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: "var(--t3)" }}>Available after commissions</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: isPositive ? "var(--blue)" : "var(--t3)" }}>
-              {fmtCompact(Math.max(0, balance - preview.totalCommissionPkr))}
-            </div>
-          </div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+          {value}
         </div>
-      ) : preview && isPositive ? (
-        <div style={{ fontSize: 11, color: "var(--green)" }}>No pending commissions — full balance distributable</div>
-      ) : null}
+        {sub && <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>{sub}</div>}
+      </div>
     </div>
   );
 }
 
-// ─── Distribution Card ────────────────────────────────────────────────────────
+// ─── Accounts Table ───────────────────────────────────────────────────────────
 
-function DistributionCard({
-  preview,
-  previewLoading,
-  previewError,
-  colorMap,
-  canRun,
-  onDistributed,
-}: {
-  preview: DistributionPreview | null;
-  previewLoading: boolean;
-  previewError: string | null;
-  colorMap: Map<string, { bg: string; fg: string }>;
-  canRun: boolean;
-  onDistributed: () => void;
+const TH: React.CSSProperties = {
+  padding: "10px 16px", fontSize: 10, fontWeight: 600, color: "var(--t3)",
+  textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left",
+  background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)", whiteSpace: "nowrap",
+};
+
+const TD: React.CSSProperties = {
+  padding: "13px 16px", fontSize: 13, color: "var(--t1)",
+  verticalAlign: "middle", borderBottom: "0.5px solid var(--b3)",
+};
+
+function AccountsTable({ accounts, selectedId, loading, onSelect }: {
+  accounts: CrmAccount[]; selectedId: string | null; loading: boolean; onSelect: (id: string) => void;
 }) {
-  const [confirmRun, setConfirmRun] = useState(false);
-  const [label, setLabel] = useState("");
-  const [notes, setNotes] = useState("");
-  const [running, setRunning] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
-  const [succeeded, setSucceeded] = useState(false);
-
-  const canDistribute = preview && preview.operatingBalancePkr > 0 && preview.warnings.length === 0;
-
-  async function handleRun() {
-    setRunning(true);
-    setRunError(null);
-    try {
-      await runDistributionRequest(label || undefined, notes || undefined);
-      setSucceeded(true);
-      setConfirmRun(false);
-      setLabel("");
-      setNotes("");
-      onDistributed();
-    } catch (err) {
-      setRunError(err instanceof Error ? err.message : "Distribution failed");
-    } finally {
-      setRunning(false);
-    }
-  }
+  const ordered = [
+    ...accounts.filter((a) => a.type === "operating"),
+    ...accounts.filter((a) => a.type === "company_reserve"),
+    ...accounts.filter((a) => a.type === "stakeholder"),
+  ];
 
   return (
-    <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "18px 22px", display: "flex", flexDirection: "column" }}>
-      {/* Card header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: "var(--t2)", fontWeight: 500 }}>
-          Distribution preview
-        </div>
-        {succeeded && (
-          <span style={{ fontSize: 10, background: "var(--green-bg)", color: "var(--green)", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>
-            ✓ Distributed
-          </span>
-        )}
+    <div style={{
+      background: "var(--bg1)", border: "0.5px solid var(--b3)",
+      borderRadius: "var(--rl)", overflow: "hidden", boxShadow: "var(--shadow-sm)",
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 16px", borderBottom: "0.5px solid var(--b3)",
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>All Accounts</span>
+        <span style={{ fontSize: 11, color: "var(--t3)" }}>
+          {accounts.length} account{accounts.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
-      {/* Stakeholder rows */}
-      <div style={{ flex: 1 }}>
-        {previewLoading ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--t3)", fontSize: 12, padding: "16px 0" }}>
-            <i className="ti ti-loader-2" style={{ fontSize: 15 }} /> Loading…
-          </div>
-        ) : previewError ? (
-          <div style={{ fontSize: 12, color: "var(--red)", padding: "8px 0" }}>{previewError}</div>
-        ) : preview && preview.items.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-            {preview.items.map((item, idx) => {
-              const color = colorMap.get(item.accountId) ?? PALETTE[idx % PALETTE.length];
-              const label = item.ownerName ?? item.accountName;
-              return (
-                <div key={item.accountId} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: color.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: color.fg, flexShrink: 0 }}>
-                    {initials(label)}
-                  </div>
-                  <div style={{ width: 80, fontSize: 12, fontWeight: 500, color: "var(--t1)", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {label}
-                  </div>
-                  <div style={{ flex: 1, height: 4, background: "var(--b3)", borderRadius: 2 }}>
-                    <div style={{ width: `${item.sharePct}%`, height: "100%", background: color.fg, borderRadius: 2 }} />
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", minWidth: 64, textAlign: "right", flexShrink: 0 }}>
-                    {fmtCompact(item.totalPkr)}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--t3)", minWidth: 30, textAlign: "right", flexShrink: 0 }}>
-                    {item.sharePct}%
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div style={{ fontSize: 12, color: "var(--t3)", padding: "12px 0" }}>
-            No distribution accounts configured — add stakeholder accounts with a share %
-          </div>
-        )}
-
-        {preview?.warnings.map((w, i) => (
-          <div key={i} style={{ fontSize: 11, color: "#F59E0B", display: "flex", alignItems: "center", gap: 5, marginTop: 10 }}>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 12 }} /> {w}
-          </div>
-        ))}
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ ...TH, width: "28%" }}>Account</th>
+              <th style={{ ...TH, width: "14%" }}>Type</th>
+              <th style={{ ...TH, textAlign: "right", width: "10%" }}>Share</th>
+              <th style={{ ...TH, textAlign: "right", width: "16%" }}>Current Balance</th>
+              <th style={{ ...TH, textAlign: "right", width: "14%" }}>Lifetime Dist.</th>
+              <th style={{ ...TH, textAlign: "right", width: "12%" }}>Commissions</th>
+              <th style={{ ...TH, textAlign: "right", width: "16%" }}>All-Time Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={7} style={{ ...TD, textAlign: "center", padding: "52px 16px", color: "var(--t3)" }}>
+                  <i className="ti ti-loader-2" style={{ fontSize: 24, display: "block", marginBottom: 10 }} />
+                  <span style={{ fontSize: 12 }}>Loading accounts…</span>
+                </td>
+              </tr>
+            ) : ordered.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ ...TD, textAlign: "center", padding: "60px 16px", color: "var(--t3)" }}>
+                  <i className="ti ti-building-bank" style={{ fontSize: 34, display: "block", marginBottom: 12, opacity: 0.5 }} />
+                  <div style={{ fontSize: 14, color: "var(--t2)", marginBottom: 4, fontWeight: 500 }}>No accounts yet</div>
+                  <div style={{ fontSize: 12 }}>Add your first account to get started</div>
+                </td>
+              </tr>
+            ) : (
+              ordered.map((acc) => {
+                const meta = TYPE_META[acc.type];
+                const isSelected = acc.id === selectedId;
+                const lifeTotal = acc.lifetimeDistPkr + acc.lifetimeCommPkr;
+                return (
+                  <tr
+                    key={acc.id}
+                    onClick={() => onSelect(acc.id)}
+                    style={{ cursor: "pointer", background: isSelected ? "var(--blue-bg)" : "transparent", transition: "background .1s" }}
+                    onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLTableRowElement).style.background = "var(--bg2)"; }}
+                    onMouseLeave={(e) => { if (!isSelected) (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
+                  >
+                    <td style={TD}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+                          background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 11, fontWeight: 700, color: meta.color, overflow: "hidden",
+                        }}>
+                          {acc.ownerUser?.avatarUrl
+                            ? <img src={acc.ownerUser.avatarUrl} alt="" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover" }} />
+                            : initials(acc.name)}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {acc.name}
+                          </div>
+                          {acc.ownerUser && (
+                            <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{acc.ownerUser.name}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td style={TD}>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        fontSize: 11, padding: "3px 9px", borderRadius: 20,
+                        background: meta.bg, color: meta.color, fontWeight: 600, whiteSpace: "nowrap",
+                      }}>
+                        <i className={`ti ${meta.icon}`} style={{ fontSize: 11 }} />
+                        {meta.label}
+                      </span>
+                    </td>
+                    <td style={{ ...TD, textAlign: "right" }}>
+                      {acc.type !== "operating"
+                        ? <span style={{ fontSize: 13, fontWeight: 600, color: meta.color }}>{Number(acc.sharePct)}%</span>
+                        : <span style={{ color: "var(--t3)" }}>—</span>}
+                    </td>
+                    <td style={{ ...TD, textAlign: "right" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: pkrColor(acc.currentBalancePkr, meta.color) }}>
+                        {fmtPkr(acc.currentBalancePkr)}
+                      </span>
+                    </td>
+                    <td style={{ ...TD, textAlign: "right", color: "var(--t2)", fontSize: 12 }}>
+                      {acc.lifetimeDistPkr > 0 ? `PKR ${fmt(acc.lifetimeDistPkr)}` : <span style={{ color: "var(--t3)" }}>—</span>}
+                    </td>
+                    <td style={{ ...TD, textAlign: "right", fontSize: 12 }}>
+                      {acc.lifetimeCommPkr > 0
+                        ? <span style={{ color: "var(--green)" }}>PKR {fmt(acc.lifetimeCommPkr)}</span>
+                        : <span style={{ color: "var(--t3)" }}>—</span>}
+                    </td>
+                    <td style={{ ...TD, textAlign: "right" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)" }}>PKR {fmt(lifeTotal)}</span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
-
-      {/* Footer */}
-      <div style={{ marginTop: 14, paddingTop: 12, borderTop: "0.5px solid var(--b3)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 11, color: "var(--t3)" }}>
-          Commissions included · balance zeros after run
-        </div>
-        {canRun && (
-          <button
-            className="btn-primary"
-            onClick={() => { if (canDistribute) setConfirmRun(true); }}
-            disabled={!canDistribute || running}
-            style={{ height: 30, fontSize: 11, opacity: canDistribute ? 1 : 0.5 }}
-          >
-            <i className="ti ti-arrows-split" style={{ fontSize: 11 }} /> Run distribution
-          </button>
-        )}
-      </div>
-
-      {/* Confirm dialog */}
-      {confirmRun && (
-        <div style={{ marginTop: 12, background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: "12px 14px" }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "#D97706", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-            <i className="ti ti-alert-triangle" /> This cannot be undone
-          </div>
-          <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 8 }}>
-            PKR {fmt(preview!.operatingBalancePkr)} will be distributed and the operating account zeroed.
-          </div>
-          <input
-            type="text"
-            placeholder="Label (optional — e.g. May 2026 Payout)"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            style={{ width: "100%", height: 28, padding: "0 8px", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", background: "var(--bg1)", fontSize: 11, color: "var(--t1)", outline: "none", marginBottom: 6, boxSizing: "border-box" }}
-          />
-          <input
-            type="text"
-            placeholder="Notes (optional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            style={{ width: "100%", height: 28, padding: "0 8px", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", background: "var(--bg1)", fontSize: 11, color: "var(--t1)", outline: "none", marginBottom: 8, boxSizing: "border-box" }}
-          />
-          {runError && <div style={{ fontSize: 11, color: "var(--red)", marginBottom: 8 }}>{runError}</div>}
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button className="btn-outline" style={{ height: 28, fontSize: 11 }} onClick={() => { setConfirmRun(false); setRunError(null); }}>Cancel</button>
-            <button
-              className="btn-primary"
-              style={{ height: 28, fontSize: 11, background: "#6D28D9" }}
-              onClick={handleRun}
-              disabled={running}
-            >
-              {running ? <><i className="ti ti-loader-2" style={{ fontSize: 11 }} /> Running…</> : "Confirm & run"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── Account List Item ────────────────────────────────────────────────────────
+// ─── Account Detail Drawer Content ───────────────────────────────────────────
 
-function AccountItem({
-  account,
-  selected,
-  color,
-  onClick,
-}: {
-  account: CrmAccount;
-  selected: boolean;
-  color: { bg: string; fg: string };
-  onClick: () => void;
-}) {
-  const subtitle =
-    account.type === "operating"
-      ? `Operating${account.isDefaultOperating ? " · default" : ""}`
-      : account.type === "company_reserve"
-      ? "Company reserve"
-      : `${Number(account.sharePct)}% share`;
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: "100%",
-        textAlign: "left",
-        background: selected ? "var(--blue-bg)" : "transparent",
-        border: "none",
-        borderLeft: `2px solid ${selected ? "var(--blue)" : "transparent"}`,
-        padding: "11px 16px",
-        cursor: "pointer",
-        borderBottom: "0.5px solid var(--b3)",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        transition: "background .1s",
-      }}
-    >
-      <div style={{ width: 32, height: 32, borderRadius: "50%", background: selected ? "var(--blue)" : color.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: selected ? "#fff" : color.fg, flexShrink: 0 }}>
-        {initials(account.name)}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: selected ? "var(--blue)" : "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {account.name}
-        </div>
-        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{subtitle}</div>
-      </div>
-    </button>
-  );
-}
-
-// ─── Account Detail Panel ─────────────────────────────────────────────────────
-
-function AccountDetailPanel({
-  account,
-  preview,
-  distributions,
-  color,
-  onEdit,
-}: {
+function AccountDetailContent({ account, preview, distributions, onEdit }: {
   account: CrmAccount;
   preview: DistributionPreview | null;
   distributions: DistributionRecord[];
-  color: { bg: string; fg: string };
   onEdit: (a: CrmAccount) => void;
 }) {
+  const meta = TYPE_META[account.type];
   const isOperating = account.type === "operating";
+  const lifeTotal = account.lifetimeDistPkr + account.lifetimeCommPkr;
 
-  // Find per-account pending distribution amount from preview
   const pendingItem = !isOperating && preview && preview.operatingBalancePkr > 0 && preview.warnings.length === 0
-    ? preview.items.find((i) => i.accountId === account.id)
+    ? preview.items.find((i) => i.accountId === account.id) ?? null
     : null;
 
-  // For stakeholder/reserve accounts: per-item history
   const history = distributions
     .map((d) => {
       const item = d.items.find((i) => i.account.id === account.id);
-      return item
-        ? {
-            id: d.id,
-            label: d.label,
-            period: d.period,
-            runAt: d.runAt,
-            dist: item.distributionAmountPkr,
-            comm: item.commissionAmountPkr,
-            total: item.totalPkr,
-          }
-        : null;
-    })
-    .filter(Boolean) as { id: string; label: string | null; period: string; runAt: string; dist: number; comm: number; total: number }[];
+      return item ? { id: d.id, label: d.label, period: d.period, runAt: d.runAt, dist: item.distributionAmountPkr, comm: item.commissionAmountPkr, total: item.totalPkr } : null;
+    }).filter(Boolean) as { id: string; label: string | null; period: string; runAt: string; dist: number; comm: number; total: number }[];
 
-  // For operating account: show all distribution runs (operating is source, not recipient)
   const operatingHistory = distributions.map((d) => ({
-    id: d.id,
-    label: d.label,
-    period: d.period,
-    runAt: d.runAt,
+    id: d.id, label: d.label, period: d.period, runAt: d.runAt,
     operatingBalancePkr: d.operatingBalancePkr,
     totalDistributedPkr: d.totalDistributedPkr,
     itemCount: d.items.length,
   }));
 
-  const lifetimeTotal = account.lifetimeDistPkr + account.lifetimeCommPkr;
-
-  const typeLabel =
-    account.type === "operating" ? "Operating account"
-    : account.type === "company_reserve" ? "Company reserve"
-    : `Stakeholder · ${Number(account.sharePct)}% share`;
-
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: 22 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: color.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: color.fg, flexShrink: 0 }}>
-            {initials(account.name)}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%", background: meta.bg,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 700, color: meta.color, flexShrink: 0, overflow: "hidden",
+          }}>
+            {account.ownerUser?.avatarUrl
+              ? <img src={account.ownerUser.avatarUrl} alt="" style={{ width: 44, height: 44, objectFit: "cover" }} />
+              : initials(account.name)}
           </div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--t1)" }}>{account.name}</div>
-            <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>{typeLabel}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)" }}>{account.name}</div>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10,
+              padding: "2px 7px", borderRadius: 20, background: meta.bg, color: meta.color, fontWeight: 600, marginTop: 3,
+            }}>
+              <i className={`ti ${meta.icon}`} style={{ fontSize: 10 }} /> {meta.label}
+            </span>
           </div>
         </div>
         <button className="btn-outline" style={{ height: 30, fontSize: 12 }} onClick={() => onEdit(account)}>
@@ -411,45 +275,50 @@ function AccountDetailPanel({
         </button>
       </div>
 
-      {/* Top metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+      {/* Metric grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
         {[
-          { label: "Current balance", value: `PKR ${fmt(account.currentBalancePkr)}`, color: "var(--t1)" },
-          { label: "Lifetime distribution", value: `PKR ${fmt(account.lifetimeDistPkr)}`, color: "var(--t1)" },
-          { label: "Lifetime commissions", value: `PKR ${fmt(account.lifetimeCommPkr)}`, color: "var(--green)" },
-        ].map(({ label, value, color: c }) => (
-          <div key={label} style={{ background: "var(--bg2)", borderRadius: "var(--rl)", padding: "16px 18px" }}>
-            <div style={{ fontSize: 10, color: "var(--t3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: c }}>{value}</div>
+          { label: "Current Balance", value: fmtPkr(account.currentBalancePkr), color: pkrColor(account.currentBalancePkr, "var(--t1)") },
+          { label: "Share %", value: account.type !== "operating" ? `${Number(account.sharePct)}%` : "—", color: meta.color },
+          { label: "Lifetime Distributions", value: `PKR ${fmt(account.lifetimeDistPkr)}`, color: "var(--blue)" },
+          { label: "Lifetime Commissions", value: `PKR ${fmt(account.lifetimeCommPkr)}`, color: "var(--green)" },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background: "var(--bg2)", borderRadius: "var(--rl)", padding: "14px 16px" }}>
+            <div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color }}>{value}</div>
           </div>
         ))}
       </div>
 
       {/* All-time total */}
-      <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "14px 18px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{
+        background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)",
+        padding: "14px 16px", marginBottom: 14,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
         <div>
-          <div style={{ fontSize: 10, color: "var(--t3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>All-time total paid out</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--t1)" }}>PKR {fmt(lifetimeTotal)}</div>
+          <div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>All-Time Total Paid Out</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--t1)" }}>PKR {fmt(lifeTotal)}</div>
         </div>
-        <div style={{ display: "flex", gap: 32, textAlign: "right" }}>
+        <div style={{ display: "flex", gap: 20, textAlign: "right" }}>
           <div>
             <div style={{ fontSize: 10, color: "var(--t3)", marginBottom: 3 }}>Distribution</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--blue)" }}>PKR {fmt(account.lifetimeDistPkr)}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--blue)" }}>PKR {fmt(account.lifetimeDistPkr)}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: "var(--t3)", marginBottom: 3 }}>Commission</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--green)" }}>PKR {fmt(account.lifetimeCommPkr)}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--green)" }}>PKR {fmt(account.lifetimeCommPkr)}</div>
           </div>
         </div>
       </div>
 
-      {/* Pending distribution banner */}
+      {/* Pending distribution */}
       {pendingItem && (
-        <div style={{ background: "#FFFBEB", border: "0.5px solid #F59E0B", borderRadius: "var(--rl)", padding: "12px 18px", marginBottom: 14 }}>
+        <div style={{ background: "#FFFBEB", border: "0.5px solid #F59E0B", borderRadius: "var(--rl)", padding: "12px 16px", marginBottom: 14 }}>
           <div style={{ fontSize: 11, color: "#D97706", fontWeight: 600, marginBottom: 8 }}>
-            Pending distribution — if run now
+            <i className="ti ti-clock" style={{ fontSize: 12, marginRight: 4 }} />Pending — if distributed now
           </div>
-          <div style={{ display: "flex", gap: 32 }}>
+          <div style={{ display: "flex", gap: 24 }}>
             <div>
               <div style={{ fontSize: 10, color: "#92400E" }}>Distribution ({pendingItem.sharePct}%)</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#D97706" }}>PKR {fmt(pendingItem.distributionAmountPkr)}</div>
@@ -470,55 +339,489 @@ function AccountDetailPanel({
 
       {/* Distribution history */}
       <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
-        <div style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--b3)", fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>
-          Distribution history
+        <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--b3)", fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>
+          Distribution History
         </div>
         {isOperating ? (
           operatingHistory.length === 0 ? (
-            <div style={{ padding: "24px 18px", fontSize: 12, color: "var(--t3)", textAlign: "center" }}>
-              No distributions run yet
-            </div>
-          ) : (
-            operatingHistory.map((row, idx) => (
-              <div key={row.id} style={{ display: "flex", alignItems: "center", padding: "12px 18px", borderBottom: idx < operatingHistory.length - 1 ? "0.5px solid var(--b3)" : "none", gap: 12 }}>
-                <div style={{ minWidth: 110, flexShrink: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)" }}>
-                    {row.label || periodLabel(row.period)}
-                  </div>
-                  <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{fmtDate(row.runAt)}</div>
-                </div>
-                <div style={{ flex: 1, fontSize: 12, color: "var(--t3)" }}>
-                  Balance used: <span style={{ color: "var(--blue)" }}>PKR {fmt(row.operatingBalancePkr)}</span>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(row.totalDistributedPkr)}</div>
-                <span style={{ fontSize: 10, background: "var(--blue-bg)", color: "var(--blue)", padding: "2px 8px", borderRadius: 20, fontWeight: 500 }}>
-                  {row.itemCount} recipients
-                </span>
-              </div>
-            ))
-          )
-        ) : history.length === 0 ? (
-          <div style={{ padding: "24px 18px", fontSize: 12, color: "var(--t3)", textAlign: "center" }}>
-            No distribution history yet
-          </div>
-        ) : (
-          history.map((row, idx) => (
-            <div key={row.id} style={{ display: "flex", alignItems: "center", padding: "12px 18px", borderBottom: idx < history.length - 1 ? "0.5px solid var(--b3)" : "none", gap: 12 }}>
-              <div style={{ minWidth: 110, flexShrink: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)" }}>
+            <div style={{ padding: "28px 16px", fontSize: 12, color: "var(--t3)", textAlign: "center" }}>No distributions run yet</div>
+          ) : operatingHistory.map((row, idx) => (
+            <div key={row.id} style={{ display: "flex", alignItems: "center", padding: "11px 16px", borderBottom: idx < operatingHistory.length - 1 ? "0.5px solid var(--b3)" : "none", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {row.label || periodLabel(row.period)}
                 </div>
                 <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{fmtDate(row.runAt)}</div>
               </div>
-              <div style={{ flex: 1, fontSize: 12, color: "var(--t3)" }}>
-                Dist: <span style={{ color: "var(--blue)" }}>PKR {fmt(row.dist)}</span>
-                {row.comm > 0 && <> + Comm: <span style={{ color: "var(--green)" }}>PKR {fmt(row.comm)}</span></>}
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(row.totalDistributedPkr)}</div>
+                <div style={{ fontSize: 10, color: "var(--t3)" }}>{row.itemCount} recipients</div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(row.total)}</div>
-              <span style={{ fontSize: 10, background: "var(--green-bg)", color: "var(--green)", padding: "2px 8px", borderRadius: 20, fontWeight: 500 }}>Paid</span>
             </div>
           ))
-        )}
+        ) : history.length === 0 ? (
+          <div style={{ padding: "28px 16px", fontSize: 12, color: "var(--t3)", textAlign: "center" }}>No distribution history yet</div>
+        ) : history.map((row, idx) => (
+          <div key={row.id} style={{ display: "flex", alignItems: "center", padding: "11px 16px", borderBottom: idx < history.length - 1 ? "0.5px solid var(--b3)" : "none", gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {row.label || periodLabel(row.period)}
+              </div>
+              <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{fmtDate(row.runAt)}</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(row.total)}</div>
+              {row.comm > 0 && <div style={{ fontSize: 10, color: "var(--green)", marginTop: 1 }}>+PKR {fmt(row.comm)} comm</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Distribution Tab ─────────────────────────────────────────────────────────
+
+function DistributionTabContent({ onDistributed }: { onDistributed: () => void }) {
+  const { data: preview, loading, error, refetch: refetchPreview } = useDistributionPreview();
+  const { data: history, refetch: refetchHistory } = useDistributions();
+  const [confirmRun, setConfirmRun] = useState(false);
+  const [label, setLabel] = useState("");
+  const [notes, setNotes] = useState("");
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [runSuccess, setRunSuccess] = useState(false);
+  const { data: session } = useSession();
+
+  const canRun = ["super_admin", "admin"].includes(session?.user?.role ?? "");
+  const canDistribute = preview && preview.operatingBalancePkr > 0 && preview.warnings.length === 0;
+
+  async function handleRun() {
+    setRunning(true);
+    setRunError(null);
+    try {
+      await runDistributionRequest(label || undefined, notes || undefined);
+      setRunSuccess(true);
+      setConfirmRun(false);
+      setLabel("");
+      setNotes("");
+      await Promise.all([refetchPreview(), refetchHistory()]);
+      onDistributed();
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Distribution failed");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, gap: 10, color: "var(--t3)" }}>
+        <i className="ti ti-loader-2" style={{ fontSize: 22 }} />
+        <span style={{ fontSize: 13 }}>Loading distribution preview…</span>
+      </div>
+    );
+  }
+
+  if (error || !preview) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "var(--red)", fontSize: 13 }}>
+        {error ?? "Unable to load distribution preview"}
+      </div>
+    );
+  }
+
+  const reserveItems = preview.items.filter((i) => i.accountType === "company_reserve");
+  const stakeholderItems = preview.items.filter((i) => i.accountType === "stakeholder");
+  const unallocatedPct = +(100 - preview.totalStakeholderPct).toFixed(2);
+  const finalReserveTotal = preview.companyReservePoolPkr + preview.stakeholderRemainderPkr;
+  const operatingPkr = preview.operatingBalancePkr;
+  const hasBalance = operatingPkr > 0;
+
+  return (
+    <div>
+
+      {/* ── Hero bar ─────────────────────────────────────────────────────── */}
+      <div style={{
+        borderRadius: "var(--rl)",
+        background: "linear-gradient(135deg, #1e1b4b 0%, #2e1065 50%, #1e3a5f 100%)",
+        padding: "28px 32px",
+        marginBottom: 24,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        boxShadow: "0 4px 24px rgba(109,40,217,0.25)",
+        position: "relative", overflow: "hidden",
+      }}>
+        {/* Decorative orbs */}
+        <div style={{ position: "absolute", top: -40, right: 120, width: 160, height: 160, borderRadius: "50%", background: "rgba(109,40,217,0.2)", filter: "blur(40px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -30, right: 40, width: 120, height: 120, borderRadius: "50%", background: "rgba(14,165,233,0.15)", filter: "blur(30px)", pointerEvents: "none" }} />
+
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
+            Distribution Engine · Operating Balance
+          </div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 8 }}>
+            PKR {fmt(operatingPkr)}
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
+            {hasBalance
+              ? preview.totalCommissionPkr > 0
+                ? `Includes PKR ${fmt(preview.totalCommissionPkr)} in pending commissions`
+                : "No pending commissions — full balance is distributable"
+              : "No funds available to distribute"}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {hasBalance && preview.warnings.length === 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(16,185,129,0.2)", border: "0.5px solid rgba(16,185,129,0.4)", borderRadius: 20, padding: "6px 14px" }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981" }} />
+              <span style={{ fontSize: 12, color: "#6EE7B7", fontWeight: 500 }}>Ready to distribute</span>
+            </div>
+          )}
+          {preview.warnings.map((w, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.2)", border: "0.5px solid rgba(245,158,11,0.4)", borderRadius: 20, padding: "6px 14px" }}>
+              <i className="ti ti-alert-triangle" style={{ fontSize: 12, color: "#FCD34D" }} />
+              <span style={{ fontSize: 12, color: "#FCD34D", fontWeight: 500 }}>{w}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Main two-column layout ────────────────────────────────────────── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20, alignItems: "start" }}>
+
+        {/* ── LEFT: Waterfall visualization ─────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+
+          {/* Tier 1 card */}
+          <div style={{
+            background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)",
+            borderLeft: "3px solid #6D28D9", overflow: "hidden",
+          }}>
+            <div style={{ padding: "10px 18px", background: "rgba(109,40,217,0.04)", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: "#EDE9FE", color: "#6D28D9", letterSpacing: "0.05em" }}>TIER 1</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#6D28D9" }}>Company Reserve</span>
+              <span style={{ fontSize: 11, color: "var(--t3)" }}>· {preview.companyReservePct}% of total operating balance</span>
+            </div>
+            {reserveItems.map((item) => (
+              <div key={item.accountId} style={{ display: "flex", alignItems: "center", gap: 16, padding: "18px 20px" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <i className="ti ti-safe" style={{ fontSize: 18, color: "#6D28D9" }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--t1)", marginBottom: 6 }}>{item.accountName}</div>
+                  {/* Progress bar */}
+                  <div style={{ height: 6, background: "var(--b3)", borderRadius: 3, overflow: "hidden", maxWidth: 320 }}>
+                    <div style={{ width: `${item.sharePct}%`, height: "100%", background: "linear-gradient(90deg, #6D28D9, #8B5CF6)", borderRadius: 3 }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>{item.sharePct}% of balance</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#6D28D9", letterSpacing: "-0.02em" }}>PKR {fmt(item.distributionAmountPkr)}</div>
+                </div>
+              </div>
+            ))}
+            {/* Remaining pool */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", background: "var(--bg2)", borderTop: "0.5px dashed var(--b3)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <i className="ti ti-arrow-down" style={{ fontSize: 12, color: "var(--t3)" }} />
+                <span style={{ fontSize: 12, color: "var(--t2)" }}>Remaining pool passed to Tier 2</span>
+                <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 20, background: "var(--bg3)", color: "var(--t3)", border: "0.5px solid var(--b3)" }}>
+                  {(100 - preview.companyReservePct).toFixed(0)}%
+                </span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--t2)" }}>PKR {fmt(preview.stakeholderPoolPkr)}</span>
+            </div>
+          </div>
+
+          {/* Connector */}
+          <div style={{ display: "flex", justifyContent: "center", height: 28, alignItems: "center" }}>
+            <div style={{ width: 2, height: "100%", background: "var(--b3)", borderRadius: 1 }} />
+          </div>
+
+          {/* Tier 2 card */}
+          <div style={{
+            background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)",
+            borderLeft: "3px solid #059669", overflow: "hidden",
+          }}>
+            <div style={{ padding: "10px 18px", background: "rgba(5,150,105,0.04)", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: "#D1FAE5", color: "#059669", letterSpacing: "0.05em" }}>TIER 2</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#059669" }}>Stakeholder Pool</span>
+              <span style={{ fontSize: 11, color: "var(--t3)" }}>· PKR {fmt(preview.stakeholderPoolPkr)} divided by stakeholder %</span>
+            </div>
+
+            {/* Stakeholder grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1, background: "var(--b3)" }}>
+              {stakeholderItems.map((item) => (
+                <div key={item.accountId} style={{ background: "var(--bg1)", padding: "16px 20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%", background: "#D1FAE5",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 700, color: "#059669", flexShrink: 0,
+                    }}>
+                      {initials(item.ownerName ?? item.accountName)}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {item.ownerName ?? item.accountName}
+                      </div>
+                      {item.ownerName && item.ownerName !== item.accountName && (
+                        <div style={{ fontSize: 11, color: "var(--t3)" }}>{item.accountName}</div>
+                      )}
+                    </div>
+                    <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "#059669", background: "#D1FAE5", padding: "2px 8px", borderRadius: 20, flexShrink: 0 }}>
+                      {item.sharePct}%
+                    </span>
+                  </div>
+                  {/* Bar */}
+                  <div style={{ height: 4, background: "var(--b3)", borderRadius: 2, marginBottom: 8, overflow: "hidden" }}>
+                    <div style={{ width: `${item.sharePct}%`, height: "100%", background: "linear-gradient(90deg, #059669, #34D399)", borderRadius: 2 }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "#059669", letterSpacing: "-0.02em" }}>PKR {fmt(item.distributionAmountPkr)}</div>
+                      {item.commissionAmountPkr > 0 && (
+                        <div style={{ fontSize: 11, color: "var(--blue)", marginTop: 2 }}>
+                          + PKR {fmt(item.commissionAmountPkr)} commission
+                        </div>
+                      )}
+                    </div>
+                    {item.commissionAmountPkr > 0 && (
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 10, color: "var(--t3)" }}>Total payout</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)" }}>PKR {fmt(item.totalPkr)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Allocated / Unallocated summary */}
+            <div style={{ borderTop: "0.5px solid var(--b3)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", borderBottom: unallocatedPct > 0 ? "0.5px dashed var(--b3)" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: "#059669" }} />
+                  <span style={{ fontSize: 12, color: "var(--t2)" }}>Allocated to stakeholders</span>
+                  <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 20, background: "#D1FAE5", color: "#059669", fontWeight: 600 }}>
+                    {preview.totalStakeholderPct.toFixed(0)}%
+                  </span>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t2)" }}>
+                  PKR {fmt(stakeholderItems.reduce((s, i) => s + i.totalPkr, 0))}
+                </span>
+              </div>
+              {unallocatedPct > 0 && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", background: "rgba(245,158,11,0.05)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <i className="ti ti-corner-down-right" style={{ fontSize: 12, color: "#D97706" }} />
+                    <span style={{ fontSize: 12, color: "#D97706", fontWeight: 500 }}>Unallocated → Company Reserve</span>
+                    <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 20, background: "#FEF3C7", color: "#D97706", fontWeight: 600 }}>
+                      {unallocatedPct}%
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#D97706" }}>+ PKR {fmt(preview.stakeholderRemainderPkr)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Connector */}
+          <div style={{ display: "flex", justifyContent: "center", height: 28, alignItems: "center" }}>
+            <div style={{ width: 2, height: "100%", background: "var(--b3)", borderRadius: 1 }} />
+          </div>
+
+          {/* Final Reserve Total */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(109,40,217,0.08) 0%, rgba(109,40,217,0.03) 100%)",
+            border: "0.5px solid rgba(109,40,217,0.25)", borderRadius: "var(--rl)",
+            borderLeft: "3px solid #6D28D9",
+            padding: "18px 22px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <i className="ti ti-building-bank" style={{ fontSize: 18, color: "#6D28D9" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#6D28D9" }}>Final Company Reserve Total</div>
+                <div style={{ fontSize: 11, color: "#9D78E8", marginTop: 2 }}>
+                  {preview.companyReservePct}% initial{unallocatedPct > 0 ? ` + ${unallocatedPct}% unallocated` : ""}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "#6D28D9", letterSpacing: "-0.02em", lineHeight: 1 }}>
+                PKR {fmt(finalReserveTotal)}
+              </div>
+              {operatingPkr > 0 && (
+                <div style={{ fontSize: 11, color: "#9D78E8", marginTop: 4 }}>
+                  {((finalReserveTotal / operatingPkr) * 100).toFixed(1)}% of total operating balance
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ── RIGHT: Run panel + History ─────────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Run distribution panel */}
+          {canRun && (
+            <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 8 }}>
+                <i className="ti ti-arrows-split" style={{ fontSize: 14, color: "#6D28D9" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>Run Distribution</span>
+              </div>
+
+              <div style={{ padding: "18px" }}>
+                {runSuccess ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 0", textAlign: "center" }}>
+                    <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--green-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <i className="ti ti-circle-check" style={{ fontSize: 24, color: "var(--green)" }} />
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--green)" }}>Distribution completed!</div>
+                    <div style={{ fontSize: 12, color: "var(--t3)" }}>PKR {fmt(operatingPkr)} has been distributed.</div>
+                    <button className="btn-outline" style={{ fontSize: 12, height: 32 }} onClick={() => setRunSuccess(false)}>
+                      View updated balances
+                    </button>
+                  </div>
+                ) : !confirmRun ? (
+                  <>
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 11, color: "var(--t3)", marginBottom: 4 }}>Amount to distribute</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: hasBalance ? "#6D28D9" : "var(--t3)", letterSpacing: "-0.02em" }}>
+                        PKR {fmt(operatingPkr)}
+                      </div>
+                    </div>
+                    {!hasBalance ? (
+                      <div style={{ fontSize: 12, color: "var(--t3)", padding: "12px", background: "var(--bg2)", borderRadius: "var(--rm)", textAlign: "center" }}>
+                        No balance available to distribute
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmRun(true)}
+                        style={{
+                          width: "100%", height: 42, border: "none", borderRadius: "var(--rm)",
+                          background: "linear-gradient(135deg, #6D28D9, #7C3AED)",
+                          color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                          boxShadow: "0 2px 12px rgba(109,40,217,0.3)",
+                        }}
+                      >
+                        <i className="ti ti-arrows-split" style={{ fontSize: 15 }} />
+                        Run Distribution
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "0.5px solid #D97706", borderRadius: "var(--rm)", padding: "10px 12px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#D97706", marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                        <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} /> This cannot be undone
+                      </div>
+                      <div style={{ fontSize: 11, color: "#B45309" }}>
+                        PKR {fmt(operatingPkr)} will be distributed and the operating account will be zeroed.
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                      <input
+                        type="text"
+                        placeholder="Label (e.g. May 2026 Payout)"
+                        value={label}
+                        onChange={(e) => setLabel(e.target.value)}
+                        style={{ height: 34, padding: "0 10px", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", background: "var(--bg2)", fontSize: 12, color: "var(--t1)", outline: "none", fontFamily: "inherit" }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Notes (optional)"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        style={{ height: 34, padding: "0 10px", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", background: "var(--bg2)", fontSize: 12, color: "var(--t1)", outline: "none", fontFamily: "inherit" }}
+                      />
+                    </div>
+                    {runError && (
+                      <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 10 }}>{runError}</div>
+                    )}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn-outline" style={{ flex: 1, height: 36, fontSize: 12 }} onClick={() => { setConfirmRun(false); setRunError(null); }}>
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleRun}
+                        disabled={running}
+                        style={{
+                          flex: 2, height: 36, border: "none", borderRadius: "var(--rm)",
+                          background: running ? "var(--bg2)" : "linear-gradient(135deg, #6D28D9, #7C3AED)",
+                          color: running ? "var(--t3)" : "#fff", fontSize: 13, fontWeight: 600,
+                          cursor: running ? "not-allowed" : "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                        }}
+                      >
+                        {running
+                          ? <><i className="ti ti-loader-2" style={{ fontSize: 13 }} /> Running…</>
+                          : <><i className="ti ti-arrows-split" style={{ fontSize: 13 }} /> Confirm & Run</>
+                        }
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Summary mini-cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { label: "Reserve (Tier 1)", value: `PKR ${fmt(preview.companyReservePoolPkr)}`, color: "#6D28D9", bg: "#EDE9FE", icon: "ti-safe" },
+              { label: "Stakeholder Pool", value: `PKR ${fmt(preview.stakeholderPoolPkr)}`, color: "#059669", bg: "#D1FAE5", icon: "ti-users" },
+              { label: "Unallocated", value: `PKR ${fmt(preview.stakeholderRemainderPkr)}`, color: "#D97706", bg: "#FEF3C7", icon: "ti-corner-down-right" },
+              { label: "Final Reserve", value: `PKR ${fmt(finalReserveTotal)}`, color: "#6D28D9", bg: "#EDE9FE", icon: "ti-building-bank" },
+            ].map(({ label, value, color, bg, icon }) => (
+              <div key={label} style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <i className={`ti ${icon}`} style={{ fontSize: 11, color }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Past distributions */}
+          {history.length > 0 && (
+            <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--b3)", fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>
+                Past Distributions
+              </div>
+              {history.slice(0, 6).map((dist, idx) => (
+                <div
+                  key={dist.id}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: idx < Math.min(history.length, 6) - 1 ? "0.5px solid var(--b3)" : "none" }}
+                >
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <i className="ti ti-arrows-split" style={{ fontSize: 12, color: "#6D28D9" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {dist.label || new Date(dist.runAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{fmtDate(dist.runAt)}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>PKR {fmt(dist.totalDistributedPkr)}</div>
+                    <span style={{ fontSize: 9, background: "var(--green-bg)", color: "var(--green)", padding: "1px 6px", borderRadius: 20, fontWeight: 600 }}>Done</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );
@@ -527,141 +830,201 @@ function AccountDetailPanel({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AccountsPage() {
-  const { data: session } = useSession();
-  const { data: accounts, loading: accLoading, refetch: refetchAccounts } = useAccounts();
-  const { data: preview, loading: previewLoading, error: previewError, refetch: refetchPreview } = useDistributionPreview();
-  const { data: distributions, refetch: refetchDist } = useDistributions();
-  const [selected, setSelected] = useState<CrmAccount | null>(null);
+  const [tab, setTab] = useState<Tab>("accounts");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [addType, setAddType] = useState<"operating" | "company_reserve" | "stakeholder">("stakeholder");
   const [editAcc, setEditAcc] = useState<CrmAccount | null>(null);
 
-  // Keep selected in sync with fresh account data after refetch
-  useEffect(() => {
-    if (!selected) return;
-    const fresh = accounts.find((a) => a.id === selected.id);
-    if (fresh && fresh !== selected) setSelected(fresh);
-  }, [accounts]);
+  const { data: accounts, loading: accLoading, refetch: refetchAccounts } = useAccounts();
+  const { data: preview, refetch: refetchPreview } = useDistributionPreview();
+  const { data: distributions, refetch: refetchDist } = useDistributions();
 
-  const colorMap = useColorMap(accounts);
-  const canRun = ["super_admin", "admin"].includes(session?.user?.role ?? "");
+  const selectedAccount = accounts.find((a) => a.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (selectedId && !accounts.find((a) => a.id === selectedId)) setSelectedId(null);
+  }, [accounts, selectedId]);
+
+  // Close drawer when switching tabs
+  useEffect(() => { setSelectedId(null); }, [tab]);
+
+  function handleDistributed() { refetchPreview(); refetchDist(); refetchAccounts(); }
+  function handleCreated() { refetchAccounts(); setShowAdd(false); }
+  function handleUpdated(updated: CrmAccount) { refetchAccounts(); setSelectedId(updated.id); setEditAcc(null); }
 
   const operatingAcc = accounts.find((a) => a.isDefaultOperating) ?? accounts.find((a) => a.type === "operating") ?? null;
+  const reserveAcc = accounts.find((a) => a.type === "company_reserve") ?? null;
+  const stakeholderAccounts = accounts.filter((a) => a.type === "stakeholder");
+  const stakeholderBalance = stakeholderAccounts.reduce((s, a) => s + a.currentBalancePkr, 0);
 
-  function handleDistributed() {
-    refetchPreview();
-    refetchDist();
-    refetchAccounts();
-  }
-
-  function handleCreated() {
-    refetchAccounts();
-    setShowAdd(false);
-  }
-
-  function handleUpdated(updated: CrmAccount) {
-    refetchAccounts();
-    setSelected(updated);
-    setEditAcc(null);
-  }
-
-  const orderedAccounts = [
-    ...accounts.filter((a) => a.type === "operating"),
-    ...accounts.filter((a) => a.type === "company_reserve"),
-    ...accounts.filter((a) => a.type === "stakeholder"),
+  const TABS: { id: Tab; label: string; icon: string }[] = [
+    { id: "accounts",     label: "Accounts",     icon: "ti-building-bank" },
+    { id: "distribution", label: "Distribution", icon: "ti-arrows-split"  },
   ];
 
   return (
     <>
+      <style>{`
+        @keyframes drawerIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+      `}</style>
+
       <Topbar title="Accounts" />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        {/* ── Top: two-column summary ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, padding: "16px 20px 0", flexShrink: 0 }}>
-          <OperatingCard
-            account={operatingAcc}
-            preview={preview}
-            previewLoading={previewLoading}
-          />
-          <DistributionCard
-            preview={preview}
-            previewLoading={previewLoading}
-            previewError={previewError}
-            colorMap={colorMap}
-            canRun={canRun}
-            onDistributed={handleDistributed}
-          />
-        </div>
+      {/* ── Page shell ─────────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg3)" }}>
 
-        {/* ── Bottom: two-panel list + detail ── */}
-        <div style={{ flex: 1, display: "flex", overflow: "hidden", margin: "16px 20px 20px" }}>
-
-          {/* Left: account list */}
-          <div style={{ width: 240, minWidth: 240, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Accounts</div>
-              <button
-                className="btn-outline"
-                style={{ height: 24, fontSize: 10, padding: "0 8px" }}
-                onClick={() => { setAddType("stakeholder"); setShowAdd(true); }}
-              >
-                <i className="ti ti-plus" style={{ fontSize: 10 }} /> Add
-              </button>
+        {/* ── Header + Tabs bar ──────────────────────────────────────────────── */}
+        <div style={{ background: "var(--bg1)", borderBottom: "0.5px solid var(--b3)", flexShrink: 0 }}>
+          <div style={{ padding: "18px 28px 0", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+            {/* Page title */}
+            <div style={{ marginBottom: 0 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 2 }}>
+                Accounts
+              </h1>
+              <p style={{ fontSize: 12, color: "var(--t3)", marginBottom: 14 }}>
+                Manage operating, reserve and stakeholder accounts
+              </p>
+              {/* Tabs */}
+              <div style={{ display: "flex", gap: 0 }}>
+                {TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      padding: "8px 18px",
+                      border: "none", background: "none", cursor: "pointer",
+                      fontSize: 13, fontWeight: tab === t.id ? 600 : 400,
+                      color: tab === t.id ? "var(--blue)" : "var(--t3)",
+                      borderBottom: `2px solid ${tab === t.id ? "var(--blue)" : "transparent"}`,
+                      marginBottom: -1,
+                      transition: "color .15s, border-color .15s",
+                    }}
+                  >
+                    <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} />
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              {accLoading ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", padding: "24px 0", color: "var(--t3)", fontSize: 12 }}>
-                  <i className="ti ti-loader-2" style={{ fontSize: 15 }} /> Loading…
-                </div>
-              ) : (
-                orderedAccounts.map((a) => (
-                  <AccountItem
-                    key={a.id}
-                    account={a}
-                    selected={selected?.id === a.id}
-                    color={colorMap.get(a.id) ?? PALETTE[0]}
-                    onClick={() => setSelected(a)}
-                  />
-                ))
+            {/* Actions */}
+            <div style={{ paddingBottom: 14, display: "flex", gap: 8 }}>
+              {tab === "accounts" && (
+                <button className="btn-primary" style={{ height: 36, fontSize: 13, paddingInline: 16 }} onClick={() => setShowAdd(true)}>
+                  <i className="ti ti-plus" style={{ fontSize: 13 }} /> Add Account
+                </button>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Right: detail panel */}
-          <div style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", marginLeft: 14, overflow: "hidden", display: "flex" }}>
-            {!selected ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--t3)" }}>
-                <i className="ti ti-building-bank" style={{ fontSize: 40 }} />
-                <div style={{ fontSize: 14, color: "var(--t2)" }}>Select an account to view details</div>
-              </div>
-            ) : (
-              <div style={{ flex: 1, overflowY: "auto" }}>
-                <AccountDetailPanel
-                  account={selected}
-                  preview={preview}
-                  distributions={distributions}
-                  color={colorMap.get(selected.id) ?? PALETTE[0]}
-                  onEdit={setEditAcc}
+        {/* ── Tab content ────────────────────────────────────────────────────── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "22px 28px" }}>
+
+          {/* ── ACCOUNTS TAB ─────────────────────────────────────────────────── */}
+          {tab === "accounts" && (
+            <>
+              {/* Metric cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+                <MetricCard
+                  icon="ti-building-bank"
+                  label="Operating Balance"
+                  value={operatingAcc ? fmtPkr(operatingAcc.currentBalancePkr, true) : "PKR 0"}
+                  sub="Available to distribute"
+                  iconColor="var(--blue)"
+                  iconBg="var(--blue-bg)"
+                />
+                <MetricCard
+                  icon="ti-safe"
+                  label="Company Reserve"
+                  value={reserveAcc ? fmtPkr(reserveAcc.currentBalancePkr, true) : "PKR 0"}
+                  sub={reserveAcc ? `${Number(reserveAcc.sharePct)}% allocation` : "Not configured"}
+                  iconColor="#6D28D9"
+                  iconBg="#EDE9FE"
+                />
+                <MetricCard
+                  icon="ti-users"
+                  label="Stakeholder Balances"
+                  value={fmtPkr(stakeholderBalance, true)}
+                  sub={`${stakeholderAccounts.length} stakeholder${stakeholderAccounts.length !== 1 ? "s" : ""}`}
+                  iconColor="var(--green)"
+                  iconBg="var(--green-bg)"
+                />
+                <MetricCard
+                  icon="ti-chart-pie"
+                  label="Total Accounts"
+                  value={String(accounts.length)}
+                  sub={`${accounts.filter(a => a.type === "operating").length} operating · ${stakeholderAccounts.length} stakeholder`}
+                  iconColor="var(--teal)"
+                  iconBg="var(--teal-bg)"
                 />
               </div>
-            )}
-          </div>
+
+              {/* Accounts table */}
+              <AccountsTable
+                accounts={accounts}
+                selectedId={selectedId}
+                loading={accLoading}
+                onSelect={setSelectedId}
+              />
+            </>
+          )}
+
+          {/* ── DISTRIBUTION TAB ─────────────────────────────────────────────── */}
+          {tab === "distribution" && (
+            <DistributionTabContent onDistributed={handleDistributed} />
+          )}
+
         </div>
       </div>
 
-      <AddAccountModal
-        open={showAdd}
-        defaultType={addType}
-        onClose={() => setShowAdd(false)}
-        onCreated={handleCreated}
-      />
-      <EditAccountModal
-        open={!!editAcc}
-        account={editAcc}
-        onClose={() => setEditAcc(null)}
-        onUpdated={handleUpdated}
-      />
+      {/* ── Account detail drawer ──────────────────────────────────────────── */}
+      {selectedId && tab === "accounts" && (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }}
+            onClick={() => setSelectedId(null)}
+          />
+          <div style={{
+            position: "fixed", top: 0, right: 0, bottom: 0, width: 480,
+            background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)",
+            zIndex: 201, display: "flex", flexDirection: "column",
+            boxShadow: "-12px 0 48px rgba(0,0,0,0.12)",
+            animation: "drawerIn 0.2s cubic-bezier(0.22,1,0.36,1)",
+          }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px", borderBottom: "0.5px solid var(--b3)",
+              background: "var(--bg1)", flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Account Detail
+              </span>
+              <button
+                onClick={() => setSelectedId(null)}
+                style={{
+                  width: 28, height: 28, border: "none", background: "var(--bg2)",
+                  borderRadius: 6, cursor: "pointer", color: "var(--t2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <i className="ti ti-x" style={{ fontSize: 14 }} />
+              </button>
+            </div>
+            {selectedAccount
+              ? <AccountDetailContent account={selectedAccount} preview={preview} distributions={distributions} onEdit={(a) => setEditAcc(a)} />
+              : <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--t3)", fontSize: 12 }}>Loading…</div>
+            }
+          </div>
+        </>
+      )}
+
+      <AddAccountModal open={showAdd} defaultType="stakeholder" onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+      <EditAccountModal open={!!editAcc} account={editAcc} onClose={() => setEditAcc(null)} onUpdated={handleUpdated} />
     </>
   );
 }

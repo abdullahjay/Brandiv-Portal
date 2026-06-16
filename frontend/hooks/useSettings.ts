@@ -11,6 +11,7 @@ export interface AppSettings {
   logo_url?: string | null;
   commission_rate_first?: number;
   commission_rate_recurring?: number;
+  managing_commission_rate?: number;
   [key: string]: unknown;
 }
 

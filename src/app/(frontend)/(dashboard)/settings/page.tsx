@@ -269,6 +269,18 @@ function GeneralTab({ canEdit, onLogoChange }: { canEdit: boolean; onLogoChange?
             disabled={!canEdit}
           />
         </Field>
+        <Field label="Managing commission rate %" hint="Default: 10% — paid to the managing partner assigned on the project">
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.5"
+            value={String(form.managing_commission_rate ?? "")}
+            onChange={(e) => set("managing_commission_rate", e.target.value)}
+            placeholder="10"
+            disabled={!canEdit}
+          />
+        </Field>
       </div>
 
       {saveError && (

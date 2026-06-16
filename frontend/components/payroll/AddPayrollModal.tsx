@@ -4,12 +4,18 @@ import { useState, useEffect } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import PeriodSelect from "@frontend/components/ui/PeriodSelect";
 import { createPayrollRequest } from "@frontend/hooks/usePayroll";
-import type { PayrollRecord, ApiResponse, Employee } from "@frontend/types";
+import type { PayrollRecord, ApiResponse, Employee, EffectiveCompensation } from "@frontend/types";
 
 interface AddPayrollModalProps {
   open: boolean;
   onClose: () => void;
   onCreated: (record: PayrollRecord) => void;
+  prefill?: {
+    employeeId?: string;
+    period?: string;
+    grossPkr?: number;
+    defaultTaxPkr?: number;
+  };
 }
 
 interface UserOption {
@@ -27,6 +33,7 @@ interface FormData {
   employeeId: string;
   period: string;
   grossPkr: string;
+  taxPkr: string;
   deductions: string;
   notes: string;
 }
@@ -48,12 +55,19 @@ function currentPeriod() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function prevPeriod(p: string) {
+  const [y, m] = p.split("-").map(Number);
+  if (m === 1) return `${y - 1}-12`;
+  return `${y}-${String(m - 1).padStart(2, "0")}`;
+}
+
 const EMPTY: FormData = {
   type: "employee",
   userId: "",
   employeeId: "",
   period: currentPeriod(),
   grossPkr: "",
+  taxPkr: "0",
   deductions: "0",
   notes: "",
 };
@@ -64,40 +78,115 @@ const SectionHead = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-export default function AddPayrollModal({ open, onClose, onCreated }: AddPayrollModalProps) {
+type SourceHint = "compensation" | "carry_forward" | "base_salary" | null;
+
+export default function AddPayrollModal({ open, onClose, onCreated, prefill }: AddPayrollModalProps) {
   const [form, setForm] = useState<FormData>({ ...EMPTY });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [sourceHint, setSourceHint] = useState<SourceHint>(null);
+  const [compLoading, setCompLoading] = useState(false);
 
+  // Reset form and set basic prefill when modal opens/closes
   useEffect(() => {
-    if (!open) { setForm({ ...EMPTY }); setError(null); }
+    if (!open) { setForm({ ...EMPTY }); setError(null); setSourceHint(null); return; }
+    setForm({
+      ...EMPTY,
+      type: "employee",
+      employeeId: prefill?.employeeId ?? "",
+      period: prefill?.period ?? currentPeriod(),
+    });
   }, [open]);
 
+  // Load users + employees lists once when modal opens
   useEffect(() => {
     if (!open) return;
     fetch("/api/users")
       .then((r) => r.json())
-      .then((json: ApiResponse<UserOption[]>) => {
-        if (json.success) setUsers(json.data ?? []);
-      })
+      .then((json: ApiResponse<UserOption[]>) => { if (json.success) setUsers(json.data ?? []); })
       .catch(() => {});
-    fetch("/api/employees?pageSize=200")
+    fetch("/api/employees?status=active&pageSize=200")
       .then((r) => r.json())
-      .then((json: ApiResponse<{ items: Employee[] }>) => {
-        if (json.success) setEmployees(json.data?.items ?? []);
-      })
+      .then((json: ApiResponse<{ items: Employee[] }>) => { if (json.success) setEmployees(json.data?.items ?? []); })
       .catch(() => {});
   }, [open]);
+
+  // Auto-fill amounts whenever employee or period changes — compensation → carry-forward → base salary
+  useEffect(() => {
+    if (!open || !form.employeeId || form.type !== "employee") {
+      if (form.type !== "employee") setSourceHint(null);
+      return;
+    }
+
+    setCompLoading(true);
+    setSourceHint(null);
+
+    // 1. Effective compensation for the selected period
+    fetch(`/api/compensation/effective?period=${form.period}`)
+      .then((r) => r.json())
+      .then((json: ApiResponse<EffectiveCompensation[]>) => {
+        if (json.success) {
+          const comp = (json.data ?? []).find((c) => c.employeeId === form.employeeId);
+          if (comp?.baseSalary) {
+            setForm((f) => ({
+              ...f,
+              grossPkr: String(comp.baseSalary! / 100),
+              taxPkr: comp.defaultTaxPkr ? String(comp.defaultTaxPkr / 100) : "0",
+              deductions: "0",
+            }));
+            setSourceHint("compensation");
+            setCompLoading(false);
+            return;
+          }
+        }
+
+        // 2. Carry forward from previous month's payroll record
+        const prev = prevPeriod(form.period);
+        fetch(`/api/payroll?period=${prev}&pageSize=200`)
+          .then((r) => r.json())
+          .then((json: ApiResponse<{ items: PayrollRecord[] }>) => {
+            const prevRecord = (json.data?.items ?? []).find((r) => r.employee?.id === form.employeeId);
+            if (prevRecord) {
+              setForm((f) => ({
+                ...f,
+                grossPkr: String(prevRecord.grossPkr / 100),
+                taxPkr: String(prevRecord.taxPkr / 100),
+                deductions: String((prevRecord.deductions ?? 0) / 100),
+              }));
+              setSourceHint("carry_forward");
+              setCompLoading(false);
+              return;
+            }
+
+            // 3. Fall back to employee's base salary field
+            const emp = employees.find((e) => e.id === form.employeeId);
+            if (emp?.baseSalary) {
+              setForm((f) => ({
+                ...f,
+                grossPkr: String(emp.baseSalary! / 100),
+                taxPkr: emp.defaultTaxPkr ? String(emp.defaultTaxPkr / 100) : "0",
+                deductions: "0",
+              }));
+              setSourceHint("base_salary");
+            }
+            setCompLoading(false);
+          })
+          .catch(() => setCompLoading(false));
+      })
+      .catch(() => setCompLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.employeeId, form.period, form.type, open]);
 
   function set<K extends keyof FormData>(field: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
   const gross = parseFloat(form.grossPkr) || 0;
+  const tax = parseFloat(form.taxPkr) || 0;
   const deductions = parseFloat(form.deductions) || 0;
-  const netPkr = Math.max(0, gross - deductions);
+  const netPkr = Math.max(0, gross - tax - deductions);
 
   const selectedEmployee = form.type === "employee"
     ? employees.find((e) => e.id === form.employeeId)
@@ -109,8 +198,8 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
     try {
       const payload =
         form.type === "employee"
-          ? { employeeId: form.employeeId, period: form.period, grossPkr: gross, deductions, notes: form.notes || undefined }
-          : { userId: form.userId, period: form.period, grossPkr: gross, deductions, notes: form.notes || undefined };
+          ? { employeeId: form.employeeId, period: form.period, grossPkr: gross, taxPkr: tax, deductions, notes: form.notes || undefined }
+          : { userId: form.userId, period: form.period, grossPkr: gross, taxPkr: tax, deductions, notes: form.notes || undefined };
 
       const record = await createPayrollRequest(payload);
       onCreated(record);
@@ -204,19 +293,32 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
         </Field>
       </div>
 
-      {/* Show employee base salary hint */}
-      {selectedEmployee?.baseSalary && (
-        <div style={{ fontSize: 11, color: "var(--t3)", marginBottom: 14, marginTop: -8 }}>
-          Base salary on record: <strong style={{ color: "var(--t2)" }}>
-            PKR {(selectedEmployee.baseSalary / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-          </strong>
-          <button
-            type="button"
-            onClick={() => set("grossPkr", String(selectedEmployee.baseSalary! / 100))}
-            style={{ marginLeft: 8, fontSize: 11, color: "var(--blue)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-          >
-            Use this
-          </button>
+      {/* Source hint banner */}
+      {form.employeeId && form.type === "employee" && (
+        <div style={{ marginBottom: 14, marginTop: -8, minHeight: 22 }}>
+          {compLoading ? (
+            <span style={{ fontSize: 11, color: "var(--t3)" }}>
+              <i className="ti ti-loader-2" style={{ fontSize: 11, marginRight: 4 }} />
+              Looking up compensation…
+            </span>
+          ) : sourceHint === "compensation" ? (
+            <span style={{ fontSize: 11, color: "var(--green)", display: "flex", alignItems: "center", gap: 4 }}>
+              <i className="ti ti-rosette-discount-check" style={{ fontSize: 13 }} />
+              Pre-filled from compensation history for this period
+            </span>
+          ) : sourceHint === "carry_forward" ? (
+            <span style={{ fontSize: 11, color: "var(--blue)", display: "flex", alignItems: "center", gap: 4 }}>
+              <i className="ti ti-history" style={{ fontSize: 13 }} />
+              Carried forward from last month's payroll record
+            </span>
+          ) : sourceHint === "base_salary" ? (
+            <span style={{ fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 4 }}>
+              <i className="ti ti-user" style={{ fontSize: 13 }} />
+              Pre-filled from employee base salary — no compensation history found
+            </span>
+          ) : selectedEmployee && !compLoading ? (
+            <span style={{ fontSize: 11, color: "var(--t3)" }}>No compensation or prior record found. Enter amounts manually.</span>
+          ) : null}
         </div>
       )}
 
@@ -233,7 +335,17 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
             placeholder="e.g. 150000"
           />
         </Field>
-        <Field label="Deductions (PKR)">
+        <Field label="Income tax (PKR)">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={form.taxPkr}
+            onChange={(e) => set("taxPkr", e.target.value)}
+            placeholder="0"
+          />
+        </Field>
+        <Field label="Other deductions (PKR)">
           <input
             type="number"
             min="0"
@@ -246,11 +358,19 @@ export default function AddPayrollModal({ open, onClose, onCreated }: AddPayroll
       </div>
 
       {gross > 0 && (
-        <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 11, color: "var(--green)" }}>Net payable</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>
-            PKR {netPkr.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tax > 0 || deductions > 0 ? 6 : 0 }}>
+            <div style={{ fontSize: 11, color: "var(--green)" }}>Net payable</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>
+              PKR {netPkr.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
           </div>
+          {(tax > 0 || deductions > 0) && (
+            <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", display: "flex", gap: 12 }}>
+              {tax > 0 && <span>Tax: PKR {tax.toLocaleString()}</span>}
+              {deductions > 0 && <span>Deductions: PKR {deductions.toLocaleString()}</span>}
+            </div>
+          )}
         </div>
       )}
 

@@ -8,7 +8,8 @@ export const createEmployeeSchema = z.object({
   phone: z.string().max(50).optional(),
   cnic: z.string().max(20).optional(),
   joinDate: z.string().optional().nullable(),
-  baseSalary: z.coerce.number().min(0).optional().nullable(),
+  baseSalary:    z.coerce.number().min(0).optional().nullable(),
+  defaultTaxPkr: z.coerce.number().min(0).optional().nullable(),
   status: z.enum(["active", "inactive"]).default("active"),
   notes: z.string().optional(),
 });

@@ -4,6 +4,7 @@ import {
   createPayrollRecord,
   updatePayrollRecord,
   markPayrollPaid,
+  revertPayrollToPending,
   payrollDuplicate,
   runPayrollBatch,
 } from "@backend/repositories/payrollRepository";
@@ -41,6 +42,15 @@ export async function payPayrollRecord(id: string) {
     throw new Error("Payroll record is already marked as paid");
   }
   return markPayrollPaid(id);
+}
+
+export async function revertPayrollRecord(id: string) {
+  const existing = await findPayrollById(id);
+  if (!existing) return null;
+  if (existing.status !== "paid") {
+    throw new Error("Only paid records can be reverted to pending");
+  }
+  return revertPayrollToPending(id);
 }
 
 export async function runBatchPayroll(input: RunPayrollInput) {

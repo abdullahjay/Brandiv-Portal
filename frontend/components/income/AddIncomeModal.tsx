@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import { createIncomeRequest } from "@frontend/hooks/useIncome";
 import { DEFAULT_FX_RATES } from "@frontend/constants";
-import type { IncomeRecord, ApiResponse, CrmAccount } from "@frontend/types";
+import type { IncomeRecord, ApiResponse, CrmAccount, Client, Project } from "@frontend/types";
 
 interface AddIncomeModalProps {
   open: boolean;
@@ -31,7 +31,7 @@ interface FormData {
 }
 
 interface ClientOption { id: string; companyName: string; currency: string }
-interface InvoiceOption { id: string; invoiceNumber: string; totalAmount: number; currency: string; status: string }
+interface InvoiceOption { id: string; invoiceNumber: string; totalAmount: number; currency: string; status: string; paymentNumber: number; project?: { id: string; name: string } | null }
 interface UserOption { id: string; name: string }
 
 const today = new Date().toISOString().slice(0, 10);
@@ -45,6 +45,7 @@ const EMPTY: FormData = {
 
 const CURRENCIES = ["USD", "GBP", "EUR", "AED", "PKR"];
 const PAYMENT_METHODS = ["Bank Transfer", "Wise", "PayPal", "Payoneer", "Crypto", "Cheque", "Cash", "Other"];
+const COMMISSION_RATES: Record<string, number> = { first: 15, recurring: 5 };
 const INCOME_TYPES = ["Client payment", "Milestone payment", "Retainer fee", "Consulting", "License fee", "Support", "Other"];
 const RATE_SOURCES = ["Manual entry", "SBP rate", "Bank rate", "Other"];
 
@@ -76,10 +77,13 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
   const [operatingAccounts, setOperatingAccounts] = useState<CrmAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsChecked, setAccountsChecked] = useState(false);
+  const [clientDetails, setClientDetails] = useState<Client | null>(null);
+  const [managingPartner, setManagingPartner] = useState<{ id: string; name: string } | null>(null);
+  const [managingRatePct, setManagingRatePct] = useState(10);
 
   // Reset on close
   useEffect(() => {
-    if (!open) { setForm({ ...EMPTY }); setError(null); setInvoices([]); setAccountsChecked(false); }
+    if (!open) { setForm({ ...EMPTY }); setError(null); setInvoices([]); setAccountsChecked(false); setClientDetails(null); setManagingPartner(null); }
   }, [open]);
 
   // On open: fetch operating accounts + clients
@@ -101,8 +105,26 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
         .then((json: ApiResponse<{ items: ClientOption[] }>) => {
           if (json.success) setClients(json.data!.items);
         }),
+      fetch("/api/settings")
+        .then(r => r.json())
+        .then((json: ApiResponse<Record<string, unknown>>) => {
+          if (json.success && json.data) {
+            const rate = Number((json.data as Record<string, unknown>).managing_commission_rate ?? 10);
+            if (!isNaN(rate) && rate > 0) setManagingRatePct(rate);
+          }
+        })
+        .catch(() => {}),
     ]).finally(() => { setAccountsLoading(false); setAccountsChecked(true); });
   }, [open]);
+
+  // Fetch full client details (for commission info) when client changes
+  useEffect(() => {
+    if (!form.clientId) { setClientDetails(null); setManagingPartner(null); return; }
+    fetch(`/api/clients/${form.clientId}`)
+      .then(r => r.json())
+      .then((json: ApiResponse<Client>) => { if (json.success) setClientDetails(json.data!); })
+      .catch(() => {});
+  }, [form.clientId]);
 
   // Fetch invoices when client changes
   useEffect(() => {
@@ -116,12 +138,24 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
       }).catch(() => {});
   }, [form.clientId]);
 
-  // Auto-fill amount + currency when invoice selected
+  // Auto-fill amount + currency when invoice selected; also resolve managing partner
   useEffect(() => {
-    if (!form.invoiceId) return;
+    if (!form.invoiceId) { setManagingPartner(null); return; }
     const inv = invoices.find(i => i.id === form.invoiceId);
-    if (inv) { set("originalAmount", String(inv.totalAmount / 100)); set("originalCurrency", inv.currency); }
-  }, [form.invoiceId]);
+    if (!inv) return;
+    set("originalAmount", String(inv.totalAmount / 100));
+    set("originalCurrency", inv.currency);
+    if (inv.project?.id) {
+      fetch(`/api/projects/${inv.project.id}`)
+        .then(r => r.json())
+        .then((json: ApiResponse<Project>) => {
+          setManagingPartner(json.success ? (json.data?.managingPartner ?? null) : null);
+        })
+        .catch(() => { setManagingPartner(null); });
+    } else {
+      setManagingPartner(null);
+    }
+  }, [form.invoiceId, invoices]);
 
   // Auto-fill rate when currency changes
   useEffect(() => {
@@ -145,6 +179,14 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
   const defaultOpAcc = operatingAccounts.find(a => a.isDefaultOperating) ?? operatingAccounts[0] ?? null;
   const hasOpAccount = !!defaultOpAcc;
 
+  // Commission preview
+  const hasPartnerCommission = clientDetails?.commissionRule !== "none" && !!clientDetails?.partner;
+  const selectedInvoice = form.invoiceId ? invoices.find(i => i.id === form.invoiceId) : null;
+  const partnerRate = (selectedInvoice?.paymentNumber ?? 1) === 1 ? COMMISSION_RATES.first : COMMISSION_RATES.recurring;
+  const estimatedPartnerCommission = hasPartnerCommission ? netPkr * partnerRate / 100 : 0;
+  const hasManagingCommission = hasPartnerCommission && !!managingPartner;
+  const estimatedManagingCommission = hasManagingCommission ? netPkr * managingRatePct / 100 : 0;
+
   async function handleSubmit() {
     setSaving(true); setError(null);
     try {
@@ -159,7 +201,7 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
         whtPct: parseFloat(form.whtPct) || 0,
         gstPct: parseFloat(form.gstPct) || 0,
         bankChargesPkr: parseFloat(form.bankChargesPkr) || 0,
-        paymentMethod: form.paymentMethod || undefined,
+        paymentMethod: form.paymentMethod,
         transactionRef: form.transactionRef || undefined,
         receivedAt: form.receivedAt,
         incomeType: form.incomeType || undefined,
@@ -174,7 +216,7 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
     }
   }
 
-  const canSubmit = !!(hasOpAccount && form.clientId && amount > 0 && rate > 0 && form.receivedAt && netPkr > 0);
+  const canSubmit = !!(hasOpAccount && form.clientId && amount > 0 && rate > 0 && form.receivedAt && netPkr > 0 && form.paymentMethod);
 
   const footer = !hasOpAccount && accountsChecked ? (
     <button className="btn-outline" onClick={onClose}>Close</button>
@@ -255,7 +297,7 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
           </div>
 
           <div className="f2">
-            <Field label="Payment method">
+            <Field label="Payment method" required>
               <select value={form.paymentMethod} onChange={(e) => set("paymentMethod", e.target.value)}>
                 <option value="">Select method</option>
                 {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -322,6 +364,43 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
               </div>
             </div>
           </div>
+
+          {/* Commission preview */}
+          {hasPartnerCommission && netPkr > 0 && (
+            <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", marginBottom: 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                <i className="ti ti-percentage" style={{ fontSize: 12 }} /> Commission breakdown
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
+                  <span>
+                    {clientDetails?.partner?.name}
+                    <span style={{ opacity: 0.7, fontSize: 11, marginLeft: 5 }}>
+                      {partnerRate}% · {(selectedInvoice?.paymentNumber ?? 1) === 1 ? "first payment" : "recurring"}
+                    </span>
+                  </span>
+                  <span style={{ fontWeight: 600 }}>PKR {fmt(estimatedPartnerCommission)}</span>
+                </div>
+                {hasManagingCommission && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
+                    <span>
+                      {managingPartner?.name}
+                      <span style={{ opacity: 0.7, fontSize: 11, marginLeft: 5 }}>
+                        {managingRatePct}% · managing
+                      </span>
+                    </span>
+                    <span style={{ fontWeight: 600 }}>PKR {fmt(estimatedManagingCommission)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {clientDetails && !hasPartnerCommission && (
+            <div style={{ fontSize: 11, color: "var(--t3)", marginBottom: 14, display: "flex", alignItems: "center", gap: 5 }}>
+              <i className="ti ti-info-circle" style={{ fontSize: 12 }} /> No commission applies to this client
+            </div>
+          )}
 
           {/* ── ACCOUNT & NOTES ──────────────────────────────────────── */}
           <SectionHead>Account &amp; notes</SectionHead>

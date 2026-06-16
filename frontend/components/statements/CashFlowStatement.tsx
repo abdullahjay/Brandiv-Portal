@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPkr } from "@frontend/lib/currency";
 import { useCashFlow } from "@frontend/hooks/useStatements";
 import type { CashFlowOutflow } from "@frontend/types";
 
@@ -48,7 +49,7 @@ export default function CashFlowStatement({ period }: Props) {
           <div key={label} style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "var(--t2)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
             <div style={{ fontSize: 20, fontWeight: 700, color }}>
-              {label === "Net cash flow" && value < 0 ? "−" : ""}PKR {fmt(value)}
+              {fmtPkr(value)}
             </div>
             {label !== "Net cash flow" && label !== (data.operatingAccountName ?? "Operating balance") && (
               <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 3 }}>
@@ -138,7 +139,7 @@ export default function CashFlowStatement({ period }: Props) {
       <div style={{ marginTop: 16, padding: "14px 20px", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>Net cash flow for {period}</span>
         <span style={{ fontSize: 18, fontWeight: 800, color: data.netCashFlowPkr >= 0 ? "var(--blue)" : "var(--red)" }}>
-          {data.netCashFlowPkr < 0 ? "−" : "+"}PKR {fmt(Math.abs(data.netCashFlowPkr))}
+          {fmtPkr(data.netCashFlowPkr)}
         </span>
       </div>
     </div>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import { createProjectRequest } from "@frontend/hooks/useProjects";
 import { useAllLookups, lookupOptions } from "@frontend/hooks/useLookups";
 import { useClients } from "@frontend/hooks/useClients";
-import type { Project } from "@frontend/types";
+import type { Project, CrmAccount, ApiResponse } from "@frontend/types";
 
 interface AddProjectModalProps {
   open: boolean;
@@ -23,6 +23,7 @@ interface FormData {
   startDate: string;
   deadline: string;
   managerId: string;
+  managingPartnerId: string;
   description: string;
   commissionExempt: boolean;
 }
@@ -36,6 +37,7 @@ const EMPTY: FormData = {
   startDate: "",
   deadline: "",
   managerId: "",
+  managingPartnerId: "",
   description: "",
   commissionExempt: false,
 };
@@ -69,12 +71,21 @@ export default function AddProjectModal({
   const [form, setForm] = useState<FormData>({ ...EMPTY, clientId: defaultClientId ?? "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stakeholders, setStakeholders] = useState<CrmAccount[]>([]);
 
   const { data: lookupMap, loading: lookupsLoading } = useAllLookups();
   const { data: clientsData } = useClients({ status: "active" });
   const clients = clientsData?.items ?? [];
   const currencies = lookupOptions(lookupMap, "currency");
   const projectTypes = lookupOptions(lookupMap, "project_type");
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/accounts?type=stakeholder")
+      .then((r) => r.json())
+      .then((json: ApiResponse<CrmAccount[]>) => { if (json.success) setStakeholders(json.data!); })
+      .catch(() => {});
+  }, [open]);
 
   function set(field: keyof FormData, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -104,6 +115,7 @@ export default function AddProjectModal({
         deadline: form.deadline || undefined,
         description: form.description || undefined,
         commissionExempt: form.commissionExempt,
+        managingPartnerId: form.managingPartnerId || null,
         status: "active",
       });
       onCreated(project);
@@ -233,6 +245,18 @@ export default function AddProjectModal({
           placeholder="Project scope and details…"
         />
       </Field>
+
+      <Field label="Managing partner">
+        <select value={form.managingPartnerId} onChange={(e) => set("managingPartnerId", e.target.value)}>
+          <option value="">None</option>
+          {stakeholders.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      </Field>
+      <div style={{ fontSize: 11, color: "var(--t3)", marginTop: -10, marginBottom: 4 }}>
+        The partner responsible for managing this project. A managing commission will be calculated automatically when income is recorded.
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
         <input

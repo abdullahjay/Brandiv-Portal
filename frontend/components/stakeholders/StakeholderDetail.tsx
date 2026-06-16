@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { fmtPkr, pkrColor } from "@frontend/lib/currency";
 import { updateAccountRequest, deleteAccountRequest } from "@frontend/hooks/useAccounts";
 import type { CrmAccount, ApiResponse } from "@frontend/types";
-
-function fmt(n: number) {
-  return (n / 100).toLocaleString("en-PK", { maximumFractionDigits: 0 });
-}
 
 interface UserOption { id: string; name: string; email: string; role: string; }
 
@@ -195,9 +192,9 @@ export default function StakeholderDetail({ stakeholder, onUpdated, onDeleted }:
 
       {/* Metrics */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-        <Metric label="Current balance" value={`PKR ${fmt(stakeholder.currentBalancePkr)}`} />
-        <Metric label="Lifetime distributed" value={`PKR ${fmt(stakeholder.lifetimeDistPkr)}`} />
-        <Metric label="Lifetime commissions" value={`PKR ${fmt(stakeholder.lifetimeCommPkr)}`} color="var(--green)" />
+        <Metric label="Current balance" value={fmtPkr(stakeholder.currentBalancePkr)} color={pkrColor(stakeholder.currentBalancePkr)} />
+        <Metric label="Lifetime distributed" value={fmtPkr(stakeholder.lifetimeDistPkr)} />
+        <Metric label="Lifetime commissions" value={fmtPkr(stakeholder.lifetimeCommPkr)} color="var(--green)" />
       </div>
 
       {/* Share info */}

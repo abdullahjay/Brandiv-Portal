@@ -117,7 +117,7 @@ export async function deleteExpense(id: string) {
 }
 
 export async function expenseExists(id: string): Promise<boolean> {
-  return (await prisma.expense.count({ where: { id } })) > 0;
+  return !!(await prisma.expense.findUnique({ where: { id }, select: { id: true } }));
 }
 
 export async function getExpenseSummaryByPeriod(period: string) {

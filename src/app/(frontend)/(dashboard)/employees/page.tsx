@@ -398,21 +398,11 @@ export default function EmployeesPage() {
                     {[selected.designation, selected.department].filter(Boolean).join(" · ") || "No designation"}
                   </div>
                   <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3,
-                      background: selected.status === "active" ? "#ECFDF5" : "var(--bg2)",
-                      color: selected.status === "active" ? "#059669" : "var(--t3)",
-                      textTransform: "uppercase", letterSpacing: "0.05em",
-                    }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3, background: selected.status === "active" ? "#ECFDF5" : "var(--bg2)", color: selected.status === "active" ? "#059669" : "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       {selected.status}
                     </span>
                     {selected.department && (
-                      <span style={{
-                        fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3,
-                        background: deptColor(selected.department).bg,
-                        color: deptColor(selected.department).fg,
-                        textTransform: "uppercase", letterSpacing: "0.05em",
-                      }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3, background: deptColor(selected.department).bg, color: deptColor(selected.department).fg, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                         {selected.department}
                       </span>
                     )}
@@ -432,11 +422,7 @@ export default function EmployeesPage() {
                         <i className="ti ti-user-check" style={{ fontSize: 12 }} /> Reactivate
                       </button>
                     )}
-                    <button
-                      className="btn-outline"
-                      style={{ color: "var(--red)", borderColor: "var(--red)" }}
-                      onClick={() => { setDeleteConfirm(true); setDeactivateConfirm(false); }}
-                    >
+                    <button className="btn-outline" style={{ color: "var(--red)", borderColor: "var(--red)" }} onClick={() => { setDeleteConfirm(true); setDeactivateConfirm(false); }}>
                       <i className="ti ti-trash" style={{ fontSize: 12 }} /> Delete
                     </button>
                   </div>
@@ -450,7 +436,6 @@ export default function EmployeesPage() {
                     {actionError}
                   </div>
                 )}
-
                 {deactivateConfirm && (
                   <div style={{ background: "var(--red-bg)", border: "0.5px solid var(--red)", borderRadius: "var(--rm)", padding: "12px 14px", marginBottom: 16 }}>
                     <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 600, marginBottom: 8 }}>Deactivate {selected.name}?</div>
@@ -463,38 +448,29 @@ export default function EmployeesPage() {
                     </div>
                   </div>
                 )}
-
                 {deleteConfirm && (
                   <div style={{ background: "var(--red-bg)", border: "1px solid var(--red)", borderRadius: "var(--rm)", padding: "12px 14px", marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                       <i className="ti ti-alert-triangle" style={{ fontSize: 14, color: "var(--red)" }} />
                       <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 700 }}>Permanently delete {selected.name}?</div>
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 12 }}>
-                      This will permanently remove the employee and cannot be undone.
-                    </div>
+                    <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 12 }}>This will permanently remove the employee and cannot be undone.</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button className="btn-outline" style={{ fontSize: 11 }} onClick={() => setDeleteConfirm(false)}>Cancel</button>
-                      <button
-                        className="btn-primary"
-                        style={{ fontSize: 11, background: "var(--red)", borderColor: "var(--red)" }}
-                        onClick={handleDelete}
-                        disabled={deleting}
-                      >
+                      <button className="btn-primary" style={{ fontSize: 11, background: "var(--red)", borderColor: "var(--red)" }} onClick={handleDelete} disabled={deleting}>
                         {deleting ? "Deleting…" : "Yes, delete permanently"}
                       </button>
                     </div>
                   </div>
                 )}
-
                 <div className="info-grid">
                   {[
-                    { label: "Email", value: selected.email ?? "—", icon: "ti-mail" },
-                    { label: "Phone", value: selected.phone ?? "—", icon: "ti-phone" },
-                    { label: "CNIC", value: selected.cnic ?? "—", icon: "ti-id" },
-                    { label: "Joined", value: fmtDate(selected.joinDate), icon: "ti-calendar" },
-                    { label: "Base salary", value: selected.baseSalary != null ? fmt(selected.baseSalary) + "/mo" : "—", icon: "ti-currency-rupee" },
-                    { label: "Member since", value: fmtDate(selected.createdAt), icon: "ti-clock" },
+                    { label: "Email",        value: selected.email   ?? "—", icon: "ti-mail"          },
+                    { label: "Phone",        value: selected.phone   ?? "—", icon: "ti-phone"         },
+                    { label: "CNIC",         value: selected.cnic    ?? "—", icon: "ti-id"            },
+                    { label: "Joined",       value: fmtDate(selected.joinDate),  icon: "ti-calendar"  },
+                    { label: "Base salary",  value: selected.baseSalary != null ? fmt(selected.baseSalary) + "/mo" : "—", icon: "ti-currency-rupee" },
+                    { label: "Member since", value: fmtDate(selected.createdAt), icon: "ti-clock"     },
                   ].map((item) => (
                     <div key={item.label} className="info-cell">
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
@@ -505,7 +481,6 @@ export default function EmployeesPage() {
                     </div>
                   ))}
                 </div>
-
                 {selected.notes && (
                   <div style={{ background: "var(--bg2)", borderRadius: "var(--rm)", padding: "12px 14px" }}>
                     <div style={{ fontSize: 10, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Notes</div>

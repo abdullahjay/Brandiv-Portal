@@ -254,10 +254,12 @@ model Project {
   billingCycleDay Int?
   createdAt       DateTime      @default(now())
 
-  clientId  String
-  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  managerId String?
-  manager   User?  @relation(fields: [managerId], references: [id])
+  clientId          String
+  client            Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  managerId         String?
+  manager           User?       @relation(fields: [managerId], references: [id])
+  managingPartnerId String?
+  managingPartner   CrmAccount? @relation("ProjectManagingPartner", fields: [managingPartnerId], references: [id])
 
   invoices    Invoice[]
   milestones  Milestone[]
@@ -267,6 +269,7 @@ model Project {
 
   @@index([clientId])
   @@index([managerId])
+  @@index([managingPartnerId])
   @@index([status])
   @@map("projects")
 }
@@ -292,6 +295,9 @@ model Invoice {
   invoiceNumber  String        @unique @db.VarChar(50)
   currency       String        @default("USD") @db.VarChar(3)
   subtotal       BigInt        @default(0)
+  discountType   String        @default("pct") @db.VarChar(10)
+  discountValue  Float         @default(0)
+  discountAmount BigInt        @default(0)
   taxAmount      BigInt        @default(0)
   totalAmount    BigInt        @default(0)
   paymentTerms   String?       @db.VarChar(50)
@@ -318,6 +324,7 @@ model Invoice {
   @@index([projectId])
   @@index([createdById])
   @@index([status])
+  @@index([status, dueDate])
   @@map("invoices")
 }
 
@@ -431,6 +438,8 @@ model CrmAccount {
   clientsAsPartner       Client[]               @relation("ClientPartner")
   transfersFrom          AccountTransfer[]      @relation("TransferFrom")
   transfersTo            AccountTransfer[]      @relation("TransferTo")
+  adjustments            AccountAdjustment[]
+  managedProjects        Project[]              @relation("ProjectManagingPartner")
 
   @@map("crm_accounts")
 }
@@ -438,6 +447,7 @@ model CrmAccount {
 model Commission {
   id                 String           @id @default(uuid())
   period             String           @db.VarChar(10)
+  commissionType     String           @default("partner") @db.VarChar(20)
   paymentNumber      Int
   ratePct            Decimal          @db.Decimal(5, 2)
   baseAmountPkr      BigInt
@@ -465,6 +475,7 @@ model Commission {
   @@index([incomeRecordId])
   @@index([paidInDistributionId])
   @@index([period])
+  @@index([period, status])
   @@map("commissions")
 }
 
@@ -519,6 +530,21 @@ model AccountTransfer {
   @@map("account_transfers")
 }
 
+model AccountAdjustment {
+  id         String     @id @default(uuid())
+  amountPkr  BigInt
+  note       String?    @db.VarChar(200)
+  period     String     @db.VarChar(10)
+  adjustedAt DateTime   @default(now())
+
+  accountId  String
+  account    CrmAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([period])
+  @@map("account_adjustments")
+}
+
 model DistributionItem {
   id                    String  @id @default(uuid())
   sharePct              Decimal @db.Decimal(5, 2)
@@ -562,6 +588,7 @@ model PayrollRecord {
   id          String        @id @default(uuid())
   period      String        @db.VarChar(10)
   grossPkr    BigInt
+  taxPkr      BigInt        @default(0)
   deductions  BigInt        @default(0)
   netPkr      BigInt
   status      PayrollStatus @default(pending)
@@ -587,16 +614,33 @@ model Employee {
   email       String?        @db.VarChar(255)
   phone       String?        @db.VarChar(50)
   cnic        String?        @db.VarChar(20)
-  joinDate    DateTime?
-  baseSalary  BigInt?
-  status      EmployeeStatus @default(active)
+  joinDate      DateTime?
+  baseSalary    BigInt?
+  defaultTaxPkr BigInt?
+  status        EmployeeStatus @default(active)
   notes       String?        @db.Text
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   payrollRecords PayrollRecord[]
+  compensations  EmployeeCompensation[]
 
   @@map("employees")
+}
+
+model EmployeeCompensation {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  effectiveFrom String   @db.VarChar(7)
+  baseSalary    BigInt
+  defaultTaxPkr BigInt   @default(0)
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@unique([employeeId, effectiveFrom])
+  @@index([employeeId])
+  @@map("employee_compensations")
 }
 
 model TimeEntry {

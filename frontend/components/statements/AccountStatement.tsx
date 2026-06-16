@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtPkr, pkrColor } from "@frontend/lib/currency";
 import { useAccountStatement } from "@frontend/hooks/useStatements";
 import { useAccounts } from "@frontend/hooks/useAccounts";
 import PeriodSelect from "@frontend/components/ui/PeriodSelect";
@@ -64,7 +65,7 @@ export function printAccountStatement(stmt: AccountStatementType) {
       <td><span class="badge">${e.type}</span></td>
       <td class="num red">${e.debit > 0 ? fmt(e.debit) : "—"}</td>
       <td class="num green">${e.credit > 0 ? fmt(e.credit) : "—"}</td>
-      <td class="num bold">${fmt(e.balance)}</td>
+      <td class="num bold">${fmtPkr(e.balance)}</td>
     </tr>`).join("");
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Account Statement</title>
   <style>body{font-family:system-ui,sans-serif;font-size:12px;color:#1a1a18;padding:24px;}
@@ -81,7 +82,7 @@ export function printAccountStatement(stmt: AccountStatementType) {
   <h2>Account Statement — ${stmt.account.name}</h2>
   <p>${periodLabel} · ${stmt.account.type.replace(/_/g, " ")}</p>
   <div class="metrics">
-    <div class="mc"><div class="lbl">Opening balance</div><div class="val">PKR ${fmt(stmt.openingBalance)}</div></div>
+    <div class="mc"><div class="lbl">Opening balance</div><div class="val">${fmtPkr(stmt.openingBalance)}</div></div>
     <div class="mc"><div class="lbl">Total in</div><div class="val green">+PKR ${fmt(stmt.totalIn)}</div></div>
     <div class="mc"><div class="lbl">Total out</div><div class="val red">-PKR ${fmt(stmt.totalOut)}</div></div>
   </div>
@@ -92,9 +93,9 @@ export function printAccountStatement(stmt: AccountStatementType) {
       <th class="th" style="text-align:right;">Balance</th>
     </tr></thead>
     <tbody>
-      <tr class="opening"><td colspan="5" style="padding:8px 12px;">Balance brought forward</td><td class="num bold">${fmt(stmt.openingBalance)}</td></tr>
+      <tr class="opening"><td colspan="5" style="padding:8px 12px;">Balance brought forward</td><td class="num bold">${fmtPkr(stmt.openingBalance)}</td></tr>
       ${rowsHtml}
-      <tr class="closing"><td colspan="5" style="padding:8px 12px;font-weight:600;">Closing balance</td><td class="num bold blue" style="padding:8px 12px;">PKR ${fmt(stmt.closingBalance)}</td></tr>
+      <tr class="closing"><td colspan="5" style="padding:8px 12px;font-weight:600;">Closing balance</td><td class="num bold blue" style="padding:8px 12px;">${fmtPkr(stmt.closingBalance)}</td></tr>
     </tbody>
   </table>
   <script>window.onload=function(){window.print();window.close();}<\/script>
@@ -166,7 +167,7 @@ export default function AccountStatement({ onExportReady }: AccountStatementProp
       {stmt && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
           {[
-            { label: "Opening balance", value: `PKR ${fmt(stmt.openingBalance)}`, color: "var(--t1)" },
+            { label: "Opening balance", value: fmtPkr(stmt.openingBalance), color: pkrColor(stmt.openingBalance, "var(--t1)") },
             { label: "Total in", value: `+PKR ${fmt(stmt.totalIn)}`, color: "var(--green)" },
             { label: "Total out", value: `-PKR ${fmt(stmt.totalOut)}`, color: "var(--red)" },
           ].map(({ label, value, color }) => (
@@ -211,8 +212,8 @@ export default function AccountStatement({ onExportReady }: AccountStatementProp
                 <td style={{ padding: "9px 14px", fontSize: 11, color: "var(--t3)" }}>Opening</td>
                 <td style={{ padding: "9px 14px", color: "var(--t2)", fontSize: 11 }}>Balance brought forward</td>
                 <td /><td /><td />
-                <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, fontSize: 12 }}>
-                  {fmt(stmt.openingBalance)}
+                <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, fontSize: 12, color: pkrColor(stmt.openingBalance) }}>
+                  {fmtPkr(stmt.openingBalance)}
                 </td>
               </tr>
 
@@ -242,8 +243,8 @@ export default function AccountStatement({ onExportReady }: AccountStatementProp
                       <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--green)" }}>
                         {entry.credit > 0 ? fmt(entry.credit) : "—"}
                       </td>
-                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: entry.balance < 0 ? "var(--red)" : "var(--t1)" }}>
-                        {entry.balance < 0 ? "−" : ""}{fmt(entry.balance)}
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: pkrColor(entry.balance, "var(--t1)") }}>
+                        {fmtPkr(entry.balance)}
                       </td>
                     </tr>
                   );
@@ -253,8 +254,8 @@ export default function AccountStatement({ onExportReady }: AccountStatementProp
               {/* Closing balance row */}
               <tr style={{ background: "var(--bg2)", borderTop: "0.5px solid var(--b2)" }}>
                 <td colSpan={5} style={{ padding: "10px 14px", fontWeight: 600, fontSize: 12 }}>Closing balance</td>
-                <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 14, fontWeight: 700, color: "var(--blue)" }}>
-                  PKR {fmt(stmt.closingBalance)}
+                <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 14, fontWeight: 700, color: pkrColor(stmt.closingBalance, "var(--blue)") }}>
+                  {fmtPkr(stmt.closingBalance)}
                 </td>
               </tr>
             </tbody>

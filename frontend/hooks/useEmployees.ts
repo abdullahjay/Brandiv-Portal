@@ -65,6 +65,7 @@ export async function updateEmployeeRequest(id: string, data: Partial<{
   cnic: string | null;
   joinDate: string | null;
   baseSalary: number | null;
+  defaultTaxPkr: number | null;
   status: "active" | "inactive";
   notes: string | null;
 }>): Promise<Employee> {

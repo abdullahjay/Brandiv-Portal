@@ -33,6 +33,7 @@ export default function AddAccountModal({ open, defaultType = "stakeholder", onC
   const [name, setName] = useState("");
   const [type, setType] = useState<"operating" | "company_reserve" | "stakeholder">(defaultType);
   const [sharePct, setSharePct] = useState("0");
+  const [openingBalance, setOpeningBalance] = useState("");
   const [ownerUserId, setOwnerUserId] = useState("");
   const [isDefaultOperating, setIsDefaultOperating] = useState(false);
   const [users, setUsers] = useState<UserOption[]>([]);
@@ -40,7 +41,7 @@ export default function AddAccountModal({ open, defaultType = "stakeholder", onC
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) { setName(""); setSharePct("0"); setOwnerUserId(""); setError(null); setIsDefaultOperating(false); }
+    if (!open) { setName(""); setSharePct("0"); setOpeningBalance(""); setOwnerUserId(""); setError(null); setIsDefaultOperating(false); }
     else setType(defaultType);
   }, [open, defaultType]);
 
@@ -69,6 +70,7 @@ export default function AddAccountModal({ open, defaultType = "stakeholder", onC
         sharePct: (type === "stakeholder" || type === "company_reserve") ? parseFloat(sharePct) || 0 : 0,
         isDefaultOperating: type === "operating" ? isDefaultOperating : false,
         ownerUserId: type === "stakeholder" ? ownerUserId || null : null,
+        openingBalancePkr: parseFloat(openingBalance) || 0,
       });
       onCreated(account);
       onClose();
@@ -141,6 +143,20 @@ export default function AddAccountModal({ open, defaultType = "stakeholder", onC
           </label>
         </div>
       )}
+
+      <Field label="Opening balance (PKR)">
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={openingBalance}
+          onChange={(e) => setOpeningBalance(e.target.value)}
+          placeholder="0 — leave blank if starting from zero"
+        />
+      </Field>
+      <div style={{ fontSize: 11, color: "var(--t3)", marginTop: -10, marginBottom: 4 }}>
+        Money already in this account before you started tracking in the CRM
+      </div>
     </Modal>
   );
 }

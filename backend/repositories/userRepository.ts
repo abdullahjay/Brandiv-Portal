@@ -65,7 +65,7 @@ export async function updateUser(id: string, data: UpdateUserInput & { passwordH
 }
 
 export async function userExists(id: string): Promise<boolean> {
-  return (await prisma.user.count({ where: { id } })) > 0;
+  return !!(await prisma.user.findUnique({ where: { id }, select: { id: true } }));
 }
 
 export async function deleteUser(id: string): Promise<void> {

@@ -5,7 +5,7 @@ import type { LedgerPage, ApiResponse } from "@frontend/types";
 
 export interface LedgerFilters {
   period?: string;
-  type?: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer";
+  type?: "income" | "expense" | "payroll" | "distribution" | "commission" | "transfer" | "adjustment";
   page?: number;
   pageSize?: number;
 }

@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 const commissionSelect = {
   id: true,
   period: true,
+  commissionType: true,
   paymentNumber: true,
   ratePct: true,
   baseAmountPkr: true,
@@ -55,11 +56,11 @@ export async function approveCommission(id: string) {
 }
 
 export async function commissionExists(id: string): Promise<boolean> {
-  return (await prisma.commission.count({ where: { id } })) > 0;
+  return !!(await prisma.commission.findUnique({ where: { id }, select: { id: true } }));
 }
 
 export async function getCommissionSummary() {
-  const [pending, approved, total] = await prisma.$transaction([
+  const [pending, approved, total] = await Promise.all([
     prisma.commission.aggregate({ where: { status: "pending" }, _sum: { commissionPkr: true }, _count: true }),
     prisma.commission.aggregate({ where: { status: "approved" }, _sum: { commissionPkr: true }, _count: true }),
     prisma.commission.aggregate({ _sum: { commissionPkr: true }, _count: true }),
