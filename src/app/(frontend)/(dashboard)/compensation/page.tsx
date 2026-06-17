@@ -217,7 +217,7 @@ export default function CompensationPage() {
         </div>
 
         {/* Summary */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+        <div className="metrics-3">
           {[
             { label: "Total Gross", value: fmtPkr(totalGross), icon: "ti-cash", color: "var(--blue)", bg: "var(--blue-bg)" },
             { label: "Total Tax", value: fmtPkr(totalTax), icon: "ti-receipt-tax", color: "#D97706", bg: "#FFF7ED" },
@@ -267,6 +267,7 @@ export default function CompensationPage() {
           ) : filtered.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--t3)", fontSize: 13 }}>No employees found.</div>
           ) : (
+            <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "0.5px solid var(--b3)" }}>
@@ -389,6 +390,7 @@ export default function CompensationPage() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

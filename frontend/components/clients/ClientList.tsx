@@ -38,6 +38,7 @@ export default function ClientList({
 }: ClientListProps) {
   return (
     <div
+      className="list-panel"
       style={{
         width: 290,
         minWidth: 290,

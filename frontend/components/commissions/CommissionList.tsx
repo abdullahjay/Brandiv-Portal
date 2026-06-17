@@ -47,6 +47,7 @@ export default function CommissionList({
 }: CommissionListProps) {
   return (
     <div
+      className="list-panel"
       style={{
         width: 300,
         minWidth: 300,

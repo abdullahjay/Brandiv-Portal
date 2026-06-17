@@ -16,6 +16,7 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -43,22 +44,27 @@ export default function InvoicesPage() {
   return (
     <>
       <Topbar title="Invoices" />
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <InvoiceList
           invoices={invoices}
           selectedId={selectedId}
           filter={filter}
           search={search}
           loading={loading}
-          onSelect={setSelectedId}
+          onSelect={(id) => { setSelectedId(id); setMobileView("detail"); }}
           onFilterChange={setFilter}
           onSearchChange={setSearch}
           onAddClick={() => setShowAdd(true)}
         />
-        <InvoiceDetail
-          invoiceId={selectedId}
-          onUpdated={refetch}
-        />
+        <div className="detail-panel-wrap">
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to invoices
+          </button>
+          <InvoiceDetail
+            invoiceId={selectedId}
+            onUpdated={refetch}
+          />
+        </div>
       </div>
 
       <AddInvoiceModal

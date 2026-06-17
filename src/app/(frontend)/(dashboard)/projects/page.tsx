@@ -13,6 +13,7 @@ type FilterStatus = "all" | "active" | "pending" | "done" | "cancelled";
 
 export default function ProjectsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -52,24 +53,29 @@ export default function ProjectsPage() {
   return (
     <>
       <Topbar title="Projects" />
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <ProjectList
           projects={projects}
           selectedId={selectedId}
           filter={filter}
           search={search}
           loading={loading}
-          onSelect={setSelectedId}
+          onSelect={(id) => { setSelectedId(id); setMobileView("detail"); }}
           onFilterChange={setFilter}
           onSearchChange={setSearch}
           onAddClick={() => setShowAdd(true)}
         />
-        <ProjectDetail
-          projectId={selectedId}
-          onEditClick={() => setShowEdit(true)}
-          onUpdated={refetch}
-          refreshKey={detailRefreshKey}
-        />
+        <div className="detail-panel-wrap">
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to projects
+          </button>
+          <ProjectDetail
+            projectId={selectedId}
+            onEditClick={() => setShowEdit(true)}
+            onUpdated={refetch}
+            refreshKey={detailRefreshKey}
+          />
+        </div>
       </div>
 
       <AddProjectModal

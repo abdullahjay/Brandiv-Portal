@@ -16,6 +16,7 @@ type FilterStatus = "all" | "active" | "pending" | "inactive";
 
 export default function ClientsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -64,26 +65,31 @@ export default function ClientsPage() {
     <>
       <Topbar title="Clients" />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <ClientList
           clients={clients}
           selectedId={selectedId}
           filter={filter}
           search={search}
           loading={loading}
-          onSelect={setSelectedId}
+          onSelect={(id) => { setSelectedId(id); setMobileView("detail"); }}
           onFilterChange={setFilter}
           onSearchChange={setSearch}
           onAddClick={() => setShowAdd(true)}
         />
 
-        <ClientDetail
-          key={detailKey}
-          clientId={selectedId}
-          onEditClick={() => setShowEdit(true)}
-          onCreateInvoice={() => setShowCreateInvoice(true)}
-          onUpdated={refetch}
-        />
+        <div className="detail-panel-wrap">
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to clients
+          </button>
+          <ClientDetail
+            key={detailKey}
+            clientId={selectedId}
+            onEditClick={() => setShowEdit(true)}
+            onCreateInvoice={() => setShowCreateInvoice(true)}
+            onUpdated={refetch}
+          />
+        </div>
       </div>
 
       <AddClientModal

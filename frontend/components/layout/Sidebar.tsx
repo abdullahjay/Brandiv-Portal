@@ -71,18 +71,15 @@ interface SidebarProps {
 
 export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
   const pathname = usePathname();
-
-  // Track which item was clicked so we can highlight it INSTANTLY,
-  // before usePathname() updates (which only happens after full navigation).
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Once the actual pathname catches up, clear the pending state.
   useEffect(() => {
     setPendingHref(null);
+    setMobileOpen(false);
   }, [pathname]);
 
   function isActive(href: string) {
-    // Optimistic: if user just clicked this item, treat it as active immediately.
     if (pendingHref) return pendingHref === href;
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
@@ -91,7 +88,27 @@ export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
   const brandName = companyName || "Brandiv CRM";
 
   return (
+    <>
+      {/* Mobile topbar */}
+      <div className="mobile-topbar">
+        <button
+          onClick={() => setMobileOpen(true)}
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t1)", display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, flexShrink: 0 }}
+        >
+          <i className="ti ti-menu-2" style={{ fontSize: 20 }} />
+        </button>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--blue)", letterSpacing: "-0.02em" }}>
+          {brandName}
+        </div>
+      </div>
+
+      {/* Backdrop */}
+      {mobileOpen && (
+        <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} />
+      )}
+
     <div
+      className={`sidebar-panel${mobileOpen ? " sidebar-open" : ""}`}
       style={{
         width: 220,
         minWidth: 220,
@@ -268,5 +285,6 @@ export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
+    </>
   );
 }

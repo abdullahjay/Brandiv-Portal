@@ -118,7 +118,7 @@ export default function ExpensesPage() {
 
       <Topbar title="Expenses" />
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "22px 28px", background: "var(--bg3)" }}>
+      <div className="page-content">
 
         {/* Page header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
@@ -136,7 +136,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Metric cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div className="metrics-4">
           <MetricCard
             icon="ti-receipt"
             label="Total Expenses"
@@ -193,7 +193,7 @@ export default function ExpensesPage() {
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }}
             onClick={() => setSelectedId(null)}
           />
-          <div style={{
+          <div className="drawer-panel" style={{
             position: "fixed", top: 0, right: 0, bottom: 0, width: 460,
             background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)",
             zIndex: 201, display: "flex", flexDirection: "column",

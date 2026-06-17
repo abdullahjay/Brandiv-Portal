@@ -58,7 +58,7 @@ export default function ReportsPage() {
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px 24px" }}>
 
         {/* Tab bar — underline style matching HTML reference */}
-        <div style={{ display: "flex", alignItems: "flex-end", borderBottom: "0.5px solid var(--b3)", marginBottom: 20 }}>
+        <div className="tab-scroll">
           {TABS.map(({ key, label, icon }) => (
             <button
               key={key}

@@ -488,7 +488,7 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
       </div>
 
       {/* ── Main two-column layout ────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20, alignItems: "start" }}>
+      <div className="dist-grid" style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20, alignItems: "start" }}>
 
         {/* ── LEFT: Waterfall visualization ─────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -929,7 +929,7 @@ export default function AccountsPage() {
           {tab === "accounts" && (
             <>
               {/* Metric cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+              <div className="metrics-4">
                 <MetricCard
                   icon="ti-building-bank"
                   label="Operating Balance"
@@ -989,7 +989,7 @@ export default function AccountsPage() {
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }}
             onClick={() => setSelectedId(null)}
           />
-          <div style={{
+          <div className="drawer-panel" style={{
             position: "fixed", top: 0, right: 0, bottom: 0, width: 480,
             background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)",
             zIndex: 201, display: "flex", flexDirection: "column",

@@ -44,6 +44,7 @@ export default function Modal({
   return (
     <div
       ref={overlayRef}
+      className="modal-overlay"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
       style={{
         position: "fixed",
@@ -57,6 +58,7 @@ export default function Modal({
       }}
     >
       <div
+        className="modal-box"
         style={{
           background: "var(--bg1)",
           borderRadius: "var(--rl)",

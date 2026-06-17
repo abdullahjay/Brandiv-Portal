@@ -7,7 +7,7 @@ export default function TimeTrackingPage() {
   return (
     <>
       <Topbar title="Time Tracking" />
-      <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+      <div className="page-content">
         <TimeEntryList />
       </div>
     </>

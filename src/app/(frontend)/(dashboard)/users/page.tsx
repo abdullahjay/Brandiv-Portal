@@ -310,6 +310,7 @@ export default function UsersPage() {
     }
   }, [loading, users, selected]);
   const [addOpen, setAddOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const [editOpen, setEditOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
@@ -390,9 +391,9 @@ export default function UsersPage() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 16, height: "calc(100vh - 160px)" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden" }}>
         {/* Left panel — user list */}
-        <div style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="list-panel" style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Search + filters */}
           <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--b3)", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ position: "relative" }}>
@@ -443,7 +444,7 @@ export default function UsersPage() {
                 <div
                   key={u.id}
                   className={`user-item${selected?.id === u.id ? " selected" : ""}`}
-                  onClick={() => { setSelected(u); setDeactivateConfirm(false); setActionError(null); }}
+                  onClick={() => { setSelected(u); setDeactivateConfirm(false); setActionError(null); setMobileView("detail"); }}
                 >
                   <div style={{ position: "relative" }}>
                     <Avatar name={u.name} size={36} />
@@ -485,7 +486,10 @@ export default function UsersPage() {
         </div>
 
         {/* Right panel — user detail */}
-        <div style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div className="detail-panel-wrap" style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to users
+          </button>
           {!selected ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, color: "var(--t3)" }}>
               <i className="ti ti-user-circle" style={{ fontSize: 40 }} />

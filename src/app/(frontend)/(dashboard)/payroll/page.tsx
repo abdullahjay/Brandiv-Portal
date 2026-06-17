@@ -512,10 +512,10 @@ export default function PayrollPage() {
 
       <Topbar title="Payroll" />
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "22px 28px", background: "var(--bg3)" }}>
+      <div className="page-content">
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, gap: 16, flexWrap: "wrap" }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 3 }}>
               Payroll
@@ -561,7 +561,7 @@ export default function PayrollPage() {
         </div>
 
         {/* ── Metric cards ────────────────────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div className="metrics-4">
           <MetricCard
             icon="ti-coin"
             label="Total Gross"
@@ -687,7 +687,7 @@ export default function PayrollPage() {
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }}
             onClick={() => setSelectedRecordId(null)}
           />
-          <div style={{
+          <div className="drawer-panel" style={{
             position: "fixed", top: 0, right: 0, bottom: 0, width: 480,
             background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)",
             zIndex: 201, display: "flex", flexDirection: "column",

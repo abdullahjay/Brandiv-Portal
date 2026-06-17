@@ -357,6 +357,54 @@ body {
     gap: 12px;
   }
 
+  /* ── Dashboard layout ── */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-left: 220px;
+  }
+
+  /* ── Mobile topbar ── */
+  .mobile-topbar {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    z-index: 50;
+    background: var(--bg1);
+    border-bottom: 0.5px solid var(--b3);
+    padding: 0 16px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* ── Sidebar backdrop (mobile) ── */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 39;
+  }
+
+  /* ── Two-panel master-detail layout ── */
+  .two-panel {
+    position: relative;
+  }
+  .detail-panel-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-back-btn {
+    display: none;
+  }
+
   /* ── Section labels ── */
   .section-label {
     font-size: 10px;
@@ -441,9 +489,176 @@ body {
     animation: shimmer 1.4s infinite;
     border-radius: var(--rm);
   }
+
+  /* ── Metrics grids ── */
+  .metrics-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .metrics-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .income-summary {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  /* Scrollable page content area */
+  .page-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 22px 28px;
+    background: var(--bg3);
+  }
+  /* Horizontal-scrolling tab bar */
+  .tab-scroll {
+    display: flex;
+    align-items: flex-end;
+    border-bottom: 0.5px solid var(--b3);
+    margin-bottom: 20px;
+  }
+  /* Lookup table two-column layout */
+  .lookup-layout {
+    display: flex;
+    gap: 16px;
+    min-height: 400px;
+  }
 }
 
 @keyframes shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 767px) {
+  .topbar {
+    padding: 0 14px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+  .topbar-title {
+    font-size: 13px !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    padding-top: 56px;
+  }
+
+  .mobile-topbar {
+    display: flex;
+  }
+
+  .sidebar-panel {
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .sidebar-panel.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  .f2, .f3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Two-panel: slide-in detail on mobile ── */
+  .list-panel,
+  .list-panel > div:first-child {
+    width: 100% !important;
+    min-width: unset !important;
+    border-right: none !important;
+  }
+  .detail-panel-wrap {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: var(--bg1);
+    transform: translateX(100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+  }
+  .two-panel.show-detail .detail-panel-wrap {
+    transform: translateX(0);
+  }
+  .mobile-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 11px 16px;
+    background: var(--bg1);
+    border: none;
+    border-bottom: 0.5px solid var(--b3);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--blue);
+    cursor: pointer;
+    width: 100%;
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+
+  /* ── Metrics grids — responsive ── */
+  .metrics-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .metrics-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .income-summary {
+    flex-direction: column !important;
+  }
+  .page-content {
+    padding: 14px !important;
+  }
+  /* Right-side drawers — full width on mobile */
+  .drawer-panel {
+    width: 100% !important;
+    left: 0 !important;
+  }
+  /* Distribution tab two-col → single col */
+  .dist-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* Tab scroll bar */
+  .tab-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+  }
+  .tab-scroll > * {
+    flex-shrink: 0;
+  }
+  /* Lookup layout stack */
+  .lookup-layout {
+    flex-direction: column !important;
+  }
+  .lookup-layout > div:first-child {
+    width: auto !important;
+  }
+
+  /* Modals — full width on mobile */
+  .modal-box {
+    max-width: 100% !important;
+    max-height: 96vh !important;
+    margin: 0 !important;
+    border-radius: 16px 16px 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
 }
