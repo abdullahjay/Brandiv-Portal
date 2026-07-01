@@ -528,6 +528,40 @@ body {
     gap: 16px;
     min-height: 400px;
   }
+
+  /* ── Panel split grid (list + 320px detail column) ── */
+  .panel-split-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 12px;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── Summary 3-col metrics ── */
+  .summary-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  /* ── Horizontally-scrollable filter pills ── */
+  .filter-pills {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  /* ── Page action button group ── */
+  .page-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
 }
 
 @keyframes shimmer {
@@ -643,6 +677,96 @@ body {
   }
   .lookup-layout > div:first-child {
     width: auto !important;
+  }
+
+  /* Panel split grid → full-width list, hide right column */
+  .panel-split-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .panel-split-grid .panel-detail-col {
+    display: none !important;
+  }
+
+  /* Summary 3-col → 2-col on mobile */
+  .summary-grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Filter pills → horizontal scroll, no wrap */
+  .filter-pills {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .filter-pills::-webkit-scrollbar { display: none; }
+  .filter-pills > * { flex-shrink: 0 !important; }
+
+  /* Page action buttons wrap on mobile */
+  .page-actions {
+    width: 100%;
+    flex-wrap: wrap !important;
+  }
+
+  /* Compensation table history rows: stack on mobile */
+  .comp-hist-row {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+  .comp-hist-row .comp-hist-amounts {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  /* Distribution hero bar: stack on mobile */
+  .dist-hero {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+  }
+  .dist-hero-amount {
+    font-size: 26px !important;
+  }
+
+  /* Accounts header: reduce padding on mobile */
+  .accounts-header {
+    padding: 14px 14px 0 !important;
+  }
+  .accounts-tab-content {
+    padding: 14px !important;
+  }
+
+  /* Payroll header: stack sections on mobile */
+  .payroll-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .payroll-filter-bar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+  }
+  .payroll-filter-bar::-webkit-scrollbar { display: none; }
+  .payroll-filter-bar > *:not(:last-child) { flex-shrink: 0 !important; }
+
+  /* Employee / User detail header — wrap avatar+name / buttons on mobile */
+  .emp-detail-header {
+    flex-wrap: wrap !important;
+    padding: 14px 16px !important;
+    gap: 10px !important;
+  }
+  .emp-detail-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+  .emp-detail-actions > button {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+    min-width: 76px !important;
+    font-size: 11px !important;
   }
 
   /* Modals — full width on mobile */

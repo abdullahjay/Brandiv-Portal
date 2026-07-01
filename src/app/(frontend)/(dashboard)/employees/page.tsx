@@ -293,6 +293,9 @@ export default function EmployeesPage() {
         .emp-item.selected { background: var(--blue-bg); border-left: 2px solid var(--blue); padding-left: 12px; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
         .info-cell { background: var(--bg2); border-radius: var(--rm); padding: 10px 12px; }
+        @media (max-width: 767px) {
+          .info-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
 
       {/* Header */}
@@ -394,14 +397,14 @@ export default function EmployeesPage() {
           ) : (
             <>
               {/* Header */}
-              <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
+              <div className="emp-detail-header" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
                 <Avatar name={selected.name} dept={selected.department} size={52} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)" }}>{selected.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
+                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {[selected.designation, selected.department].filter(Boolean).join(" · ") || "No designation"}
                   </div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3, background: selected.status === "active" ? "#ECFDF5" : "var(--bg2)", color: selected.status === "active" ? "#059669" : "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       {selected.status}
                     </span>
@@ -413,7 +416,7 @@ export default function EmployeesPage() {
                   </div>
                 </div>
                 {canManage && (
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div className="emp-detail-actions" style={{ display: "flex", gap: 8 }}>
                     <button className="btn-outline" onClick={() => { setEditTarget(selected); setModalOpen(true); setActionError(null); setDeleteConfirm(false); }}>
                       <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
                     </button>

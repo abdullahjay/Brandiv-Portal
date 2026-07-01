@@ -515,8 +515,8 @@ export default function PayrollPage() {
       <div className="page-content">
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, gap: 16, flexWrap: "wrap" }}>
-          <div>
+        <div className="payroll-page-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 3 }}>
               Payroll
             </h1>
@@ -525,15 +525,14 @@ export default function PayrollPage() {
             </p>
           </div>
 
-          {/* Month navigator — centered, prominent */}
           <MonthNav period={period} onChange={(p) => { setPeriod(p); setSelectedRecordId(null); }} />
 
           {/* Actions */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="page-actions" style={{ flexShrink: 0 }}>
             {unprocessedWithCompensation.length > 0 && (
               <button
                 className="btn-primary"
-                style={{ height: 36, fontSize: 13, paddingInline: 16, background: "var(--green)", borderColor: "var(--green)" }}
+                style={{ height: 36, fontSize: 13, paddingInline: 14, background: "var(--green)", borderColor: "var(--green)", whiteSpace: "nowrap" }}
                 onClick={handleAutoCreate}
                 disabled={autoCreating}
               >
@@ -543,18 +542,10 @@ export default function PayrollPage() {
                 }
               </button>
             )}
-            <button
-              className="btn-outline"
-              style={{ height: 36, fontSize: 13, paddingInline: 16 }}
-              onClick={() => setShowRun(true)}
-            >
+            <button className="btn-outline" style={{ height: 36, fontSize: 13, paddingInline: 14, whiteSpace: "nowrap" }} onClick={() => setShowRun(true)}>
               <i className="ti ti-player-play" style={{ fontSize: 13 }} /> Run Payroll
             </button>
-            <button
-              className="btn-outline"
-              style={{ height: 36, fontSize: 13, paddingInline: 16 }}
-              onClick={() => { setAddPrefill(undefined); setShowAdd(true); }}
-            >
+            <button className="btn-outline" style={{ height: 36, fontSize: 13, paddingInline: 14, whiteSpace: "nowrap" }} onClick={() => { setAddPrefill(undefined); setShowAdd(true); }}>
               <i className="ti ti-plus" style={{ fontSize: 13 }} /> Add Record
             </button>
           </div>
@@ -597,7 +588,7 @@ export default function PayrollPage() {
         </div>
 
         {/* ── Status filter tabs ───────────────────────────────────────────── */}
-        <div style={{
+        <div className="payroll-filter-bar" style={{
           display: "flex", alignItems: "center", gap: 6,
           background: "var(--bg1)", border: "0.5px solid var(--b3)",
           borderRadius: "var(--rl)", padding: "6px 8px",
@@ -612,8 +603,8 @@ export default function PayrollPage() {
                 onClick={() => setFilter(f.value)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 14px", borderRadius: "var(--rm)", border: "none",
-                  cursor: "pointer", transition: "all .12s",
+                  padding: "6px 12px", borderRadius: "var(--rm)", border: "none",
+                  cursor: "pointer", transition: "all .12s", whiteSpace: "nowrap",
                   background: active ? "var(--blue)" : "transparent",
                   color: active ? "#fff" : "var(--t2)",
                   fontSize: 12, fontWeight: active ? 600 : 400,
@@ -633,7 +624,7 @@ export default function PayrollPage() {
             );
           })}
 
-          <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--t3)" }}>
+          <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--t3)", whiteSpace: "nowrap", flexShrink: 0 }}>
             {periodLabel(period)}
           </div>
         </div>

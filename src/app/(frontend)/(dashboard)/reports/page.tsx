@@ -57,8 +57,8 @@ export default function ReportsPage() {
       <Topbar title="Statements" />
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px 24px" }}>
 
-        {/* Tab bar — underline style matching HTML reference */}
-        <div className="tab-scroll">
+        {/* Tab bar — horizontally scrollable on mobile */}
+        <div className="tab-scroll" style={{ marginBottom: showPeriod || showExport ? 8 : undefined }}>
           {TABS.map(({ key, label, icon }) => (
             <button
               key={key}
@@ -84,9 +84,11 @@ export default function ReportsPage() {
               {label}
             </button>
           ))}
+        </div>
 
-          {/* Right side: period picker OR export buttons */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, paddingBottom: 10 }}>
+        {/* Period picker / export buttons — separate row, wraps on mobile */}
+        {(showPeriod || showExport) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
             {showPeriod && (
               <>
                 <span style={{ fontSize: 12, color: "var(--t2)" }}>Period</span>
@@ -112,7 +114,7 @@ export default function ReportsPage() {
               </>
             )}
           </div>
-        </div>
+        )}
 
         {/* Statement body */}
         {tab === "pl" && <PLStatement period={plPeriod} />}

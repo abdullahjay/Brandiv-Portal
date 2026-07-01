@@ -203,15 +203,15 @@ export default function CompensationPage() {
       <Topbar title="Compensation" />
       <div style={{ flex: 1, overflow: "auto", padding: "20px 24px" }}>
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16 }}>
-          <div>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 12, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", marginBottom: 2 }}>Compensation</h1>
             <p style={{ fontSize: 12, color: "var(--t3)" }}>
               Set effective salary & tax per employee. Changes apply from the chosen month — past payrolls are never affected.
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <span style={{ fontSize: 12, color: "var(--t3)" }}>Preview period:</span>
+            <span style={{ fontSize: 12, color: "var(--t3)", whiteSpace: "nowrap" }}>Preview:</span>
             <PeriodSelect value={viewPeriod} onChange={setViewPeriod} />
           </div>
         </div>
@@ -237,13 +237,13 @@ export default function CompensationPage() {
 
         {/* Table card */}
         <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", boxShadow: "var(--shadow-sm)" }}>
-          <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ position: "relative", flex: 1, maxWidth: 280 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: "1 1 160px", minWidth: 140 }}>
               <i className="ti ti-search" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--t3)", pointerEvents: "none" }} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employees…" style={{ paddingLeft: 30, width: "100%", height: 32, fontSize: 13 }} />
             </div>
             {/* Status filter */}
-            <div style={{ display: "flex", gap: 4, background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: 3 }}>
+            <div style={{ display: "flex", gap: 4, background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: 3, flexShrink: 0 }}>
               {(["active", "inactive", "all"] as const).map((s) => {
                 const label = s === "all" ? "All" : s === "active" ? "Active" : "Inactive";
                 const count = s === "all" ? employees.length : employees.filter(e => e.status === s).length;
@@ -334,10 +334,10 @@ export default function CompensationPage() {
                             {canEdit && (
                               <button
                                 className="btn-primary"
-                                style={{ height: 28, fontSize: 11, padding: "0 12px" }}
+                                style={{ height: 32, fontSize: 12, padding: "0 14px", whiteSpace: "nowrap" }}
                                 onClick={() => { setSelectedEmp(emp); setShowSetComp(true); }}
                               >
-                                <i className="ti ti-plus" style={{ fontSize: 11 }} /> Set Compensation
+                                <i className="ti ti-plus" style={{ fontSize: 12 }} /> Set
                               </button>
                             )}
                           </div>
@@ -358,24 +358,23 @@ export default function CompensationPage() {
                                 const cTax = c.defaultTaxPkr / 100;
                                 const cNet = Math.max(0, cGross - cTax);
                                 return (
-                                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "7px 10px", borderRadius: "var(--rm)", background: isCurrent ? "var(--blue-bg)" : isFuture ? "#FFFBEB" : "var(--bg1)", border: `0.5px solid ${isCurrent ? "var(--blue)" : isFuture ? "#FCD34D" : "var(--b3)"}` }}>
-                                    <div style={{ minWidth: 90 }}>
+                                  <div key={c.id} className="comp-hist-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 10px", borderRadius: "var(--rm)", background: isCurrent ? "var(--blue-bg)" : isFuture ? "#FFFBEB" : "var(--bg1)", border: `0.5px solid ${isCurrent ? "var(--blue)" : isFuture ? "#FCD34D" : "var(--b3)"}` }}>
+                                    <div style={{ minWidth: 80 }}>
                                       <div style={{ fontSize: 12, fontWeight: 600, color: isFuture ? "#D97706" : isCurrent ? "var(--blue)" : "var(--t2)" }}>
                                         {periodLabel(c.effectiveFrom)}
                                         {isCurrent && <span style={{ fontSize: 10, marginLeft: 4, fontWeight: 400, color: "var(--blue)" }}>(current)</span>}
                                         {isFuture && <span style={{ fontSize: 10, marginLeft: 4, fontWeight: 400, color: "#D97706" }}>(upcoming)</span>}
                                       </div>
                                     </div>
-                                    <div style={{ flex: 1, display: "flex", gap: 16, fontSize: 12, color: "var(--t2)" }}>
-                                      <span>Gross: <strong style={{ color: "var(--t1)" }}>PKR {cGross.toLocaleString()}</strong></span>
-                                      {cTax > 0 && <span>Tax: <strong style={{ color: "#D97706" }}>PKR {cTax.toLocaleString()}</strong></span>}
-                                      <span>Net: <strong style={{ color: "var(--green)" }}>PKR {cNet.toLocaleString()}</strong></span>
+                                    <div className="comp-hist-amounts" style={{ flex: 1, display: "flex", gap: 10, fontSize: 12, color: "var(--t2)", flexWrap: "wrap" }}>
+                                      <span style={{ whiteSpace: "nowrap" }}>Gross: <strong style={{ color: "var(--t1)" }}>PKR {cGross.toLocaleString()}</strong></span>
+                                      {cTax > 0 && <span style={{ whiteSpace: "nowrap" }}>Tax: <strong style={{ color: "#D97706" }}>PKR {cTax.toLocaleString()}</strong></span>}
+                                      <span style={{ whiteSpace: "nowrap" }}>Net: <strong style={{ color: "var(--green)" }}>PKR {cNet.toLocaleString()}</strong></span>
                                     </div>
-                                    {c.notes && <span style={{ fontSize: 11, color: "var(--t3)", fontStyle: "italic", flex: "0 0 auto", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.notes}</span>}
                                     {canDelete && (
                                       <button onClick={() => handleDelete(c.id)} disabled={deletingId === c.id} title="Delete this record"
-                                        style={{ width: 24, height: 24, border: "none", background: "none", cursor: "pointer", color: "var(--red)", opacity: deletingId === c.id ? 0.5 : 0.7, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                        <i className="ti ti-trash" style={{ fontSize: 12 }} />
+                                        style={{ width: 28, height: 28, border: "none", background: "none", cursor: "pointer", color: "var(--red)", opacity: deletingId === c.id ? 0.5 : 0.7, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <i className="ti ti-trash" style={{ fontSize: 13 }} />
                                       </button>
                                     )}
                                   </div>

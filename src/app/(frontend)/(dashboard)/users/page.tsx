@@ -376,6 +376,10 @@ export default function UsersPage() {
         .user-item:hover { background: var(--bg2); }
         .user-item.selected { background: var(--blue-bg); border-left: 2px solid var(--blue); padding-left: 12px; }
         .metric-pill { display: flex; flex-direction: column; gap: 2px; background: var(--bg2); border-radius: var(--rm); padding: 10px 14px; }
+        .user-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        @media (max-width: 767px) {
+          .user-info-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
 
       {/* Header */}
@@ -503,12 +507,12 @@ export default function UsersPage() {
           ) : (
             <>
               {/* Detail header */}
-              <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
+              <div className="emp-detail-header" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
                 <Avatar name={selected.name} size={52} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)" }}>{selected.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>{selected.email}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
+                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.email}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                     {roleBadge(selected.role)}
                     <span
                       style={{
@@ -527,7 +531,7 @@ export default function UsersPage() {
                   </div>
                 </div>
                 {isAdmin && (
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div className="emp-detail-actions" style={{ display: "flex", gap: 8 }}>
                     <button className="btn-outline" onClick={() => { setEditOpen(true); setActionError(null); setDeleteConfirm(false); }}>
                       <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
                     </button>
@@ -618,7 +622,7 @@ export default function UsersPage() {
                 )}
 
                 {/* Info grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+                <div className="user-info-grid">
                   {[
                     { label: "Full name", value: selected.name, icon: "ti-user" },
                     { label: "Email address", value: selected.email, icon: "ti-mail" },

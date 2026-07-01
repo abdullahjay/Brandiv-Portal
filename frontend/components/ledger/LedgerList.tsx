@@ -266,174 +266,119 @@ export default function LedgerList() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 12 }}>
+    <>
+      <style>{`@keyframes drawerIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 12 }}>
 
-      {/* ── Filter bar ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
-        {/* Search */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: "0 10px", height: 32, flex: "1 1 180px", minWidth: 180, maxWidth: 280 }}>
-          <i className="ti ti-search" style={{ fontSize: 14, color: "var(--t3)", flexShrink: 0 }} />
-          <input
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search transactions…"
-            style={{ border: "none", background: "transparent", fontSize: 12, color: "var(--t1)", outline: "none", width: "100%" }}
-          />
+        {/* ── Filter bar ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
+          {/* Search */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: "0 10px", height: 32, flex: "1 1 160px", minWidth: 140, maxWidth: 260 }}>
+            <i className="ti ti-search" style={{ fontSize: 14, color: "var(--t3)", flexShrink: 0 }} />
+            <input
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search…"
+              style={{ border: "none", background: "transparent", fontSize: 12, color: "var(--t1)", outline: "none", width: "100%" }}
+            />
+          </div>
+
+          <PeriodSelect value={period} onChange={handlePeriodChange} includeAll allLabel="All periods" style={{ height: 32 }} />
+
+          <button className="btn-outline" style={{ height: 32, fontSize: 12, flexShrink: 0 }} onClick={() => exportCSV(filtered, period)} disabled={filtered.length === 0}>
+            <i className="ti ti-download" style={{ fontSize: 12 }} /> Export
+          </button>
         </div>
 
-        {/* Period */}
-        <PeriodSelect
-          value={period}
-          onChange={handlePeriodChange}
-          includeAll
-          allLabel="All periods"
-          style={{ height: 32 }}
-        />
-
-        {/* Type filter pills */}
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {/* ── Type filter pills (scrollable on mobile) ── */}
+        <div className="filter-pills" style={{ flexShrink: 0 }}>
           {TYPE_PILLS.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => handleTypeChange(p.key)}
-              style={{
-                height: 30,
-                padding: "0 11px",
-                borderRadius: 20,
-                border: `0.5px solid ${typeFilter === p.key ? "#85B7EB" : "var(--b3)"}`,
-                fontSize: 11,
-                cursor: "pointer",
-                fontWeight: typeFilter === p.key ? 600 : 400,
-                background: typeFilter === p.key ? "var(--blue-bg)" : "transparent",
-                color: typeFilter === p.key ? "var(--blue)" : "var(--t2)",
-                transition: "all .1s",
-                fontFamily: "inherit",
-              }}
-            >
+            <button key={p.key} onClick={() => handleTypeChange(p.key)} style={{ height: 30, padding: "0 11px", borderRadius: 20, border: `0.5px solid ${typeFilter === p.key ? "#85B7EB" : "var(--b3)"}`, fontSize: 11, cursor: "pointer", fontWeight: typeFilter === p.key ? 600 : 400, background: typeFilter === p.key ? "var(--blue-bg)" : "transparent", color: typeFilter === p.key ? "var(--blue)" : "var(--t2)", transition: "all .1s", fontFamily: "inherit", whiteSpace: "nowrap" }}>
               {p.label}
             </button>
           ))}
         </div>
 
-        <div style={{ marginLeft: "auto", flexShrink: 0 }}>
-          <button
-            className="btn-outline"
-            style={{ height: 32, fontSize: 12 }}
-            onClick={() => exportCSV(filtered, period)}
-            disabled={filtered.length === 0}
-          >
-            <i className="ti ti-download" style={{ fontSize: 12 }} /> Export CSV
-          </button>
+        {/* ── Summary metrics ── */}
+        <div className="summary-grid-3">
+          <SummaryCard label="Total inflows"  value={totalInflow}  color="var(--green)" icon="ti-trending-up" />
+          <SummaryCard label="Total outflows" value={totalOutflow} color="var(--red)"   icon="ti-trending-down" />
+          <SummaryCard label={`Net ${net >= 0 ? "surplus" : "deficit"}`} value={net} color={net >= 0 ? "var(--blue)" : "var(--red)"} icon={net >= 0 ? "ti-chart-bar" : "ti-alert-triangle"} />
         </div>
-      </div>
 
-      {/* ── Summary metrics ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, flexShrink: 0 }}>
-        <SummaryCard label="Total inflows"  value={totalInflow}  color="var(--green)" icon="ti-trending-up" />
-        <SummaryCard label="Total outflows" value={totalOutflow} color="var(--red)"   icon="ti-trending-down" />
-        <SummaryCard
-          label={`Net ${net >= 0 ? "surplus" : "deficit"}`}
-          value={net}
-          color={net >= 0 ? "var(--blue)" : "var(--red)"}
-          icon={net >= 0 ? "ti-chart-bar" : "ti-alert-triangle"}
-        />
-      </div>
+        {/* ── Split grid: list + right-column detail (desktop) ── */}
+        <div className="panel-split-grid">
 
-      {/* ── Two-column main ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 12, flex: 1, overflow: "hidden", minHeight: 0 }}>
-
-        {/* Left: table */}
-        <div style={{ display: "flex", flexDirection: "column", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
-          {/* Table header */}
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", flexShrink: 0 }}>
-            <colgroup>
-              <col width="14%" />
-              <col width="13%" />
-              <col width="46%" />
-              <col width="17%" />
-              <col width="10%" />
-            </colgroup>
-            <thead>
-              <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
-                {["Date", "Type", "Description", "Amount", "Status"].map((h, i) => (
-                  <th
-                    key={h}
-                    style={{
-                      padding: "9px 10px",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: "var(--t3)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      textAlign: i >= 3 ? "right" : "left",
-                      ...(i === 0 ? { paddingLeft: 16 } : {}),
-                      ...(i === 4 ? { paddingRight: 16, textAlign: "center" as const } : {}),
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-          </table>
-
-          {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {loading ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 48, color: "var(--t3)", fontSize: 12 }}>
-                <i className="ti ti-loader-2" style={{ fontSize: 18 }} /> Loading transactions…
-              </div>
-            ) : error ? (
-              <div style={{ padding: 24, fontSize: 12, color: "var(--red)", display: "flex", alignItems: "center", gap: 6 }}>
-                <i className="ti ti-alert-circle" style={{ fontSize: 14 }} /> {error}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div style={{ padding: 48, textAlign: "center", color: "var(--t2)" }}>
-                <i className="ti ti-list-details" style={{ fontSize: 32, color: "var(--t3)", display: "block", marginBottom: 10 }} />
-                <div style={{ fontSize: 13 }}>{search ? "No matching transactions" : "No transactions found"}</div>
-                <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>Try a different period or filter</div>
-              </div>
-            ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                <colgroup>
-                  <col width="14%" />
-                  <col width="13%" />
-                  <col width="46%" />
-                  <col width="17%" />
-                  <col width="10%" />
-                </colgroup>
-                <tbody>
-                  {filtered.map((entry) => (
-                    <LedgerRow
-                      key={`${entry.type}-${entry.id}`}
-                      entry={entry}
-                      selected={selected?.id === entry.id && selected?.type === entry.type}
-                      onClick={() => setSelected(entry)}
-                    />
+          {/* List */}
+          <div style={{ display: "flex", flexDirection: "column", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", flexShrink: 0 }}>
+              <colgroup><col width="14%" /><col width="13%" /><col width="46%" /><col width="17%" /><col width="10%" /></colgroup>
+              <thead>
+                <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+                  {["Date", "Type", "Description", "Amount", "Status"].map((h, i) => (
+                    <th key={h} style={{ padding: "9px 10px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 3 ? "right" : "left", ...(i === 0 ? { paddingLeft: 16 } : {}), ...(i === 4 ? { paddingRight: 16, textAlign: "center" as const } : {}) }}>{h}</th>
                   ))}
-                </tbody>
-              </table>
+                </tr>
+              </thead>
+            </table>
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {loading ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 48, color: "var(--t3)", fontSize: 12 }}>
+                  <i className="ti ti-loader-2" style={{ fontSize: 18 }} /> Loading transactions…
+                </div>
+              ) : error ? (
+                <div style={{ padding: 24, fontSize: 12, color: "var(--red)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <i className="ti ti-alert-circle" style={{ fontSize: 14 }} /> {error}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div style={{ padding: 48, textAlign: "center", color: "var(--t2)" }}>
+                  <i className="ti ti-list-details" style={{ fontSize: 32, color: "var(--t3)", display: "block", marginBottom: 10 }} />
+                  <div style={{ fontSize: 13 }}>{search ? "No matching transactions" : "No transactions found"}</div>
+                  <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>Try a different period or filter</div>
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                  <colgroup><col width="14%" /><col width="13%" /><col width="46%" /><col width="17%" /><col width="10%" /></colgroup>
+                  <tbody>
+                    {filtered.map((entry) => (
+                      <LedgerRow key={`${entry.type}-${entry.id}`} entry={entry} selected={selected?.id === entry.id && selected?.type === entry.type} onClick={() => setSelected(entry)} />
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {!loading && filtered.length > 0 && (
+              <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--b3)", background: "var(--bg2)", fontSize: 11, color: "var(--t3)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <span>{filtered.length} transaction{filtered.length !== 1 ? "s" : ""}{search && ` matching "${search}"`}</span>
+                {data && data.total > 100 && <span style={{ color: "var(--amber, #D97706)" }}>Showing first 100 of {data.total}</span>}
+              </div>
             )}
           </div>
 
-          {/* Footer */}
-          {!loading && filtered.length > 0 && (
-            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--b3)", background: "var(--bg2)", fontSize: 11, color: "var(--t3)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-              <span>{filtered.length} transaction{filtered.length !== 1 ? "s" : ""}{search && ` matching "${search}"`}</span>
-              {data && data.total > 100 && (
-                <span style={{ color: "var(--amber, #D97706)" }}>
-                  Showing first 100 of {data.total} — narrow the period or type to see all
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right: detail panel */}
-        <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
-          <DetailPanel entry={selected} />
+          {/* Right detail column — hidden on mobile via CSS */}
+          <div className="panel-detail-col" style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
+            <DetailPanel entry={selected} />
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* ── Mobile detail drawer (shown when item selected on mobile) ── */}
+      {selected && (
+        <>
+          <div className="drawer-mobile-backdrop" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }} onClick={() => setSelected(null)} />
+          <div className="drawer-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 400, background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-12px 0 48px rgba(0,0,0,0.12)", animation: "drawerIn 0.2s cubic-bezier(0.22,1,0.36,1)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--b3)", background: "var(--bg1)", flexShrink: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Transaction Detail</span>
+              <button onClick={() => setSelected(null)} style={{ width: 28, height: 28, border: "none", background: "var(--bg2)", borderRadius: 6, cursor: "pointer", color: "var(--t2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <i className="ti ti-x" style={{ fontSize: 14 }} />
+              </button>
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <DetailPanel entry={selected} />
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 }
