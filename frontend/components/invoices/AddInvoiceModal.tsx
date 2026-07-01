@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Modal from "@frontend/components/ui/Modal";
-import { createInvoiceRequest } from "@frontend/hooks/useInvoices";
+import { createInvoiceRequest, updateInvoiceRequest } from "@frontend/hooks/useInvoices";
 import { useAllLookups, lookupOptions } from "@frontend/hooks/useLookups";
 import type { Invoice, ApiResponse } from "@frontend/types";
 
 interface AddInvoiceModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: (invoice: Invoice) => void;
+  onCreated?: (invoice: Invoice) => void;
+  onSaved?: (invoice: Invoice) => void;
+  invoice?: Invoice;
   defaultClientId?: string;
   defaultProjectId?: string;
 }
@@ -94,7 +96,7 @@ const EMPTY_FORM: FormData = {
 };
 
 export default function AddInvoiceModal({
-  open, onClose, onCreated, defaultClientId, defaultProjectId,
+  open, onClose, onCreated, onSaved, invoice, defaultClientId, defaultProjectId,
 }: AddInvoiceModalProps) {
   const [form, setForm] = useState<FormData>({ ...EMPTY_FORM, clientId: defaultClientId ?? "", projectId: defaultProjectId ?? "" });
   const [saving, setSaving] = useState(false);
@@ -110,8 +112,34 @@ export default function AddInvoiceModal({
       setForm({ ...EMPTY_FORM, clientId: defaultClientId ?? "", projectId: defaultProjectId ?? "" });
       setError(null);
       setCustomPaymentTerms(false);
+      return;
     }
-  }, [open, defaultClientId, defaultProjectId]);
+    if (invoice) {
+      const discountedSub = invoice.subtotal - (invoice.discountAmount ?? 0);
+      const derivedTaxPct = discountedSub > 0 ? Math.round((invoice.taxAmount / discountedSub) * 100) : 0;
+      setCustomPaymentTerms(!!invoice.paymentTerms && !PAYMENT_TERMS_OPTIONS.includes(invoice.paymentTerms));
+      setForm({
+        clientId: invoice.client?.id ?? "",
+        projectId: invoice.project?.id ?? "",
+        currency: invoice.currency,
+        issueDate: invoice.issueDate.slice(0, 10),
+        dueDate: invoice.dueDate.slice(0, 10),
+        paymentTerms: invoice.paymentTerms ?? "Net 30",
+        discountType: (invoice.discountType as "pct" | "amount") ?? "pct",
+        discountValue: invoice.discountValue > 0 ? String(invoice.discountValue) : "",
+        taxPct: String(derivedTaxPct),
+        paymentNumber: String(invoice.paymentNumber),
+        notes: invoice.notes ?? "",
+        lineItems: (invoice.lineItems ?? []).length > 0
+          ? invoice.lineItems!.map(li => ({
+              description: li.description,
+              quantity: String(li.quantity),
+              rate: String(li.rate / 100),
+            }))
+          : [{ ...EMPTY_LINE }],
+      });
+    }
+  }, [open, invoice, defaultClientId, defaultProjectId]);
 
   useEffect(() => {
     if (!open) return;
@@ -182,7 +210,7 @@ export default function AddInvoiceModal({
     setSaving(true);
     setError(null);
     try {
-      const invoice = await createInvoiceRequest({
+      const payload = {
         clientId: form.clientId,
         projectId: form.projectId || undefined,
         currency: form.currency,
@@ -201,11 +229,17 @@ export default function AddInvoiceModal({
             quantity: parseInt(i.quantity, 10) || 1,
             rate: parseFloat(i.rate) || 0,
           })),
-      });
-      onCreated(invoice);
+      };
+      if (invoice) {
+        const updated = await updateInvoiceRequest(invoice.id, payload);
+        onSaved?.(updated);
+      } else {
+        const created = await createInvoiceRequest(payload);
+        onCreated?.(created);
+      }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create invoice");
+      setError(err instanceof Error ? err.message : invoice ? "Failed to update invoice" : "Failed to create invoice");
     } finally {
       setSaving(false);
     }
@@ -219,12 +253,15 @@ export default function AddInvoiceModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="New invoice"
+      title={invoice ? `Edit — ${invoice.invoiceNumber}` : "New invoice"}
       footer={
         <>
           <button className="btn-outline" onClick={onClose}>Cancel</button>
           <button className="btn-primary" onClick={handleSubmit} disabled={saving || !canSubmit} style={{ opacity: canSubmit ? 1 : 0.5 }}>
-            {saving ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> Creating…</> : <><i className="ti ti-check" style={{ fontSize: 12 }} /> Create invoice</>}
+            {saving
+              ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> {invoice ? "Saving…" : "Creating…"}</>
+              : <><i className="ti ti-check" style={{ fontSize: 12 }} /> {invoice ? "Save changes" : "Create invoice"}</>
+            }
           </button>
         </>
       }

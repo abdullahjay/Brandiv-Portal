@@ -310,6 +310,7 @@ export default function UsersPage() {
     }
   }, [loading, users, selected]);
   const [addOpen, setAddOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const [editOpen, setEditOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
@@ -375,6 +376,10 @@ export default function UsersPage() {
         .user-item:hover { background: var(--bg2); }
         .user-item.selected { background: var(--blue-bg); border-left: 2px solid var(--blue); padding-left: 12px; }
         .metric-pill { display: flex; flex-direction: column; gap: 2px; background: var(--bg2); border-radius: var(--rm); padding: 10px 14px; }
+        .user-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        @media (max-width: 767px) {
+          .user-info-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
 
       {/* Header */}
@@ -390,9 +395,9 @@ export default function UsersPage() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 16, height: "calc(100vh - 160px)" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden" }}>
         {/* Left panel — user list */}
-        <div style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="list-panel" style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Search + filters */}
           <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--b3)", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ position: "relative" }}>
@@ -443,7 +448,7 @@ export default function UsersPage() {
                 <div
                   key={u.id}
                   className={`user-item${selected?.id === u.id ? " selected" : ""}`}
-                  onClick={() => { setSelected(u); setDeactivateConfirm(false); setActionError(null); }}
+                  onClick={() => { setSelected(u); setDeactivateConfirm(false); setActionError(null); setMobileView("detail"); }}
                 >
                   <div style={{ position: "relative" }}>
                     <Avatar name={u.name} size={36} />
@@ -485,7 +490,10 @@ export default function UsersPage() {
         </div>
 
         {/* Right panel — user detail */}
-        <div style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div className="detail-panel-wrap" style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to users
+          </button>
           {!selected ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, color: "var(--t3)" }}>
               <i className="ti ti-user-circle" style={{ fontSize: 40 }} />
@@ -499,12 +507,12 @@ export default function UsersPage() {
           ) : (
             <>
               {/* Detail header */}
-              <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
+              <div className="emp-detail-header" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
                 <Avatar name={selected.name} size={52} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)" }}>{selected.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>{selected.email}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
+                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.email}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                     {roleBadge(selected.role)}
                     <span
                       style={{
@@ -523,7 +531,7 @@ export default function UsersPage() {
                   </div>
                 </div>
                 {isAdmin && (
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div className="emp-detail-actions" style={{ display: "flex", gap: 8 }}>
                     <button className="btn-outline" onClick={() => { setEditOpen(true); setActionError(null); setDeleteConfirm(false); }}>
                       <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
                     </button>
@@ -614,7 +622,7 @@ export default function UsersPage() {
                 )}
 
                 {/* Info grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+                <div className="user-info-grid">
                   {[
                     { label: "Full name", value: selected.name, icon: "ti-user" },
                     { label: "Email address", value: selected.email, icon: "ti-mail" },

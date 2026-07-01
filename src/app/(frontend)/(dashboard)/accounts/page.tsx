@@ -442,24 +442,24 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
     <div>
 
       {/* ── Hero bar ─────────────────────────────────────────────────────── */}
-      <div style={{
+      <div className="dist-hero" style={{
         borderRadius: "var(--rl)",
         background: "linear-gradient(135deg, #1e1b4b 0%, #2e1065 50%, #1e3a5f 100%)",
-        padding: "28px 32px",
+        padding: "24px 28px",
         marginBottom: 24,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         boxShadow: "0 4px 24px rgba(109,40,217,0.25)",
         position: "relative", overflow: "hidden",
+        gap: 16,
       }}>
-        {/* Decorative orbs */}
         <div style={{ position: "absolute", top: -40, right: 120, width: 160, height: 160, borderRadius: "50%", background: "rgba(109,40,217,0.2)", filter: "blur(40px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: -30, right: 40, width: 120, height: 120, borderRadius: "50%", background: "rgba(14,165,233,0.15)", filter: "blur(30px)", pointerEvents: "none" }} />
 
-        <div>
+        <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
             Distribution Engine · Operating Balance
           </div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 8 }}>
+          <div className="dist-hero-amount" style={{ fontSize: 36, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 8 }}>
             PKR {fmt(operatingPkr)}
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
@@ -471,16 +471,16 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", flexShrink: 0 }}>
           {hasBalance && preview.warnings.length === 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(16,185,129,0.2)", border: "0.5px solid rgba(16,185,129,0.4)", borderRadius: 20, padding: "6px 14px" }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981" }} />
-              <span style={{ fontSize: 12, color: "#6EE7B7", fontWeight: 500 }}>Ready to distribute</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(16,185,129,0.2)", border: "0.5px solid rgba(16,185,129,0.4)", borderRadius: 20, padding: "6px 12px" }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981", flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: "#6EE7B7", fontWeight: 500, whiteSpace: "nowrap" }}>Ready to distribute</span>
             </div>
           )}
           {preview.warnings.map((w, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.2)", border: "0.5px solid rgba(245,158,11,0.4)", borderRadius: 20, padding: "6px 14px" }}>
-              <i className="ti ti-alert-triangle" style={{ fontSize: 12, color: "#FCD34D" }} />
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.2)", border: "0.5px solid rgba(245,158,11,0.4)", borderRadius: 20, padding: "6px 12px" }}>
+              <i className="ti ti-alert-triangle" style={{ fontSize: 12, color: "#FCD34D", flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: "#FCD34D", fontWeight: 500 }}>{w}</span>
             </div>
           ))}
@@ -488,7 +488,7 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
       </div>
 
       {/* ── Main two-column layout ────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20, alignItems: "start" }}>
+      <div className="dist-grid" style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20, alignItems: "start" }}>
 
         {/* ── LEFT: Waterfall visualization ─────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -878,7 +878,7 @@ export default function AccountsPage() {
 
         {/* ── Header + Tabs bar ──────────────────────────────────────────────── */}
         <div style={{ background: "var(--bg1)", borderBottom: "0.5px solid var(--b3)", flexShrink: 0 }}>
-          <div style={{ padding: "18px 28px 0", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div className="accounts-header" style={{ padding: "18px 28px 0", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             {/* Page title */}
             <div style={{ marginBottom: 0 }}>
               <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 2 }}>
@@ -912,7 +912,7 @@ export default function AccountsPage() {
             </div>
 
             {/* Actions */}
-            <div style={{ paddingBottom: 14, display: "flex", gap: 8 }}>
+            <div style={{ paddingBottom: 14, display: "flex", gap: 8, flexShrink: 0 }}>
               {tab === "accounts" && (
                 <button className="btn-primary" style={{ height: 36, fontSize: 13, paddingInline: 16 }} onClick={() => setShowAdd(true)}>
                   <i className="ti ti-plus" style={{ fontSize: 13 }} /> Add Account
@@ -923,13 +923,13 @@ export default function AccountsPage() {
         </div>
 
         {/* ── Tab content ────────────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "22px 28px" }}>
+        <div className="accounts-tab-content" style={{ flex: 1, overflowY: "auto", padding: "22px 28px" }}>
 
           {/* ── ACCOUNTS TAB ─────────────────────────────────────────────────── */}
           {tab === "accounts" && (
             <>
               {/* Metric cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+              <div className="metrics-4">
                 <MetricCard
                   icon="ti-building-bank"
                   label="Operating Balance"
@@ -989,7 +989,7 @@ export default function AccountsPage() {
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }}
             onClick={() => setSelectedId(null)}
           />
-          <div style={{
+          <div className="drawer-panel" style={{
             position: "fixed", top: 0, right: 0, bottom: 0, width: 480,
             background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)",
             zIndex: 201, display: "flex", flexDirection: "column",

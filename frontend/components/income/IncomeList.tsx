@@ -49,6 +49,7 @@ export default function IncomeList({
 }: IncomeListProps) {
   return (
     <div
+      className="list-panel"
       style={{
         width: 300,
         minWidth: 300,

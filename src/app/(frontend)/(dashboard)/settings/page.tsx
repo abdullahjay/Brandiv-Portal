@@ -511,7 +511,7 @@ function LookupsTab({ canEdit }: { canEdit: boolean }) {
   if (error) return <div style={{ padding: 24, color: "var(--red)", fontSize: 12 }}>{error}</div>;
 
   return (
-    <div style={{ display: "flex", gap: 16, minHeight: 400 }}>
+    <div className="lookup-layout">
       {/* Type nav */}
       <div style={{ width: 180, flexShrink: 0 }}>
         <div style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Categories</div>
@@ -711,7 +711,7 @@ export default function SettingsPage() {
       <Topbar title="Settings" />
 
       {/* Tab bar */}
-      <div style={{ borderBottom: "0.5px solid var(--b3)", padding: "0 28px", display: "flex", gap: 2, background: "var(--bg1)", flexShrink: 0 }}>
+      <div className="tab-scroll" style={{ padding: "0 28px", gap: 2, background: "var(--bg1)", flexShrink: 0 }}>
         {TABS.map((t) => (
           <button
             key={t.id}

@@ -50,7 +50,6 @@ const CURRENCIES = ["USD", "GBP", "EUR", "AED", "PKR"];
 const PAYMENT_METHODS = ["Bank Transfer", "Wise", "PayPal", "Payoneer", "Crypto", "Cheque", "Cash", "Other"];
 const INCOME_TYPES = ["Client payment", "Milestone payment", "Retainer fee", "Consulting", "License fee", "Support", "Other"];
 const RATE_SOURCES = ["Manual entry", "SBP rate", "Bank rate", "Other"];
-const COMMISSION_RATES: Record<string, number> = { first: 15, recurring: 5 };
 
 function fmt(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -82,6 +81,8 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
   const [accountsChecked, setAccountsChecked] = useState(false);
   const [managingPartner, setManagingPartner] = useState<{ id: string; name: string } | null>(null);
   const [managingRatePct, setManagingRatePct] = useState(10);
+  const [firstRatePct, setFirstRatePct] = useState(15);
+  const [recurringRatePct, setRecurringRatePct] = useState(5);
 
   // Reset and pre-fill when modal opens
   useEffect(() => {
@@ -139,8 +140,13 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
         .then((r) => r.json())
         .then((json: ApiResponse<Record<string, unknown>>) => {
           if (json.success && json.data) {
-            const rate = Number((json.data as Record<string, unknown>).managing_commission_rate ?? 10);
-            if (!isNaN(rate) && rate > 0) setManagingRatePct(rate);
+            const s = json.data as Record<string, unknown>;
+            const managing = Number(s.managing_commission_rate ?? 10);
+            const first = Number(s.commission_rate_first ?? 15);
+            const recurring = Number(s.commission_rate_recurring ?? 5);
+            if (!isNaN(managing) && managing >= 0) setManagingRatePct(managing);
+            if (!isNaN(first) && first >= 0) setFirstRatePct(first);
+            if (!isNaN(recurring) && recurring >= 0) setRecurringRatePct(recurring);
           }
         })
         .catch(() => {}),
@@ -177,7 +183,7 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
 
   // Commission preview
   const hasCommission = clientData?.commissionRule !== "none" && !!clientData?.partner;
-  const commissionRate = invoice.paymentNumber === 1 ? COMMISSION_RATES.first : COMMISSION_RATES.recurring;
+  const commissionRate = invoice.paymentNumber === 1 ? firstRatePct : recurringRatePct;
   const estimatedCommissionPkr = hasCommission ? netPkr * commissionRate / 100 : 0;
   const hasManagingCommission = hasCommission && !!managingPartner;
   const managingCommissionPkr = hasManagingCommission ? netPkr * managingRatePct / 100 : 0;

@@ -45,6 +45,7 @@ export default function IncomePage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -82,7 +83,7 @@ export default function IncomePage() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 10 }}>
 
         {/* Summary cards */}
-        <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+        <div className="income-summary">
           <SummaryCard
             label="Gross Income"
             value={fmtPkr(totals.grossPkr)}
@@ -110,7 +111,7 @@ export default function IncomePage() {
         </div>
 
         {/* Two-panel */}
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <IncomeList
             records={records}
             selectedId={selectedId}
@@ -118,16 +119,21 @@ export default function IncomePage() {
             search={search}
             period={period}
             loading={loading}
-            onSelect={setSelectedId}
+            onSelect={(id) => { setSelectedId(id); setMobileView("detail"); }}
             onFilterChange={setFilter}
             onSearchChange={setSearch}
             onPeriodChange={handlePeriodChange}
             onAddClick={() => setShowAdd(true)}
           />
-          <IncomeDetail
-            recordId={selectedId}
-            onUpdated={refetch}
-          />
+          <div className="detail-panel-wrap">
+            <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+              <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to income
+            </button>
+            <IncomeDetail
+              recordId={selectedId}
+              onUpdated={refetch}
+            />
+          </div>
         </div>
       </div>
 

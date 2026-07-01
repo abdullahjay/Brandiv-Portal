@@ -14,6 +14,7 @@ export default function CommissionsPage() {
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -49,6 +50,7 @@ export default function CommissionsPage() {
 
   function handleSelect(id: string) {
     setSelectedId(id);
+    setMobileView("detail");
   }
 
   function handleFilterChange(f: FilterStatus) {
@@ -59,7 +61,7 @@ export default function CommissionsPage() {
   return (
     <>
       <Topbar title="Commissions" />
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <CommissionList
           commissions={commissions}
           selectedId={selectedId}
@@ -70,11 +72,16 @@ export default function CommissionsPage() {
           onFilterChange={handleFilterChange}
           onSearchChange={setSearch}
         />
-        <CommissionDetail
-          commission={selectedCommission}
-          loading={false}
-          onApproved={handleApproved}
-        />
+        <div className="detail-panel-wrap">
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to commissions
+          </button>
+          <CommissionDetail
+            commission={selectedCommission}
+            loading={false}
+            onApproved={handleApproved}
+          />
+        </div>
       </div>
     </>
   );

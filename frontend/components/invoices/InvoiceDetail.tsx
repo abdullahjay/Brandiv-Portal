@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useInvoice, sendInvoiceRequest, cancelInvoiceRequest } from "@frontend/hooks/useInvoices";
+import { useSettings } from "@frontend/hooks/useSettings";
 import Badge from "@frontend/components/ui/Badge";
 import RecordPaymentModal from "@frontend/components/invoices/RecordPaymentModal";
+import AddInvoiceModal from "@frontend/components/invoices/AddInvoiceModal";
 import type { Invoice } from "@frontend/types";
 
 interface InvoiceDetailProps {
@@ -51,24 +53,33 @@ function fmtDateLong(s: string | null) {
   return new Date(s).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-function downloadInvoicePdf(invoice: Invoice) {
+function downloadInvoicePdf(invoice: Invoice, opts: {
+  logoUrl?: string | null;
+  companyName?: string | null;
+  companyAddress?: string | null;
+  companyNtn?: string | null;
+} = {}) {
   const cur = invoice.currency;
   const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const pdfDiscountAmount = invoice.discountAmount ?? 0;
   const pdfDiscountedSubtotal = invoice.subtotal - pdfDiscountAmount;
   const taxPct = pdfDiscountedSubtotal > 0 ? Math.round((invoice.taxAmount / pdfDiscountedSubtotal) * 100) : 0;
-
-  const statusColors: Record<string, string> = {
-    draft: "#888888", sent: "#185FA5", paid: "#2a7a2a", overdue: "#c0392b", cancelled: "#888888",
-  };
-  const sc = statusColors[invoice.status] ?? "#888888";
+  const origin = window.location.origin;
+  const logoUrl = opts.logoUrl
+    ? (opts.logoUrl.startsWith("http") ? opts.logoUrl : `${origin}${opts.logoUrl}`)
+    : `${origin}/uploads/logo.webp`;
+  const companyName = opts.companyName || "Brandiv Labs";
+  const companyAddress = opts.companyAddress
+    ? opts.companyAddress.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")
+    : null;
+  const companyNtn = opts.companyNtn || null;
 
   const lineRows = (invoice.lineItems ?? []).map(item => `
     <tr>
-      <td class="desc">${item.description.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
+      <td><div class="item-name">${item.description.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div></td>
       <td class="num">${item.quantity}</td>
-      <td class="num">${cur} ${fmtAmt(item.rate / 100)}</td>
-      <td class="num bold">${cur} ${fmtAmt(item.amount / 100)}</td>
+      <td class="num">${fmtAmt(item.rate / 100)}</td>
+      <td class="amount">${fmtAmt(item.amount / 100)}</td>
     </tr>`).join("");
 
   const html = `<!DOCTYPE html>
@@ -80,115 +91,111 @@ function downloadInvoicePdf(invoice: Invoice) {
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{background:#fff}
 body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a18}
-.page{padding:48px;max-width:820px;margin:0 auto}
-@page{margin:15mm;size:A4}
+.page{padding:40px 48px;max-width:860px;margin:0 auto}
+@page{margin:12mm;size:A4}
 @media print{.no-print{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:0;max-width:none}}
-.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:48px;height:48px;border-radius:12px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;font-family:Arial,sans-serif;flex-shrink:0;line-height:1}
-.company{font-size:18px;font-weight:700;color:#185FA5}
-.right-block{text-align:right}
-.invoice-word{font-size:26px;font-weight:700;color:#1a1a18;margin-bottom:4px;letter-spacing:-0.5px}
-.invoice-num{font-size:14px;color:#555;font-weight:600;margin-bottom:6px}
-.status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${sc}22;color:${sc};text-transform:uppercase;letter-spacing:0.05em}
-hr{border:none;border-top:1px solid #e8e8e4;margin:24px 0}
-.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 24px;margin-bottom:32px}
-.meta-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;margin-bottom:4px}
-.meta-value{font-size:13px;color:#1a1a18;font-weight:500;line-height:1.4}
-.meta-value.blue{color:#185FA5}
-.meta-value.green{color:#2a7a2a}
-table{width:100%;border-collapse:collapse;margin-bottom:20px}
-thead tr{border-bottom:2px solid #1a1a18}
-th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#aaa;padding:0 0 8px}
-th.num{text-align:right}
-th.desc{text-align:left}
-td{padding:10px 0;border-bottom:1px solid #f0efeb;font-size:13px;color:#1a1a18;vertical-align:top}
-td.num{text-align:right;color:#555}
-td.bold{font-weight:600;color:#1a1a18}
-td.desc{color:#1a1a18}
-.totals{display:flex;justify-content:flex-end;margin-top:4px}
-.totals-inner{width:280px}
-.trow{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:#666}
-.trow.grand{border-top:2px solid #1a1a18;margin-top:8px;padding-top:10px;font-size:17px;font-weight:700;color:#1a1a18}
-.notes-box{background:#f8f8f6;border-radius:8px;padding:14px 16px;margin-top:28px}
+.top-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px}
+.logo-img{height:52px;width:auto;max-width:220px;object-fit:contain}
+.company-fb{font-size:22px;font-weight:700;color:#1a1a18;display:none}
+.right-header{text-align:right}
+.invoice-title{font-size:40px;font-weight:700;color:#1a1a18;letter-spacing:3px;line-height:1;margin-bottom:10px}
+.co-name-p{font-size:13px;font-weight:700;color:#1a1a18;line-height:1.6}
+.co-sub-p{font-size:11px;color:#555;line-height:1.6}
+.bill-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;gap:32px}
+.bill-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#aaa;margin-bottom:6px}
+.bill-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px}
+.bill-sub{font-size:12px;color:#555;line-height:1.5}
+.meta-tbl{border-collapse:collapse}
+.meta-tbl td{font-size:12px;padding:4px 10px;vertical-align:middle}
+.meta-tbl td.ml{color:#666;text-align:right;white-space:nowrap;font-weight:400}
+.meta-tbl td.mv{font-weight:600;color:#1a1a18;text-align:right;white-space:nowrap}
+.meta-tbl tr.adu td{background:#edf2f7;padding:7px 10px}
+.meta-tbl tr.adu td.ml{color:#1a3a4a;font-weight:600}
+.meta-tbl tr.adu td.mv{color:#1a3a4a;font-size:13px}
+table.items{width:100%;border-collapse:collapse;margin-bottom:24px}
+table.items thead tr{background:#1a3a4a}
+table.items th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#fff;padding:11px 14px;text-align:left}
+table.items th.num{text-align:right}
+table.items td{padding:11px 14px;border-bottom:1px solid #eee;vertical-align:top}
+table.items td.num{text-align:right;font-size:13px;color:#444}
+table.items td.amount{text-align:right;font-size:13px;font-weight:700;color:#1a1a18}
+.item-name{font-size:13px;font-weight:700;color:#1a1a18}
+.totals-wrap{display:flex;justify-content:flex-end;margin-bottom:28px}
+.totals-inner{min-width:310px}
+.trow{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:#555}
+.trow .val{min-width:110px;text-align:right;font-weight:500}
+.trow.disc .val{color:#c0392b}
+.tsep{border:none;border-top:1.5px solid #1a1a18;margin:8px 0}
+.trow.gtotal{font-size:14px;font-weight:700;color:#1a1a18}
+.trow.amtdue{font-size:14px;font-weight:700;color:#1a1a18;border-top:1.5px solid #1a1a18;padding-top:10px;margin-top:2px}
+.notes-box{background:#f8f8f6;border-radius:6px;padding:14px 16px;margin-bottom:24px}
 .notes-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;margin-bottom:8px}
 .notes-text{font-size:12px;color:#555;line-height:1.7}
-.footer{text-align:center;margin-top:48px;font-size:11px;color:#ccc}
-.save-btn{position:fixed;top:20px;right:20px;padding:10px 22px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
-.save-btn:hover{background:#1450a0}
+.footer{text-align:center;margin-top:32px;font-size:10px;color:#ccc}
+.save-btn{position:fixed;top:20px;right:20px;padding:10px 22px;background:#1a3a4a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.save-btn:hover{background:#0f2535}
 </style>
 </head>
 <body>
 <div class="page">
   <button class="save-btn no-print" onclick="window.print()">⬇ Save as PDF</button>
 
-  <div class="header">
-    <div class="brand">
-      <div class="logo">B</div>
-      <div class="company">Brandiv Labs</div>
+  <div class="top-header">
+    <div>
+      <img src="${logoUrl}" class="logo-img" alt="${companyName}" onerror="this.onerror=null;this.style.display='none';document.getElementById('co-fb').style.display='block'">
+      <div id="co-fb" class="company-fb">${companyName}</div>
     </div>
-    <div class="right-block">
-      <div class="invoice-word">INVOICE</div>
-      <div class="invoice-num">${invoice.invoiceNumber}</div>
-      <span class="status">${invoice.status}</span>
+    <div class="right-header">
+      <div class="invoice-title">INVOICE</div>
+      <div class="co-name-p">${companyName}</div>
+      ${companyAddress ? `<div class="co-sub-p">${companyAddress}</div>` : ""}
+      ${companyNtn ? `<div class="co-sub-p">NTN: ${companyNtn}</div>` : ""}
     </div>
   </div>
 
-  <div class="meta-grid">
+  <div class="bill-row">
     <div>
-      <div class="meta-label">Bill To</div>
-      <div class="meta-value blue">${(invoice.client?.companyName ?? "—").replace(/</g, "&lt;")}</div>
+      <div class="bill-label">Bill To</div>
+      <div class="bill-name">${(invoice.client?.companyName ?? "—").replace(/</g, "&lt;")}</div>
+      ${invoice.project?.name ? `<div class="bill-sub">${invoice.project.name.replace(/</g, "&lt;")}</div>` : ""}
     </div>
-    <div>
-      <div class="meta-label">Project</div>
-      <div class="meta-value">${(invoice.project?.name ?? "—").replace(/</g, "&lt;")}</div>
-    </div>
-    <div>
-      <div class="meta-label">Currency</div>
-      <div class="meta-value">${cur}</div>
-    </div>
-    <div>
-      <div class="meta-label">Issue Date</div>
-      <div class="meta-value">${fmtDateLong(invoice.issueDate)}</div>
-    </div>
-    <div>
-      <div class="meta-label">Due Date</div>
-      <div class="meta-value">${fmtDateLong(invoice.dueDate)}</div>
-    </div>
-    <div>
-      <div class="meta-label">Payment Terms</div>
-      <div class="meta-value">${(invoice.paymentTerms ?? "—").replace(/</g, "&lt;")}</div>
-    </div>
-    ${invoice.paymentNumber > 1 ? `<div><div class="meta-label">Payment #</div><div class="meta-value">${invoice.paymentNumber}</div></div>` : ""}
-    ${invoice.paidAt ? `<div><div class="meta-label">Paid On</div><div class="meta-value green">${fmtDateLong(invoice.paidAt)}</div></div>` : ""}
+    <table class="meta-tbl">
+      <tr><td class="ml">Invoice Number:</td><td class="mv">${invoice.invoiceNumber}</td></tr>
+      <tr><td class="ml">Invoice Date:</td><td class="mv">${fmtDateLong(invoice.issueDate)}</td></tr>
+      <tr><td class="ml">Payment Due:</td><td class="mv">${fmtDateLong(invoice.dueDate)}</td></tr>
+      ${invoice.paymentTerms ? `<tr><td class="ml">Payment Terms:</td><td class="mv">${invoice.paymentTerms.replace(/</g, "&lt;")}</td></tr>` : ""}
+      ${invoice.paymentNumber > 1 ? `<tr><td class="ml">Payment #:</td><td class="mv">${invoice.paymentNumber}</td></tr>` : ""}
+      ${invoice.paidAt ? `<tr><td class="ml">Paid On:</td><td class="mv">${fmtDateLong(invoice.paidAt)}</td></tr>` : ""}
+      <tr class="adu"><td class="ml">Amount Due (${cur}):</td><td class="mv">${fmtAmt(invoice.totalAmount / 100)}</td></tr>
+    </table>
   </div>
 
-  <hr>
-
-  <table>
+  <table class="items">
     <thead>
       <tr>
-        <th class="desc">Description</th>
-        <th class="num">Qty</th>
-        <th class="num">Rate</th>
+        <th>Services</th>
+        <th class="num">Months</th>
+        <th class="num">Price</th>
         <th class="num">Amount</th>
       </tr>
     </thead>
     <tbody>${lineRows}</tbody>
   </table>
 
-  <div class="totals">
+  <div class="totals-wrap">
     <div class="totals-inner">
-      <div class="trow"><span>Subtotal</span><span>${cur} ${fmtAmt(invoice.subtotal / 100)}</span></div>
-      ${pdfDiscountAmount > 0 ? `<div class="trow" style="color:#c0392b"><span>${invoice.discountType === "pct" ? `Discount (${invoice.discountValue}%)` : "Discount"}</span><span>− ${cur} ${fmtAmt(pdfDiscountAmount / 100)}</span></div>` : ""}
-      ${invoice.taxAmount > 0 ? `<div class="trow"><span>Tax (${taxPct}%)</span><span>${cur} ${fmtAmt(invoice.taxAmount / 100)}</span></div>` : ""}
-      <div class="trow grand"><span>Total</span><span>${cur} ${fmtAmt(invoice.totalAmount / 100)}</span></div>
+      <div class="trow"><span>Subtotal:</span><span class="val">${cur} ${fmtAmt(invoice.subtotal / 100)}</span></div>
+      ${pdfDiscountAmount > 0 ? `<div class="trow disc"><span>${invoice.discountType === "pct" ? `Discount (${invoice.discountValue}%):` : "Discount:"}</span><span class="val">(${cur} ${fmtAmt(pdfDiscountAmount / 100)})</span></div>` : ""}
+      ${invoice.taxAmount > 0 ? `<div class="trow"><span>Tax (${taxPct}%):</span><span class="val">${cur} ${fmtAmt(invoice.taxAmount / 100)}</span></div>` : ""}
+      <hr class="tsep">
+      <div class="trow gtotal"><span>Total:</span><span class="val">${cur} ${fmtAmt(invoice.totalAmount / 100)}</span></div>
+      <div class="trow amtdue"><span>Amount Due (${cur}):</span><span class="val">${fmtAmt(invoice.totalAmount / 100)}</span></div>
     </div>
   </div>
 
   ${invoice.notes ? `<div class="notes-box"><div class="notes-label">Notes</div><div class="notes-text">${invoice.notes.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</div></div>` : ""}
 
-  <div class="footer">Generated by Brandiv Labs CRM</div>
+  <div class="footer">Generated by ${companyName} CRM</div>
 </div>
 </body>
 </html>`;
@@ -201,10 +208,12 @@ td.desc{color:#1a1a18}
 
 export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailProps) {
   const { data: invoice, loading, refetch } = useInvoice(invoiceId);
+  const { settings } = useSettings();
   const [acting, setActing] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   async function handleAction(fn: () => Promise<unknown>) {
     setActing(true);
@@ -243,6 +252,7 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
   const canSend = invoice.status === "draft";
   const canRecordPayment = invoice.status === "sent" || invoice.status === "overdue";
   const canCancel = invoice.status !== "paid" && invoice.status !== "cancelled";
+  const canEdit = invoice.status !== "paid" && invoice.status !== "cancelled";
 
   const discountedSubtotal = invoice.subtotal - (invoice.discountAmount ?? 0);
   const taxPct = discountedSubtotal > 0
@@ -299,7 +309,17 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
             </>
           ) : (
             <>
-              <button className="btn-outline" onClick={() => downloadInvoicePdf(invoice)}>
+              {canEdit && (
+                <button className="btn-outline" onClick={() => setShowEditModal(true)}>
+                  <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
+                </button>
+              )}
+              <button className="btn-outline" onClick={() => downloadInvoicePdf(invoice, {
+                  logoUrl: settings.logo_url as string | null,
+                  companyName: settings.company_name as string | null,
+                  companyAddress: settings.company_address as string | null,
+                  companyNtn: settings.company_ntn as string | null,
+                })}>
                 <i className="ti ti-download" style={{ fontSize: 12 }} /> Download PDF
               </button>
               {canSend && (
@@ -454,6 +474,20 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
           </Section>
         )}
       </div>
+
+      {/* Edit invoice modal */}
+      {showEditModal && (
+        <AddInvoiceModal
+          open={showEditModal}
+          invoice={invoice}
+          onClose={() => setShowEditModal(false)}
+          onSaved={async () => {
+            setShowEditModal(false);
+            await refetch();
+            onUpdated?.();
+          }}
+        />
+      )}
 
       {/* Record Payment modal */}
       {showPayModal && (

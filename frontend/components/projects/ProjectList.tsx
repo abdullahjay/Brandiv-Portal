@@ -45,6 +45,7 @@ export default function ProjectList({
 }: ProjectListProps) {
   return (
     <div
+      className="list-panel"
       style={{
         width: 300,
         minWidth: 300,

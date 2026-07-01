@@ -10,6 +10,7 @@ export const upsertSettingsSchema = z.object({
   logo_url: z.string().max(1000).optional().nullable(),
   commission_rate_first: z.coerce.number().min(0).max(100).optional(),
   commission_rate_recurring: z.coerce.number().min(0).max(100).optional(),
+  managing_commission_rate: z.coerce.number().min(0).max(100).optional(),
 });
 
 export const fxRatesSchema = z.record(z.string(), z.coerce.number().positive());

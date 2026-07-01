@@ -218,6 +218,7 @@ export default function EmployeesPage() {
   const [actioning, setActioning] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -292,6 +293,9 @@ export default function EmployeesPage() {
         .emp-item.selected { background: var(--blue-bg); border-left: 2px solid var(--blue); padding-left: 12px; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
         .info-cell { background: var(--bg2); border-radius: var(--rm); padding: 10px 12px; }
+        @media (max-width: 767px) {
+          .info-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
 
       {/* Header */}
@@ -307,9 +311,9 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 16, height: "calc(100vh - 160px)" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden" }}>
         {/* Left — employee list */}
-        <div style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="list-panel" style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--b3)", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ position: "relative" }}>
               <i className="ti ti-search" style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--t3)" }} />
@@ -345,7 +349,7 @@ export default function EmployeesPage() {
                 <div
                   key={emp.id}
                   className={`emp-item${selected?.id === emp.id ? " selected" : ""}`}
-                  onClick={() => { setSelected(emp); setDeactivateConfirm(false); setActionError(null); }}
+                  onClick={() => { setSelected(emp); setDeactivateConfirm(false); setActionError(null); setMobileView("detail"); }}
                 >
                   <div style={{ position: "relative" }}>
                     <Avatar name={emp.name} dept={emp.department} size={38} />
@@ -376,7 +380,10 @@ export default function EmployeesPage() {
         </div>
 
         {/* Right — employee detail */}
-        <div style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div className="detail-panel-wrap" style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to employees
+          </button>
           {!selected ? (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--t3)" }}>
               <i className="ti ti-id-badge" style={{ fontSize: 40 }} />
@@ -390,14 +397,14 @@ export default function EmployeesPage() {
           ) : (
             <>
               {/* Header */}
-              <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
+              <div className="emp-detail-header" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
                 <Avatar name={selected.name} dept={selected.department} size={52} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)" }}>{selected.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
+                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {[selected.designation, selected.department].filter(Boolean).join(" · ") || "No designation"}
                   </div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3, background: selected.status === "active" ? "#ECFDF5" : "var(--bg2)", color: selected.status === "active" ? "#059669" : "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       {selected.status}
                     </span>
@@ -409,7 +416,7 @@ export default function EmployeesPage() {
                   </div>
                 </div>
                 {canManage && (
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div className="emp-detail-actions" style={{ display: "flex", gap: 8 }}>
                     <button className="btn-outline" onClick={() => { setEditTarget(selected); setModalOpen(true); setActionError(null); setDeleteConfirm(false); }}>
                       <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
                     </button>

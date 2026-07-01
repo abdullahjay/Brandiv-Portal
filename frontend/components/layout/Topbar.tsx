@@ -19,6 +19,7 @@ export default function Topbar({ title, actions }: TopbarProps) {
 
   return (
     <div
+      className="topbar"
       style={{
         background: "var(--bg1)",
         borderBottom: "0.5px solid var(--b3)",
@@ -33,7 +34,7 @@ export default function Topbar({ title, actions }: TopbarProps) {
         zIndex: 30,
       }}
     >
-      <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)", letterSpacing: "-0.01em" }}>
+      <div className="topbar-title" style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)", letterSpacing: "-0.01em" }}>
         {title}
       </div>
 

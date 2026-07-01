@@ -24,15 +24,7 @@ export default async function DashboardLayout({
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <Sidebar user={session.user} logoUrl={logoUrl} companyName={companyName} />
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          marginLeft: 220,
-        }}
-      >
+      <div className="main-content">
         {children}
       </div>
     </div>

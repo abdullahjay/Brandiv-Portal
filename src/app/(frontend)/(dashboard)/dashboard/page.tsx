@@ -220,6 +220,14 @@ export default function DashboardPage() {
         .income-row:last-child { border-bottom: none; }
         .inv-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--b3); }
         .inv-row:last-child { border-bottom: none; }
+        @media (max-width: 767px) {
+          .dash-pad { padding: 12px 14px 24px !important; }
+          .dash-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .dash-row2 { grid-template-columns: 1fr !important; }
+          .dash-row3 { grid-template-columns: 1fr !important; }
+          .dash-client-name { width: auto !important; max-width: 100px !important; }
+          .dash-client-val { width: auto !important; min-width: 72px !important; }
+        }
       `}</style>
 
       <Topbar
@@ -229,7 +237,7 @@ export default function DashboardPage() {
         }
       />
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px 32px" }}>
+      <div className="dash-pad" style={{ flex: 1, overflowY: "auto", padding: "20px 24px 32px" }}>
         <div style={{ fontSize: 12, color: "var(--t3)", marginBottom: 16 }}>
           Business overview · {periodLabel(period)}
         </div>
@@ -241,7 +249,7 @@ export default function DashboardPage() {
         )}
 
         {/* Row 1 — KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+        <div className="dash-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
           <KpiCard
             icon="ti-trending-up"
             label="Revenue this month"
@@ -277,7 +285,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Row 2 — Revenue chart + P&L breakdown */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 12, marginBottom: 16 }}>
+        <div className="dash-row2" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 12, marginBottom: 16 }}>
           {/* Revenue chart */}
           <div className="dash-section">
             <div className="dash-section-head">
@@ -345,7 +353,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Row 3 — Recent income + Pending invoices */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <div className="dash-row3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
           {/* Recent income */}
           <div className="dash-section">
             <div className="dash-section-head">
@@ -433,13 +441,13 @@ export default function DashboardPage() {
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--blue-bg)", color: "var(--blue)", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     {i + 1}
                   </div>
-                  <div style={{ width: 130, fontSize: 12, color: "var(--t1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  <div className="dash-client-name" style={{ width: 130, fontSize: 12, color: "var(--t1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 }}>
                     {c.clientName}
                   </div>
                   <div style={{ flex: 1, height: 6, background: "var(--bg2)", borderRadius: 4, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${(c.incomePkr / maxClientIncome) * 100}%`, background: "var(--blue)", borderRadius: 4, transition: "width 0.4s ease" }} />
                   </div>
-                  <div style={{ width: 100, fontSize: 12, fontWeight: 700, color: "var(--t1)", textAlign: "right", flexShrink: 0 }}>{fmtFull(c.incomePkr)}</div>
+                  <div className="dash-client-val" style={{ width: 100, fontSize: 12, fontWeight: 700, color: "var(--t1)", textAlign: "right", flexShrink: 0 }}>{fmtFull(c.incomePkr)}</div>
                 </div>
               ))}
             </div>

@@ -395,10 +395,12 @@ function TransferRow({
           {transfer.description}
         </div>
       </td>
-      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
-        <span style={{ fontSize: 11, color: "var(--t2)" }}>{transfer.fromAccount.name}</span>
-        <i className="ti ti-arrow-right" style={{ fontSize: 10, color: "var(--t3)", margin: "0 4px" }} />
-        <span style={{ fontSize: 11, color: "var(--t2)" }}>{transfer.toAccount.name}</span>
+      <td style={{ padding: "9px 10px", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 3, overflow: "hidden" }}>
+          <span style={{ fontSize: 11, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1 1 0", minWidth: 0 }}>{transfer.fromAccount.name}</span>
+          <i className="ti ti-arrow-right" style={{ fontSize: 10, color: "var(--t3)", flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1 1 0", minWidth: 0 }}>{transfer.toAccount.name}</span>
+        </div>
       </td>
       <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: isReversed ? "var(--t3)" : "#0891b2", whiteSpace: "nowrap",
         textDecoration: isReversed ? "line-through" : "none" }}>
@@ -492,91 +494,44 @@ export default function TransfersPage() {
 
   return (
     <>
+      <style>{`@keyframes drawerIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
       <Topbar title="Transfers" />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 12 }}>
 
         {/* ── Filter bar ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: "0 10px", height: 32, flex: "1 1 180px", minWidth: 180, maxWidth: 280 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: "0 10px", height: 32, flex: "1 1 140px", minWidth: 140, maxWidth: 260 }}>
             <i className="ti ti-search" style={{ fontSize: 14, color: "var(--t3)", flexShrink: 0 }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search transfers…"
-              style={{ border: "none", background: "transparent", fontSize: 12, color: "var(--t1)", outline: "none", width: "100%" }}
-            />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" style={{ border: "none", background: "transparent", fontSize: 12, color: "var(--t1)", outline: "none", width: "100%" }} />
           </div>
-
-          <PeriodSelect
-            value={period}
-            onChange={handlePeriodChange}
-            includeAll
-            allLabel="All periods"
-            style={{ height: 32 }}
-          />
-
-          <div style={{ marginLeft: "auto", flexShrink: 0 }}>
-            <button className="btn-primary" style={{ height: 32, fontSize: 12 }} onClick={() => setShowModal(true)}>
-              <i className="ti ti-plus" style={{ fontSize: 12 }} /> New transfer
-            </button>
-          </div>
+          <PeriodSelect value={period} onChange={handlePeriodChange} includeAll allLabel="All periods" style={{ height: 32 }} />
+          <button className="btn-primary" style={{ height: 32, fontSize: 12, marginLeft: "auto", flexShrink: 0 }} onClick={() => setShowModal(true)}>
+            <i className="ti ti-plus" style={{ fontSize: 12 }} /> New transfer
+          </button>
         </div>
 
         {/* ── Summary metrics ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, flexShrink: 0 }}>
-          <SummaryCard
-            label="Total transferred"
-            value={`PKR ${(totalAmount / 100).toLocaleString("en-PK", { maximumFractionDigits: 0 })}`}
-            color="#0891b2"
-            icon="ti-transfer"
-            sub={`${completedTransfers.length} transfer${completedTransfers.length !== 1 ? "s" : ""}`}
-          />
-          <SummaryCard
-            label="Records this period"
-            value={`${filtered.length}`}
-            color="var(--blue)"
-            icon="ti-list-details"
-            sub="including reversals"
-          />
-          <SummaryCard
-            label="Reversed"
-            value={`${reversedCount}`}
-            color={reversedCount > 0 ? "var(--red)" : "var(--t3)"}
-            icon="ti-arrow-back-up"
-            sub="balance restored"
-          />
+        <div className="summary-grid-3">
+          <SummaryCard label="Total transferred" value={`PKR ${(totalAmount / 100).toLocaleString("en-PK", { maximumFractionDigits: 0 })}`} color="#0891b2" icon="ti-transfer" sub={`${completedTransfers.length} transfer${completedTransfers.length !== 1 ? "s" : ""}`} />
+          <SummaryCard label="Records this period" value={`${filtered.length}`} color="var(--blue)" icon="ti-list-details" sub="including reversals" />
+          <SummaryCard label="Reversed" value={`${reversedCount}`} color={reversedCount > 0 ? "var(--red)" : "var(--t3)"} icon="ti-arrow-back-up" sub="balance restored" />
         </div>
 
-        {/* ── Two-column main ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 12, flex: 1, overflow: "hidden", minHeight: 0 }}>
+        {/* ── Split grid ── */}
+        <div className="panel-split-grid">
 
-          {/* Left: table */}
+          {/* List */}
           <div style={{ display: "flex", flexDirection: "column", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", flexShrink: 0 }}>
-              <colgroup>
-                <col width="13%" />
-                <col width="30%" />
-                <col width="32%" />
-                <col width="15%" />
-                <col width="10%" />
-              </colgroup>
+              <colgroup><col width="13%" /><col width="30%" /><col width="32%" /><col width="15%" /><col width="10%" /></colgroup>
               <thead>
                 <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
                   {["Date", "Description", "From → To", "Amount", "Status"].map((h, i) => (
-                    <th key={h} style={{
-                      padding: "9px 10px", fontSize: 10, fontWeight: 600, color: "var(--t3)",
-                      textTransform: "uppercase", letterSpacing: "0.05em",
-                      textAlign: i >= 3 ? "right" : "left",
-                      ...(i === 0 ? { paddingLeft: 16 } : {}),
-                      ...(i === 4 ? { paddingRight: 16, textAlign: "center" as const } : {}),
-                    }}>
-                      {h}
-                    </th>
+                    <th key={h} style={{ padding: "9px 10px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 3 ? "right" : "left", ...(i === 0 ? { paddingLeft: 16 } : {}), ...(i === 4 ? { paddingRight: 16, textAlign: "center" as const } : {}) }}>{h}</th>
                   ))}
                 </tr>
               </thead>
             </table>
-
             <div style={{ flex: 1, overflowY: "auto" }}>
               {loading ? (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 48, color: "var(--t3)", fontSize: 12 }}>
@@ -590,35 +545,19 @@ export default function TransfersPage() {
                 <div style={{ padding: 48, textAlign: "center", color: "var(--t2)" }}>
                   <i className="ti ti-transfer" style={{ fontSize: 32, color: "var(--t3)", display: "block", marginBottom: 10 }} />
                   <div style={{ fontSize: 13 }}>{search ? "No matching transfers" : "No transfers recorded yet"}</div>
-                  <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>
-                    {!search && <button className="btn-primary" style={{ marginTop: 8 }} onClick={() => setShowModal(true)}>
-                      <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create first transfer
-                    </button>}
-                  </div>
+                  {!search && <button className="btn-primary" style={{ marginTop: 8 }} onClick={() => setShowModal(true)}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Create first transfer</button>}
                 </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                  <colgroup>
-                    <col width="13%" />
-                    <col width="30%" />
-                    <col width="32%" />
-                    <col width="15%" />
-                    <col width="10%" />
-                  </colgroup>
+                  <colgroup><col width="13%" /><col width="30%" /><col width="32%" /><col width="15%" /><col width="10%" /></colgroup>
                   <tbody>
                     {filtered.map((t) => (
-                      <TransferRow
-                        key={t.id}
-                        transfer={t}
-                        selected={selected?.id === t.id}
-                        onClick={() => setSelected(t)}
-                      />
+                      <TransferRow key={t.id} transfer={t} selected={selected?.id === t.id} onClick={() => setSelected(t)} />
                     ))}
                   </tbody>
                 </table>
               )}
             </div>
-
             {!loading && filtered.length > 0 && (
               <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--b3)", background: "var(--bg2)", fontSize: 11, color: "var(--t3)", flexShrink: 0 }}>
                 {filtered.length} record{filtered.length !== 1 ? "s" : ""}{search && ` matching "${search}"`}
@@ -626,20 +565,32 @@ export default function TransfersPage() {
             )}
           </div>
 
-          {/* Right: detail panel */}
-          <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
+          {/* Right detail column — hidden on mobile via CSS */}
+          <div className="panel-detail-col" style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
             <DetailPanel transfer={selected} canReverse={canReverse} onReversed={handleReversed} />
           </div>
         </div>
       </div>
 
-      {showModal && (
-        <NewTransferModal
-          accounts={accounts}
-          onCreated={handleCreated}
-          onClose={() => setShowModal(false)}
-        />
+      {/* ── Mobile detail drawer ── */}
+      {selected && (
+        <>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }} onClick={() => setSelected(null)} />
+          <div className="drawer-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 400, background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-12px 0 48px rgba(0,0,0,0.12)", animation: "drawerIn 0.2s cubic-bezier(0.22,1,0.36,1)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--b3)", background: "var(--bg1)", flexShrink: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Transfer Detail</span>
+              <button onClick={() => setSelected(null)} style={{ width: 28, height: 28, border: "none", background: "var(--bg2)", borderRadius: 6, cursor: "pointer", color: "var(--t2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <i className="ti ti-x" style={{ fontSize: 14 }} />
+              </button>
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <DetailPanel transfer={selected} canReverse={canReverse} onReversed={handleReversed} />
+            </div>
+          </div>
+        </>
       )}
+
+      {showModal && <NewTransferModal accounts={accounts} onCreated={handleCreated} onClose={() => setShowModal(false)} />}
     </>
   );
 }

@@ -45,7 +45,6 @@ const EMPTY: FormData = {
 
 const CURRENCIES = ["USD", "GBP", "EUR", "AED", "PKR"];
 const PAYMENT_METHODS = ["Bank Transfer", "Wise", "PayPal", "Payoneer", "Crypto", "Cheque", "Cash", "Other"];
-const COMMISSION_RATES: Record<string, number> = { first: 15, recurring: 5 };
 const INCOME_TYPES = ["Client payment", "Milestone payment", "Retainer fee", "Consulting", "License fee", "Support", "Other"];
 const RATE_SOURCES = ["Manual entry", "SBP rate", "Bank rate", "Other"];
 
@@ -80,6 +79,8 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
   const [clientDetails, setClientDetails] = useState<Client | null>(null);
   const [managingPartner, setManagingPartner] = useState<{ id: string; name: string } | null>(null);
   const [managingRatePct, setManagingRatePct] = useState(10);
+  const [firstRatePct, setFirstRatePct] = useState(15);
+  const [recurringRatePct, setRecurringRatePct] = useState(5);
 
   // Reset on close
   useEffect(() => {
@@ -109,8 +110,13 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
         .then(r => r.json())
         .then((json: ApiResponse<Record<string, unknown>>) => {
           if (json.success && json.data) {
-            const rate = Number((json.data as Record<string, unknown>).managing_commission_rate ?? 10);
-            if (!isNaN(rate) && rate > 0) setManagingRatePct(rate);
+            const s = json.data as Record<string, unknown>;
+            const managing = Number(s.managing_commission_rate ?? 10);
+            const first = Number(s.commission_rate_first ?? 15);
+            const recurring = Number(s.commission_rate_recurring ?? 5);
+            if (!isNaN(managing) && managing >= 0) setManagingRatePct(managing);
+            if (!isNaN(first) && first >= 0) setFirstRatePct(first);
+            if (!isNaN(recurring) && recurring >= 0) setRecurringRatePct(recurring);
           }
         })
         .catch(() => {}),
@@ -182,7 +188,7 @@ export default function AddIncomeModal({ open, onClose, onCreated }: AddIncomeMo
   // Commission preview
   const hasPartnerCommission = clientDetails?.commissionRule !== "none" && !!clientDetails?.partner;
   const selectedInvoice = form.invoiceId ? invoices.find(i => i.id === form.invoiceId) : null;
-  const partnerRate = (selectedInvoice?.paymentNumber ?? 1) === 1 ? COMMISSION_RATES.first : COMMISSION_RATES.recurring;
+  const partnerRate = (selectedInvoice?.paymentNumber ?? 1) === 1 ? firstRatePct : recurringRatePct;
   const estimatedPartnerCommission = hasPartnerCommission ? netPkr * partnerRate / 100 : 0;
   const hasManagingCommission = hasPartnerCommission && !!managingPartner;
   const estimatedManagingCommission = hasManagingCommission ? netPkr * managingRatePct / 100 : 0;
