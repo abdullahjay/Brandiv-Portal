@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import { createExpenseRequest } from "@frontend/hooks/useExpenses";
 import { DEFAULT_FX_RATES } from "@frontend/constants";
@@ -17,7 +17,7 @@ interface ProjectOption {
   name: string;
 }
 
-interface FormData {
+interface ExpenseForm {
   description: string;
   category: string;
   amountPkr: string;
@@ -28,6 +28,7 @@ interface FormData {
   date: string;
   projectId: string;
   notes: string;
+  receiptUrl: string;
 }
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -44,7 +45,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 const today = new Date().toISOString().slice(0, 10);
 
-const EMPTY: FormData = {
+const EMPTY: ExpenseForm = {
   description: "",
   category: "",
   amountPkr: "",
@@ -55,19 +56,23 @@ const EMPTY: FormData = {
   date: today,
   projectId: "",
   notes: "",
+  receiptUrl: "",
 };
 
 const CURRENCIES = ["USD", "GBP", "EUR", "AED", "PKR"];
 
 export default function AddExpenseModal({ open, onClose, onCreated }: AddExpenseModalProps) {
-  const [form, setForm] = useState<FormData>({ ...EMPTY });
+  const [form, setForm] = useState<ExpenseForm>({ ...EMPTY });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<LookupItem[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [receiptName, setReceiptName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) { setForm({ ...EMPTY }); setError(null); }
+    if (!open) { setForm({ ...EMPTY }); setError(null); setReceiptName(null); }
   }, [open]);
 
   // Fetch expense categories from lookup API
@@ -113,8 +118,29 @@ export default function AddExpenseModal({ open, onClose, onCreated }: AddExpense
     }
   }, [form.originalAmount, form.exchangeRate, form.useFx]);
 
-  function set<K extends keyof FormData>(field: K, value: FormData[K]) {
+  function set<K extends keyof ExpenseForm>(field: K, value: ExpenseForm[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const fd = new window.FormData();
+      fd.append("receipt", file);
+      const res = await fetch("/api/expenses/upload-receipt", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message ?? "Upload failed");
+      set("receiptUrl", json.data.receiptUrl);
+      setReceiptName(file.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   }
 
   async function handleSubmit() {
@@ -131,6 +157,7 @@ export default function AddExpenseModal({ open, onClose, onCreated }: AddExpense
         date: form.date,
         projectId: form.projectId || undefined,
         notes: form.notes || undefined,
+        receiptUrl: form.receiptUrl || undefined,
       });
       onCreated(expense);
       onClose();
@@ -290,6 +317,50 @@ export default function AddExpenseModal({ open, onClose, onCreated }: AddExpense
           placeholder="Any notes…"
         />
       </Field>
+
+      {/* Receipt attachment */}
+      <div style={{ marginBottom: 8 }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/jpg,image/webp"
+          style={{ display: "none" }}
+          onChange={handleFileSelect}
+        />
+        {form.receiptUrl ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)" }}>
+            <i className="ti ti-paperclip" style={{ fontSize: 13, color: "var(--green)" }} />
+            <a
+              href={form.receiptUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 12, color: "var(--green)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            >
+              {receiptName ?? "Receipt attached"}
+            </a>
+            <button
+              type="button"
+              onClick={() => { set("receiptUrl", ""); setReceiptName(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--green)", padding: 0, lineHeight: 1 }}
+            >
+              <i className="ti ti-x" style={{ fontSize: 12 }} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn-outline"
+            style={{ width: "100%", height: 36, fontSize: 12 }}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading
+              ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> Uploading…</>
+              : <><i className="ti ti-paperclip" style={{ fontSize: 12 }} /> Attach receipt (PNG, JPG, WebP)</>
+            }
+          </button>
+        )}
+      </div>
     </Modal>
   );
 }

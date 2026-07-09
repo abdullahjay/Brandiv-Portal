@@ -246,11 +246,13 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
           justifyContent: "space-between",
           padding: "13px 20px",
           background: "var(--bg1)",
-          borderBottom: "0.5px solid var(--b3)",
+          borderBottom: actionError ? "none" : "0.5px solid var(--b3)",
           flexShrink: 0,
+          gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Left: avatar + name — allow shrinking so buttons are never squeezed */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
           <div
             style={{
               width: 34,
@@ -273,16 +275,16 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
               getInitials(name)
             )}
           </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)" }}>{name}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
               {isEmployee && (
-                <span style={{ fontSize: 10, padding: "2px 6px", background: "var(--green-bg)", color: "var(--green)", borderRadius: 4, fontWeight: 600 }}>
+                <span style={{ fontSize: 10, padding: "2px 6px", background: "var(--green-bg)", color: "var(--green)", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
                   EMPLOYEE
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 11, color: "var(--t2)" }}>
+            <div style={{ fontSize: 11, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {record.period}
               {record.user && ` · ${record.user.role.replace(/_/g, " ")}`}
               {record.employee?.designation && ` · ${record.employee.designation}`}
@@ -290,16 +292,12 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
           </div>
           <Badge status={record.status} />
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {actionError && <span style={{ fontSize: 11, color: "var(--red)" }}>{actionError}</span>}
+
+        {/* Right: action buttons — never shrink */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           {record.status === "pending" && canEdit && !editing && (
-            <button
-              className="btn-outline"
-              onClick={openEdit}
-              style={{ display: "flex", alignItems: "center", gap: 5, height: 32 }}
-            >
-              <i className="ti ti-pencil" style={{ fontSize: 12 }} />
-              Edit
+            <button className="btn-outline" onClick={openEdit} style={{ height: 32, display: "flex", alignItems: "center", gap: 5 }}>
+              <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
             </button>
           )}
           {editing && (
@@ -308,7 +306,7 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
                 className="btn-outline"
                 onClick={() => { setEditing(false); setActionError(null); }}
                 disabled={saving}
-                style={{ height: 32, fontSize: 12 }}
+                style={{ height: 32 }}
               >
                 Cancel
               </button>
@@ -316,53 +314,36 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
                 className="btn-primary"
                 onClick={handleSaveEdit}
                 disabled={saving}
-                style={{ display: "flex", alignItems: "center", gap: 5, height: 32 }}
+                style={{ height: 32, display: "flex", alignItems: "center", gap: 5 }}
               >
                 {saving
                   ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> Saving…</>
-                  : <><i className="ti ti-check" style={{ fontSize: 12 }} /> Save changes</>
+                  : <><i className="ti ti-check" style={{ fontSize: 12 }} /> Save</>
                 }
               </button>
             </>
           )}
           {record.status === "paid" && (
-            <button
-              className="btn-outline"
-              onClick={() => downloadPayslip(record)}
-              style={{ display: "flex", alignItems: "center", gap: 5, height: 32 }}
-            >
-              <i className="ti ti-file-download" style={{ fontSize: 12 }} />
-              Payslip
+            <button className="btn-outline" onClick={() => downloadPayslip(record)} style={{ height: 32, display: "flex", alignItems: "center", gap: 5 }}>
+              <i className="ti ti-file-download" style={{ fontSize: 12 }} /> Payslip
             </button>
           )}
           {record.status === "paid" && canRevert && !confirmRevert && (
             <button
+              className="btn-outline"
               onClick={() => setConfirmRevert(true)}
-              style={{
-                display: "flex", alignItems: "center", gap: 5, height: 32,
-                padding: "0 12px", border: "0.5px solid var(--b3)",
-                borderRadius: "var(--rm)", background: "var(--bg2)",
-                color: "var(--t2)", fontSize: 12, cursor: "pointer",
-              }}
+              style={{ height: 32, display: "flex", alignItems: "center", gap: 5 }}
             >
-              <i className="ti ti-rotate-left" style={{ fontSize: 12 }} />
-              Revert
+              <i className="ti ti-rotate-left" style={{ fontSize: 12 }} /> Revert
             </button>
           )}
           {record.status === "paid" && canRevert && confirmRevert && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--red-bg)", border: "0.5px solid var(--red)", borderRadius: "var(--rm)", padding: "4px 10px" }}>
-              <span style={{ fontSize: 11, color: "var(--red)", fontWeight: 500 }}>Revert to pending?</span>
-              <button
-                onClick={handleRevert}
-                disabled={reverting}
-                style={{ fontSize: 11, fontWeight: 600, color: "var(--red)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}
-              >
+            <div style={{ display: "flex", alignItems: "center", gap: 6, height: 32, background: "var(--red-bg)", border: "0.5px solid var(--red)", borderRadius: "var(--rm)", padding: "0 10px" }}>
+              <span style={{ fontSize: 11, color: "var(--red)", fontWeight: 500, whiteSpace: "nowrap" }}>Revert to pending?</span>
+              <button onClick={handleRevert} disabled={reverting} style={{ fontSize: 11, fontWeight: 600, color: "var(--red)", background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}>
                 {reverting ? "…" : "Yes"}
               </button>
-              <button
-                onClick={() => setConfirmRevert(false)}
-                style={{ fontSize: 11, color: "var(--t3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}
-              >
+              <button onClick={() => setConfirmRevert(false)} style={{ fontSize: 11, color: "var(--t3)", background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}>
                 No
               </button>
             </div>
@@ -372,7 +353,7 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
               className="btn-primary"
               onClick={handlePay}
               disabled={acting}
-              style={{ display: "flex", alignItems: "center", gap: 5 }}
+              style={{ height: 32, display: "flex", alignItems: "center", gap: 5 }}
             >
               <i className="ti ti-check" style={{ fontSize: 12 }} />
               {acting ? "Processing…" : "Mark as Paid"}
@@ -380,6 +361,14 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
           )}
         </div>
       </div>
+
+      {/* Error strip — sits below topbar so it never squishes the button row */}
+      {actionError && (
+        <div style={{ padding: "7px 20px", background: "var(--red-bg)", borderBottom: "0.5px solid var(--b3)", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          <i className="ti ti-alert-circle" style={{ fontSize: 12, color: "var(--red)", flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: "var(--red)" }}>{actionError}</span>
+        </div>
+      )}
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
@@ -444,7 +433,7 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 18 }}>
               <div className="metric-card">
                 <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Gross Salary</div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)" }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--t1)" }}>
                   PKR {fmt(grossPkr)}
                 </div>
               </div>
@@ -462,7 +451,7 @@ export default function PayrollDetail({ record, loading, onPaid, onReverted, onU
               </div>
               <div className="metric-card">
                 <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Net Payable</div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: "var(--green)" }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)" }}>
                   PKR {fmt(netPkr)}
                 </div>
               </div>

@@ -39,7 +39,7 @@ export default function CashFlowStatement({ period }: Props) {
   return (
     <div>
       {/* Summary metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+      <div className="metrics-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
         {[
           { label: "Cash inflows", value: data.totalInflowPkr, color: "var(--green)" },
           { label: "Cash outflows", value: data.totalOutflowPkr, color: "var(--red)" },
@@ -60,7 +60,8 @@ export default function CashFlowStatement({ period }: Props) {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <style>{`@media (max-width: 767px) { .cf-split { grid-template-columns: 1fr !important; } }`}</style>
+      <div className="cf-split" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* Inflows */}
         <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
           <div style={{ padding: "10px 16px", background: "var(--green-bg)", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 8 }}>
@@ -136,7 +137,7 @@ export default function CashFlowStatement({ period }: Props) {
       </div>
 
       {/* Net summary bar */}
-      <div style={{ marginTop: 16, padding: "14px 20px", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ marginTop: 16, padding: "14px 20px", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>Net cash flow for {period}</span>
         <span style={{ fontSize: 18, fontWeight: 800, color: data.netCashFlowPkr >= 0 ? "var(--blue)" : "var(--red)" }}>
           {fmtPkr(data.netCashFlowPkr)}

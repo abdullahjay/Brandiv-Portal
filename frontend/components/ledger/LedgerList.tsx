@@ -107,7 +107,7 @@ function DetailPanel({ entry }: { entry: LedgerEntry | null }) {
       {/* Big amount */}
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 10, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>PKR amount</div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: isInflow ? "var(--green)" : "var(--red)", letterSpacing: "-0.02em" }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: isInflow ? "var(--green)" : "var(--red)", letterSpacing: "-0.02em" }}>
           <span style={{ fontSize: 16, marginRight: 2 }}>{isInflow ? "+" : "−"}</span>
           PKR {fmt(entry.pkrAmount)}
         </div>
@@ -194,6 +194,60 @@ function LedgerRow({
         </span>
       </td>
     </tr>
+  );
+}
+
+// ─── Mobile card row ──────────────────────────────────────────────────────────
+
+function LedgerMobileCard({
+  entry,
+  selected,
+  onClick,
+}: {
+  entry: LedgerEntry;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const cfg = TYPE_CONFIG[entry.type] ?? { label: entry.type, color: "var(--t2)", bg: "var(--bg2)", icon: "ti-circle" };
+  const isTransfer = entry.type === "transfer";
+  const isInflow = entry.pkrAmount >= 0;
+  const amountColor = isTransfer ? "#0891b2" : isInflow ? "var(--green)" : "var(--red)";
+  const sub = [entry.party, fmtDate(entry.date)].filter(Boolean).join(" · ");
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "11px 16px",
+        borderBottom: "0.5px solid var(--b3)",
+        cursor: "pointer",
+        background: selected ? "var(--blue-bg)" : "transparent",
+        transition: "background .08s",
+      }}
+    >
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: cfg.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <i className={`ti ${cfg.icon}`} style={{ fontSize: 15, color: cfg.color }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: selected ? "var(--blue)" : "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {entry.description}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {sub}
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: amountColor }}>
+          {isTransfer ? "" : isInflow ? "+" : "−"}PKR {fmt(entry.pkrAmount)}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2, textTransform: "capitalize" }}>
+          {entry.status}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -311,17 +365,49 @@ export default function LedgerList() {
 
           {/* List */}
           <div style={{ display: "flex", flexDirection: "column", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", flexShrink: 0 }}>
-              <colgroup><col width="14%" /><col width="13%" /><col width="46%" /><col width="17%" /><col width="10%" /></colgroup>
-              <thead>
-                <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
-                  {["Date", "Type", "Description", "Amount", "Status"].map((h, i) => (
-                    <th key={h} style={{ padding: "9px 10px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 3 ? "right" : "left", ...(i === 0 ? { paddingLeft: 16 } : {}), ...(i === 4 ? { paddingRight: 16, textAlign: "center" as const } : {}) }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-            </table>
-            <div style={{ flex: 1, overflowY: "auto" }}>
+
+            {/* Desktop: fixed header + scrollable body */}
+            <div className="ledger-desktop-only" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", flexShrink: 0 }}>
+                <colgroup><col width="14%" /><col width="13%" /><col width="46%" /><col width="17%" /><col width="10%" /></colgroup>
+                <thead>
+                  <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+                    {["Date", "Type", "Description", "Amount", "Status"].map((h, i) => (
+                      <th key={h} style={{ padding: "9px 10px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 3 ? "right" : "left", ...(i === 0 ? { paddingLeft: 16 } : {}), ...(i === 4 ? { paddingRight: 16, textAlign: "center" as const } : {}) }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+              </table>
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                {loading ? (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 48, color: "var(--t3)", fontSize: 12 }}>
+                    <i className="ti ti-loader-2" style={{ fontSize: 18 }} /> Loading transactions…
+                  </div>
+                ) : error ? (
+                  <div style={{ padding: 24, fontSize: 12, color: "var(--red)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <i className="ti ti-alert-circle" style={{ fontSize: 14 }} /> {error}
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div style={{ padding: 48, textAlign: "center", color: "var(--t2)" }}>
+                    <i className="ti ti-list-details" style={{ fontSize: 32, color: "var(--t3)", display: "block", marginBottom: 10 }} />
+                    <div style={{ fontSize: 13 }}>{search ? "No matching transactions" : "No transactions found"}</div>
+                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>Try a different period or filter</div>
+                  </div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                    <colgroup><col width="14%" /><col width="13%" /><col width="46%" /><col width="17%" /><col width="10%" /></colgroup>
+                    <tbody>
+                      {filtered.map((entry) => (
+                        <LedgerRow key={`${entry.type}-${entry.id}`} entry={entry} selected={selected?.id === entry.id && selected?.type === entry.type} onClick={() => setSelected(entry)} />
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile: card list */}
+            <div className="ledger-mobile-only" style={{ display: "none" }}>
               {loading ? (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 48, color: "var(--t3)", fontSize: 12 }}>
                   <i className="ti ti-loader-2" style={{ fontSize: 18 }} /> Loading transactions…
@@ -337,16 +423,18 @@ export default function LedgerList() {
                   <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>Try a different period or filter</div>
                 </div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                  <colgroup><col width="14%" /><col width="13%" /><col width="46%" /><col width="17%" /><col width="10%" /></colgroup>
-                  <tbody>
-                    {filtered.map((entry) => (
-                      <LedgerRow key={`${entry.type}-${entry.id}`} entry={entry} selected={selected?.id === entry.id && selected?.type === entry.type} onClick={() => setSelected(entry)} />
-                    ))}
-                  </tbody>
-                </table>
+                filtered.map((entry) => (
+                  <LedgerMobileCard
+                    key={`${entry.type}-${entry.id}`}
+                    entry={entry}
+                    selected={selected?.id === entry.id && selected?.type === entry.type}
+                    onClick={() => setSelected(entry)}
+                  />
+                ))
               )}
             </div>
+
+            {/* Footer: count shown in both layouts */}
             {!loading && filtered.length > 0 && (
               <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--b3)", background: "var(--bg2)", fontSize: 11, color: "var(--t3)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
                 <span>{filtered.length} transaction{filtered.length !== 1 ? "s" : ""}{search && ` matching "${search}"`}</span>

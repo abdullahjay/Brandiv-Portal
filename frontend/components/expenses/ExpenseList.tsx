@@ -65,6 +65,43 @@ const TH: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+function ExpenseMobileCard({ exp, selected, onClick }: { exp: Expense; selected: boolean; onClick: () => void }) {
+  const meta = getCategoryMeta(exp.category);
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 14px",
+        borderBottom: "0.5px solid var(--b3)",
+        background: selected ? "var(--blue-bg)" : "transparent",
+        cursor: "pointer",
+      }}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+        background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <i className={`ti ${meta.icon}`} style={{ fontSize: 16, color: meta.color }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {exp.description}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {exp.category} · {fmtDate(exp.date)}{exp.project?.name ? ` · ${exp.project.name}` : ""}
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)" }}>
+          PKR {fmt(exp.amountPkr)}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{exp.period}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function ExpenseList({
   expenses,
   selectedId,
@@ -147,8 +184,8 @@ export default function ExpenseList({
         </span>
       </div>
 
-      {/* Table */}
-      <div style={{ overflowX: "auto" }}>
+      {/* Desktop Table */}
+      <div className="ledger-desktop-only" style={{ display: "block", overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -263,6 +300,25 @@ export default function ExpenseList({
             )}
           </tbody>
         </table>
+      </div>
+      {/* Mobile Cards */}
+      <div className="ledger-mobile-only" style={{ display: "none" }}>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--t3)" }}>
+            <i className="ti ti-loader-2" style={{ fontSize: 20, display: "block", marginBottom: 8 }} />
+            <span style={{ fontSize: 12 }}>Loading expenses…</span>
+          </div>
+        ) : expenses.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 16px" }}>
+            <i className="ti ti-receipt" style={{ fontSize: 28, display: "block", marginBottom: 8, opacity: 0.5, color: "var(--t3)" }} />
+            <div style={{ fontSize: 13, color: "var(--t2)", marginBottom: 4, fontWeight: 500 }}>No expenses found</div>
+            <div style={{ fontSize: 12, color: "var(--t3)" }}>{search || category ? "Try adjusting your filters" : "Add your first expense to get started"}</div>
+          </div>
+        ) : (
+          expenses.map((exp) => (
+            <ExpenseMobileCard key={exp.id} exp={exp} selected={exp.id === selectedId} onClick={() => onSelect(exp.id)} />
+          ))
+        )}
       </div>
     </div>
   );

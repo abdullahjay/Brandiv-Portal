@@ -104,6 +104,31 @@ interface DistributionStatementProps {
   onExportReady?: (handlers: { exportCSV: () => void; exportPDF: () => void }) => void;
 }
 
+function DistItemMobileCard({ item }: { item: { id: string; account: { name: string }; sharePct: number; distributionAmountPkr: number; commissionAmountPkr: number; totalPkr: number } }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderBottom: "0.5px solid var(--b3)" }}>
+      <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "var(--blue-bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "var(--blue)" }}>
+        {item.account.name.slice(0, 2).toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {item.account.name}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 20, background: "var(--blue-bg)", color: "var(--blue)", fontWeight: 500 }}>{item.sharePct}%</span>
+          {item.commissionAmountPkr > 0 && (
+            <span style={{ fontSize: 10, color: "var(--green)" }}>+PKR {fmt(item.commissionAmountPkr)} comm</span>
+          )}
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)" }}>PKR {fmt(item.totalPkr)}</div>
+        <div style={{ fontSize: 10, color: "var(--blue)", marginTop: 1 }}>PKR {fmt(item.distributionAmountPkr)}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function DistributionStatement({ onExportReady }: DistributionStatementProps) {
   const { data: distributions, loading, error } = useDistributions();
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -170,7 +195,7 @@ export default function DistributionStatement({ onExportReady }: DistributionSta
       </div>
 
       {dist && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
+        <div className="dist-grid" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
           {/* Left: summary card */}
           <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "16px 18px" }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", marginBottom: 14 }}>
@@ -222,43 +247,53 @@ export default function DistributionStatement({ onExportReady }: DistributionSta
             <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--b3)" }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)" }}>Per-account breakdown</span>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
-                  {["Account", "Share", "Distribution", "Commission", "Total paid"].map((h, i) => (
-                    <th key={h} style={{ textAlign: i >= 2 ? "right" : i === 1 ? "center" : "left", padding: "10px 16px", fontWeight: 500, fontSize: 11, color: "var(--t2)" }}>{h}</th>
+            {/* Desktop table */}
+            <div className="ledger-desktop-only" style={{ display: "block" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+                    {["Account", "Share", "Distribution", "Commission", "Total paid"].map((h, i) => (
+                      <th key={h} style={{ textAlign: i >= 2 ? "right" : i === 1 ? "center" : "left", padding: "10px 16px", fontWeight: 500, fontSize: 11, color: "var(--t2)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {dist.items.map((item, idx) => (
+                    <tr key={item.id} style={{ borderBottom: idx < dist.items.length - 1 ? "0.5px solid var(--b3)" : "none" }}>
+                      <td style={{ padding: "11px 16px", fontWeight: 500 }}>{item.account.name}</td>
+                      <td style={{ padding: "11px 16px", textAlign: "center" }}>
+                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "var(--blue-bg)", color: "var(--blue)", fontWeight: 500 }}>
+                          {item.sharePct}%
+                        </span>
+                      </td>
+                      <td style={{ padding: "11px 16px", textAlign: "right", color: "var(--blue)" }}>
+                        PKR {fmt(item.distributionAmountPkr)}
+                      </td>
+                      <td style={{ padding: "11px 16px", textAlign: "right", color: "var(--green)" }}>
+                        {item.commissionAmountPkr > 0 ? `PKR ${fmt(item.commissionAmountPkr)}` : "—"}
+                      </td>
+                      <td style={{ padding: "11px 16px", textAlign: "right", fontWeight: 600, color: "var(--t1)" }}>
+                        PKR {fmt(item.totalPkr)}
+                      </td>
+                    </tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {dist.items.map((item, idx) => (
-                  <tr key={item.id} style={{ borderBottom: idx < dist.items.length - 1 ? "0.5px solid var(--b3)" : "none" }}>
-                    <td style={{ padding: "11px 16px", fontWeight: 500 }}>{item.account.name}</td>
-                    <td style={{ padding: "11px 16px", textAlign: "center" }}>
-                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: "var(--blue-bg)", color: "var(--blue)", fontWeight: 500 }}>
-                        {item.sharePct}%
-                      </span>
-                    </td>
-                    <td style={{ padding: "11px 16px", textAlign: "right", color: "var(--blue)" }}>
-                      PKR {fmt(item.distributionAmountPkr)}
-                    </td>
-                    <td style={{ padding: "11px 16px", textAlign: "right", color: "var(--green)" }}>
-                      {item.commissionAmountPkr > 0 ? `PKR ${fmt(item.commissionAmountPkr)}` : "—"}
-                    </td>
-                    <td style={{ padding: "11px 16px", textAlign: "right", fontWeight: 600, color: "var(--t1)" }}>
-                      PKR {fmt(item.totalPkr)}
+                  <tr style={{ background: "var(--bg2)", borderTop: "0.5px solid var(--b2)" }}>
+                    <td colSpan={4} style={{ padding: "10px 16px", fontWeight: 600 }}>Total distributed</td>
+                    <td style={{ padding: "10px 16px", textAlign: "right", fontSize: 14, fontWeight: 700, color: "var(--blue)" }}>
+                      PKR {fmt(totalPaid)}
                     </td>
                   </tr>
-                ))}
-                {/* Total row */}
-                <tr style={{ background: "var(--bg2)", borderTop: "0.5px solid var(--b2)" }}>
-                  <td colSpan={4} style={{ padding: "10px 16px", fontWeight: 600 }}>Total distributed</td>
-                  <td style={{ padding: "10px 16px", textAlign: "right", fontSize: 14, fontWeight: 700, color: "var(--blue)" }}>
-                    PKR {fmt(totalPaid)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile cards */}
+            <div className="ledger-mobile-only" style={{ display: "none" }}>
+              {dist.items.map((item) => <DistItemMobileCard key={item.id} item={item} />)}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "var(--bg2)", borderTop: "0.5px solid var(--b2)", fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "var(--t1)" }}>Total distributed</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--blue)" }}>PKR {fmt(totalPaid)}</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Modal from "@frontend/components/ui/Modal";
+import Topbar from "@frontend/components/layout/Topbar";
 import {
   useUsers,
   createUserRequest,
@@ -28,27 +29,16 @@ const ROLE_LABELS: Record<Role, string> = {
 
 const ROLE_COLORS: Record<Role, { bg: string; fg: string }> = {
   super_admin: { bg: "#F5F3FF", fg: "#7C3AED" },
-  admin: { bg: "var(--blue-bg)", fg: "var(--blue)" },
-  manager: { bg: "#ECFDF5", fg: "#059669" },
-  staff: { bg: "var(--bg2)", fg: "var(--t2)" },
-  finance: { bg: "#FFFBEB", fg: "#92400E" },
+  admin:       { bg: "var(--blue-bg)", fg: "var(--blue)" },
+  manager:     { bg: "#ECFDF5", fg: "#059669" },
+  staff:       { bg: "var(--bg2)", fg: "var(--t2)" },
+  finance:     { bg: "#FFFBEB", fg: "#92400E" },
 };
 
 function roleBadge(role: string) {
   const c = ROLE_COLORS[role as Role] ?? { bg: "var(--bg2)", fg: "var(--t2)" };
   return (
-    <span
-      style={{
-        fontSize: 10,
-        fontWeight: 600,
-        padding: "2px 6px",
-        borderRadius: 3,
-        background: c.bg,
-        color: c.fg,
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-      }}
-    >
+    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3, background: c.bg, color: c.fg, textTransform: "uppercase", letterSpacing: "0.05em" }}>
       {ROLE_LABELS[role as Role] ?? role}
     </span>
   );
@@ -69,21 +59,7 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   ];
   const c = colors[name.charCodeAt(0) % colors.length];
   return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: c.bg,
-        color: c.fg,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: size * 0.33,
-        fontWeight: 700,
-        flexShrink: 0,
-      }}
-    >
+    <div style={{ width: size, height: size, borderRadius: "50%", background: c.bg, color: c.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.33, fontWeight: 700, flexShrink: 0 }}>
       {avatarInitials(name)}
     </div>
   );
@@ -144,9 +120,7 @@ function AddUserModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
       }
     >
       {error && (
-        <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 16 }}>
-          {error}
-        </div>
+        <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 16 }}>{error}</div>
       )}
       <Field label="Full name" required>
         <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. Abdullah Shah" />
@@ -156,18 +130,8 @@ function AddUserModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
       </Field>
       <Field label="Password" required>
         <div style={{ position: "relative" }}>
-          <input
-            type={showPw ? "text" : "password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Min. 8 characters"
-            style={{ paddingRight: 32 }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPw((p) => !p)}
-            style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--t3)", padding: 0 }}
-          >
+          <input type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" style={{ paddingRight: 32 }} />
+          <button type="button" onClick={() => setShowPw((p) => !p)} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--t3)", padding: 0 }}>
             <i className={`ti ${showPw ? "ti-eye-off" : "ti-eye"}`} style={{ fontSize: 14 }} />
           </button>
         </div>
@@ -184,11 +148,7 @@ function AddUserModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
 // ─── Edit User Modal ──────────────────────────────────────────────────────────
 
 function EditUserModal({ open, user, isAdmin, onClose, onUpdated }: {
-  open: boolean;
-  user: TeamUser | null;
-  isAdmin: boolean;
-  onClose: () => void;
-  onUpdated: (u: TeamUser) => void;
+  open: boolean; user: TeamUser | null; isAdmin: boolean; onClose: () => void; onUpdated: (u: TeamUser) => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -200,11 +160,7 @@ function EditUserModal({ open, user, isAdmin, onClose, onUpdated }: {
 
   useEffect(() => {
     if (!open || !user) return;
-    setName(user.name);
-    setEmail(user.email);
-    setPassword("");
-    setRole(user.role as Role);
-    setError(null);
+    setName(user.name); setEmail(user.email); setPassword(""); setRole(user.role as Role); setError(null);
   }, [open, user]);
 
   async function handleSubmit() {
@@ -242,9 +198,7 @@ function EditUserModal({ open, user, isAdmin, onClose, onUpdated }: {
       }
     >
       {error && (
-        <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 16 }}>
-          {error}
-        </div>
+        <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 16 }}>{error}</div>
       )}
       <Field label="Full name" required>
         <input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -254,18 +208,8 @@ function EditUserModal({ open, user, isAdmin, onClose, onUpdated }: {
       </Field>
       <Field label="New password">
         <div style={{ position: "relative" }}>
-          <input
-            type={showPw ? "text" : "password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Leave blank to keep current"
-            style={{ paddingRight: 32 }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPw((p) => !p)}
-            style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--t3)", padding: 0 }}
-          >
+          <input type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Leave blank to keep current" style={{ paddingRight: 32 }} />
+          <button type="button" onClick={() => setShowPw((p) => !p)} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--t3)", padding: 0 }}>
             <i className={`ti ${showPw ? "ti-eye-off" : "ti-eye"}`} style={{ fontSize: 14 }} />
           </button>
         </div>
@@ -286,8 +230,8 @@ function EditUserModal({ open, user, isAdmin, onClose, onUpdated }: {
 export default function UsersPage() {
   const { data: session } = useSession();
   const sessionRole = (session?.user as { role?: string })?.role ?? "";
-  const sessionId = (session?.user as { id?: string })?.id ?? "";
-  const isAdmin = ["super_admin", "admin"].includes(sessionRole);
+  const sessionId   = (session?.user as { id?: string })?.id ?? "";
+  const isAdmin     = ["super_admin", "admin"].includes(sessionRole);
 
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("");
@@ -301,132 +245,136 @@ export default function UsersPage() {
 
   const { users, total, loading, error, refresh } = useUsers(1, 50, debouncedSearch, filterRole, filterStatus);
 
-  const [selected, setSelected] = useState<TeamUser | null>(null);
-
-  // Auto-select first record when list loads and nothing is selected
-  useEffect(() => {
-    if (!loading && !selected && users.length > 0) {
-      setSelected(users[0]);
-    }
-  }, [loading, users, selected]);
-  const [addOpen, setAddOpen] = useState(false);
-  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
-  const [editOpen, setEditOpen] = useState(false);
-  const [deactivating, setDeactivating] = useState(false);
+  const [selected, setSelected]               = useState<TeamUser | null>(null);
+  const [addOpen, setAddOpen]                 = useState(false);
+  const [mobileView, setMobileView]           = useState<"list" | "detail">("list");
+  const [editOpen, setEditOpen]               = useState(false);
+  const [deactivating, setDeactivating]       = useState(false);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm]     = useState(false);
+  const [deleting, setDeleting]               = useState(false);
+  const [actionError, setActionError]         = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading && !selected && users.length > 0) setSelected(users[0]);
+  }, [loading, users, selected]);
 
   async function handleDeactivate() {
     if (!selected) return;
-    setDeactivating(true);
-    setActionError(null);
+    setDeactivating(true); setActionError(null);
     try {
       await deactivateUserRequest(selected.id);
       refresh();
       setSelected((prev) => prev ? { ...prev, status: "inactive" } : null);
       setDeactivateConfirm(false);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setDeactivating(false);
-    }
+    } catch (err) { setActionError(err instanceof Error ? err.message : "Failed"); }
+    finally { setDeactivating(false); }
   }
 
   async function handleReactivate() {
     if (!selected) return;
-    setDeactivating(true);
-    setActionError(null);
+    setDeactivating(true); setActionError(null);
     try {
       await reactivateUserRequest(selected.id);
       refresh();
       setSelected((prev) => prev ? { ...prev, status: "active" } : null);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setDeactivating(false);
-    }
+    } catch (err) { setActionError(err instanceof Error ? err.message : "Failed"); }
+    finally { setDeactivating(false); }
   }
 
   async function handleDelete() {
     if (!selected) return;
-    setDeleting(true);
-    setActionError(null);
+    setDeleting(true); setActionError(null);
     try {
       await deleteUserRequest(selected.id);
       refresh();
       setSelected(null);
       setDeleteConfirm(false);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setDeleting(false);
-    }
+      setMobileView("list");
+    } catch (err) { setActionError(err instanceof Error ? err.message : "Failed"); }
+    finally { setDeleting(false); }
   }
 
-  const activeCount = users.filter((u) => u.status === "active").length;
+  const activeCount   = users.filter((u) => u.status === "active").length;
   const inactiveCount = users.filter((u) => u.status === "inactive").length;
 
   return (
     <>
       <style>{`
+        @keyframes skPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .user-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 0.5px solid var(--b3); transition: background 0.1s; }
         .user-item:last-child { border-bottom: none; }
         .user-item:hover { background: var(--bg2); }
         .user-item.selected { background: var(--blue-bg); border-left: 2px solid var(--blue); padding-left: 12px; }
-        .metric-pill { display: flex; flex-direction: column; gap: 2px; background: var(--bg2); border-radius: var(--rm); padding: 10px 14px; }
         .user-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .user-detail-body { padding: 20px 24px; }
+        .users-stats-bar { padding: 0 20px; }
         @media (max-width: 767px) {
           .user-info-grid { grid-template-columns: 1fr !important; }
+          .user-detail-body { padding: 14px 14px !important; }
+          .users-stats-bar { padding: 0 14px; }
+          .list-panel { border-left: none !important; border-right: none !important; border-top: none !important; border-radius: 0 !important; }
         }
       `}</style>
 
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)" }}>Users</div>
-          <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>{total} team member{total !== 1 ? "s" : ""} · {activeCount} active</div>
-        </div>
-        {isAdmin && (
-          <button className="btn-primary" onClick={() => setAddOpen(true)}>
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add user
-          </button>
-        )}
-      </div>
+      <Topbar title="Users" />
 
-      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden" }}>
-        {/* Left panel — user list */}
-        <div className="list-panel" style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {/* Search + filters */}
-          <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--b3)", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ position: "relative" }}>
-              <i className="ti ti-search" style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--t3)" }} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search users…"
-                style={{ paddingLeft: 28, width: "100%", fontSize: 12 }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ flex: 1, fontSize: 11 }}>
-                <option value="">All roles</option>
-                {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ flex: 1, fontSize: 11 }}>
-                <option value="">All status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "14px 0 0", gap: 12 }}>
+
+        {/* ── Stats bar ── */}
+        <div className="users-stats-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 12, color: "var(--t3)" }}>
+              <strong style={{ color: "var(--t1)", fontWeight: 600 }}>{total}</strong> member{total !== 1 ? "s" : ""}
+            </span>
+            <span style={{ width: 1, height: 12, background: "var(--b3)" }} />
+            <span style={{ fontSize: 12, color: "var(--green)", fontWeight: 500 }}>
+              <i className="ti ti-circle-filled" style={{ fontSize: 8, verticalAlign: "middle", marginRight: 4 }} />
+              {activeCount} active
+            </span>
+            {inactiveCount > 0 && (
+              <>
+                <span style={{ width: 1, height: 12, background: "var(--b3)" }} />
+                <span style={{ fontSize: 12, color: "var(--t3)" }}>{inactiveCount} inactive</span>
+              </>
+            )}
           </div>
+          {isAdmin && (
+            <button className="btn-primary" style={{ flexShrink: 0 }} onClick={() => setAddOpen(true)}>
+              <i className="ti ti-user-plus" style={{ fontSize: 12 }} /> Add user
+            </button>
+          )}
+        </div>
 
-          {/* List */}
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {loading ? (
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                {[1, 2, 3, 4, 5].map((i) => (
+        {/* ── Two-panel ── */}
+        <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ display: "flex", gap: 14, flex: 1, overflow: "hidden", minHeight: 0 }}>
+
+          {/* Left: user list */}
+          <div className="list-panel" style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+            {/* Search + filters */}
+            <div style={{ padding: "10px 12px", borderBottom: "0.5px solid var(--b3)", display: "flex", flexDirection: "column", gap: 7 }}>
+              <div style={{ position: "relative" }}>
+                <i className="ti ti-search" style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--t3)" }} />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users…" style={{ paddingLeft: 28, width: "100%", fontSize: 12 }} />
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ flex: 1, fontSize: 11 }}>
+                  <option value="">All roles</option>
+                  {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ flex: 1, fontSize: 11 }}>
+                  <option value="">All status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            {/* List */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {loading ? (
+                [1, 2, 3, 4, 5].map((i) => (
                   <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", borderBottom: "0.5px solid var(--b3)" }}>
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--bg2)", animation: "skPulse 1.4s ease-in-out infinite" }} />
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
@@ -434,272 +382,197 @@ export default function UsersPage() {
                       <div style={{ height: 9, width: "50%", background: "var(--bg2)", borderRadius: 3, animation: "skPulse 1.4s ease-in-out infinite" }} />
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div style={{ padding: 16, fontSize: 12, color: "var(--red)" }}>{error}</div>
-            ) : users.length === 0 ? (
-              <div style={{ padding: 24, textAlign: "center", color: "var(--t3)", fontSize: 12 }}>
-                <i className="ti ti-users" style={{ fontSize: 24, display: "block", marginBottom: 8 }} />
-                No users found
-              </div>
-            ) : (
-              users.map((u) => (
-                <div
-                  key={u.id}
-                  className={`user-item${selected?.id === u.id ? " selected" : ""}`}
-                  onClick={() => { setSelected(u); setDeactivateConfirm(false); setActionError(null); setMobileView("detail"); }}
-                >
-                  <div style={{ position: "relative" }}>
-                    <Avatar name={u.name} size={36} />
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: 0,
-                        right: 0,
-                        width: 9,
-                        height: 9,
-                        borderRadius: "50%",
-                        background: u.status === "active" ? "var(--green)" : "var(--t3)",
-                        border: "1.5px solid var(--bg1)",
-                      }}
-                    />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
-                      {roleBadge(u.role)}
+                ))
+              ) : error ? (
+                <div style={{ padding: 16, fontSize: 12, color: "var(--red)" }}>{error}</div>
+              ) : users.length === 0 ? (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--t3)", fontSize: 12 }}>
+                  <i className="ti ti-users" style={{ fontSize: 28, display: "block", marginBottom: 8 }} />
+                  No users found
+                </div>
+              ) : (
+                users.map((u) => (
+                  <div
+                    key={u.id}
+                    className={`user-item${selected?.id === u.id ? " selected" : ""}`}
+                    onClick={() => { setSelected(u); setDeactivateConfirm(false); setActionError(null); setMobileView("detail"); }}
+                  >
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      <Avatar name={u.name} size={36} />
+                      <div style={{ position: "absolute", bottom: 0, right: 0, width: 9, height: 9, borderRadius: "50%", background: u.status === "active" ? "var(--green)" : "var(--t3)", border: "1.5px solid var(--bg1)" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--t3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{u.email}</div>
+                      <div style={{ marginTop: 3 }}>{roleBadge(u.role)}</div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Footer stats */}
-          <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--b3)", display: "flex", gap: 8 }}>
-            <div className="metric-pill" style={{ flex: 1 }}>
-              <span style={{ fontSize: 9, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Active</span>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>{activeCount}</span>
-            </div>
-            <div className="metric-pill" style={{ flex: 1 }}>
-              <span style={{ fontSize: 9, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Inactive</span>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--t3)" }}>{inactiveCount}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right panel — user detail */}
-        <div className="detail-panel-wrap" style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
-            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to users
-          </button>
-          {!selected ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, color: "var(--t3)" }}>
-              <i className="ti ti-user-circle" style={{ fontSize: 40 }} />
-              <span style={{ fontSize: 13 }}>Select a user to view details</span>
-              {isAdmin && (
-                <button className="btn-outline" style={{ fontSize: 12 }} onClick={() => setAddOpen(true)}>
-                  <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add team member
-                </button>
+                ))
               )}
             </div>
-          ) : (
-            <>
-              {/* Detail header */}
-              <div className="emp-detail-header" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
-                <Avatar name={selected.name} size={52} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.email}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                    {roleBadge(selected.role)}
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 600,
-                        padding: "2px 6px",
-                        borderRadius: 3,
-                        background: selected.status === "active" ? "#ECFDF5" : "var(--bg2)",
-                        color: selected.status === "active" ? "#059669" : "var(--t3)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      {selected.status}
-                    </span>
-                  </div>
-                </div>
+
+            {/* Footer stats */}
+            <div style={{ padding: "8px 12px", borderTop: "0.5px solid var(--b3)", display: "flex", gap: 8 }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, background: "var(--bg2)", borderRadius: "var(--rm)", padding: "8px 12px" }}>
+                <span style={{ fontSize: 9, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Active</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>{activeCount}</span>
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, background: "var(--bg2)", borderRadius: "var(--rm)", padding: "8px 12px" }}>
+                <span style={{ fontSize: 9, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Inactive</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--t3)" }}>{inactiveCount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: user detail drawer */}
+          <div className="detail-panel-wrap" style={{ flex: 1, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+              <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Users
+            </button>
+
+            {!selected ? (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 10, color: "var(--t3)" }}>
+                <i className="ti ti-user-circle" style={{ fontSize: 40 }} />
+                <span style={{ fontSize: 13 }}>Select a user to view details</span>
                 {isAdmin && (
-                  <div className="emp-detail-actions" style={{ display: "flex", gap: 8 }}>
-                    <button className="btn-outline" onClick={() => { setEditOpen(true); setActionError(null); setDeleteConfirm(false); }}>
-                      <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
-                    </button>
-                    {selected.id !== sessionId && (
-                      <>
-                        {selected.status === "active" ? (
-                          <button
-                            className="btn-outline"
-                            style={{ color: "var(--red)", borderColor: "var(--red)" }}
-                            onClick={() => { setDeactivateConfirm(true); setDeleteConfirm(false); }}
-                          >
-                            <i className="ti ti-user-off" style={{ fontSize: 12 }} /> Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            className="btn-outline"
-                            style={{ color: "var(--green)", borderColor: "var(--green)" }}
-                            onClick={handleReactivate}
-                            disabled={deactivating}
-                          >
-                            <i className="ti ti-user-check" style={{ fontSize: 12 }} /> Reactivate
-                          </button>
-                        )}
-                        <button
-                          className="btn-outline"
-                          style={{ color: "var(--red)", borderColor: "var(--red)" }}
-                          onClick={() => { setDeleteConfirm(true); setDeactivateConfirm(false); }}
-                        >
-                          <i className="ti ti-trash" style={{ fontSize: 12 }} /> Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <button className="btn-outline" style={{ fontSize: 12, marginTop: 4 }} onClick={() => setAddOpen(true)}>
+                    <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add team member
+                  </button>
                 )}
               </div>
-
-              {/* Detail body */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-                {actionError && (
-                  <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 16 }}>
-                    {actionError}
+            ) : (
+              <>
+                {/* Drawer header */}
+                <div className="emp-detail-header" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 14 }}>
+                  <Avatar name={selected.name} size={48} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
+                    <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.email}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
+                      {roleBadge(selected.role)}
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3, background: selected.status === "active" ? "#ECFDF5" : "var(--bg2)", color: selected.status === "active" ? "#059669" : "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        {selected.status}
+                      </span>
+                    </div>
                   </div>
-                )}
-
-                {deactivateConfirm && (
-                  <div style={{ background: "var(--red-bg)", border: "0.5px solid var(--red)", borderRadius: "var(--rm)", padding: "12px 14px", marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 600, marginBottom: 8 }}>
-                      Deactivate {selected.name}?
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 12 }}>
-                      They will lose access to the CRM immediately. You can reactivate them later.
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button className="btn-outline" style={{ fontSize: 11 }} onClick={() => setDeactivateConfirm(false)}>Cancel</button>
-                      <button
-                        className="btn-primary"
-                        style={{ fontSize: 11, background: "var(--red)", borderColor: "var(--red)" }}
-                        onClick={handleDeactivate}
-                        disabled={deactivating}
-                      >
-                        {deactivating ? "Deactivating…" : "Yes, deactivate"}
+                  {isAdmin && (
+                    <div className="emp-detail-actions" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <button className="btn-outline" onClick={() => { setEditOpen(true); setActionError(null); setDeleteConfirm(false); }}>
+                        <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Edit
                       </button>
-                    </div>
-                  </div>
-                )}
-
-                {deleteConfirm && (
-                  <div style={{ background: "var(--red-bg)", border: "1px solid var(--red)", borderRadius: "var(--rm)", padding: "12px 14px", marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                      <i className="ti ti-alert-triangle" style={{ fontSize: 14, color: "var(--red)" }} />
-                      <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 700 }}>Permanently delete {selected.name}?</div>
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 12 }}>
-                      This will permanently remove the user and cannot be undone.
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button className="btn-outline" style={{ fontSize: 11 }} onClick={() => setDeleteConfirm(false)}>Cancel</button>
-                      <button
-                        className="btn-primary"
-                        style={{ fontSize: 11, background: "var(--red)", borderColor: "var(--red)" }}
-                        onClick={handleDelete}
-                        disabled={deleting}
-                      >
-                        {deleting ? "Deleting…" : "Yes, delete permanently"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Info grid */}
-                <div className="user-info-grid">
-                  {[
-                    { label: "Full name", value: selected.name, icon: "ti-user" },
-                    { label: "Email address", value: selected.email, icon: "ti-mail" },
-                    { label: "Role", value: ROLE_LABELS[selected.role as Role] ?? selected.role, icon: "ti-shield" },
-                    { label: "Status", value: selected.status === "active" ? "Active" : "Inactive", icon: "ti-circle-check" },
-                    {
-                      label: "Last login",
-                      value: selected.lastLogin ? new Date(selected.lastLogin).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Never",
-                      icon: "ti-clock",
-                    },
-                    {
-                      label: "Member since",
-                      value: new Date(selected.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-                      icon: "ti-calendar",
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      style={{ background: "var(--bg2)", borderRadius: "var(--rm)", padding: "12px 14px" }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
-                        <i className={`ti ${item.icon}`} style={{ fontSize: 11, color: "var(--t3)" }} />
-                        <span style={{ fontSize: 10, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.label}</span>
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>{item.value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Role permissions info */}
-                <div style={{ background: "var(--blue-bg)", border: "0.5px solid #85B7EB", borderRadius: "var(--rm)", padding: "12px 14px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-                    Role permissions — {ROLE_LABELS[selected.role as Role] ?? selected.role}
-                  </div>
-                  {selected.role === "super_admin" || selected.role === "admin" ? (
-                    <div style={{ fontSize: 12, color: "var(--t1)" }}>Full access to all modules</div>
-                  ) : (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                      {getModulesForRole(selected.role).map((mod) => (
-                        <span
-                          key={mod}
-                          style={{
-                            fontSize: 10,
-                            padding: "2px 8px",
-                            borderRadius: 3,
-                            background: "var(--bg1)",
-                            color: "var(--t2)",
-                            border: "0.5px solid var(--b3)",
-                            textTransform: "capitalize",
-                          }}
-                        >
-                          {mod.replace("-", " ")}
-                        </span>
-                      ))}
+                      {selected.id !== sessionId && (
+                        <>
+                          {selected.status === "active" ? (
+                            <button className="btn-outline" style={{ color: "var(--red)", borderColor: "var(--red)" }} onClick={() => { setDeactivateConfirm(true); setDeleteConfirm(false); }}>
+                              <i className="ti ti-user-off" style={{ fontSize: 12 }} /> Deactivate
+                            </button>
+                          ) : (
+                            <button className="btn-outline" style={{ color: "var(--green)", borderColor: "var(--green)" }} onClick={handleReactivate} disabled={deactivating}>
+                              <i className="ti ti-user-check" style={{ fontSize: 12 }} /> Reactivate
+                            </button>
+                          )}
+                          <button className="btn-outline" style={{ color: "var(--red)", borderColor: "var(--red)" }} onClick={() => { setDeleteConfirm(true); setDeactivateConfirm(false); }}>
+                            <i className="ti ti-trash" style={{ fontSize: 12 }} /> Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            </>
-          )}
+
+                {/* Drawer body */}
+                <div className="user-detail-body" style={{ flex: 1, overflowY: "auto" }}>
+                  {actionError && (
+                    <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 14 }}>{actionError}</div>
+                  )}
+
+                  {deactivateConfirm && (
+                    <div style={{ background: "var(--red-bg)", border: "0.5px solid var(--red)", borderRadius: "var(--rm)", padding: "12px 14px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 13, color: "var(--red)", fontWeight: 600, marginBottom: 6 }}>Deactivate {selected.name}?</div>
+                      <div style={{ fontSize: 12, color: "var(--t2)", marginBottom: 12 }}>
+                        They will lose CRM access immediately. You can reactivate them later.
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn-outline" style={{ fontSize: 12 }} onClick={() => setDeactivateConfirm(false)}>Cancel</button>
+                        <button className="btn-primary" style={{ fontSize: 12, background: "var(--red)", borderColor: "var(--red)" }} onClick={handleDeactivate} disabled={deactivating}>
+                          {deactivating ? "Deactivating…" : "Yes, deactivate"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {deleteConfirm && (
+                    <div style={{ background: "var(--red-bg)", border: "1px solid var(--red)", borderRadius: "var(--rm)", padding: "12px 14px", marginBottom: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <i className="ti ti-alert-triangle" style={{ fontSize: 14, color: "var(--red)" }} />
+                        <div style={{ fontSize: 13, color: "var(--red)", fontWeight: 700 }}>Permanently delete {selected.name}?</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--t2)", marginBottom: 12 }}>This cannot be undone.</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn-outline" style={{ fontSize: 12 }} onClick={() => setDeleteConfirm(false)}>Cancel</button>
+                        <button className="btn-primary" style={{ fontSize: 12, background: "var(--red)", borderColor: "var(--red)" }} onClick={handleDelete} disabled={deleting}>
+                          {deleting ? "Deleting…" : "Yes, delete permanently"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info grid */}
+                  <div className="user-info-grid">
+                    {[
+                      { label: "Full name",  value: selected.name,  icon: "ti-user"          },
+                      { label: "Email",      value: selected.email, icon: "ti-mail"          },
+                      { label: "Role",       value: ROLE_LABELS[selected.role as Role] ?? selected.role, icon: "ti-shield" },
+                      { label: "Status",     value: selected.status === "active" ? "Active" : "Inactive", icon: "ti-circle-check" },
+                      {
+                        label: "Last login",
+                        value: selected.lastLogin
+                          ? new Date(selected.lastLogin).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                          : "Never",
+                        icon: "ti-clock",
+                      },
+                      {
+                        label: "Member since",
+                        value: new Date(selected.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                        icon: "ti-calendar",
+                      },
+                    ].map((item) => (
+                      <div key={item.label} style={{ background: "var(--bg2)", borderRadius: "var(--rm)", padding: "12px 14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                          <i className={`ti ${item.icon}`} style={{ fontSize: 11, color: "var(--t3)" }} />
+                          <span style={{ fontSize: 10, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.label}</span>
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", wordBreak: "break-word" }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Role permissions */}
+                  <div style={{ background: "var(--blue-bg)", border: "0.5px solid #85B7EB", borderRadius: "var(--rm)", padding: "12px 14px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                      Permissions — {ROLE_LABELS[selected.role as Role] ?? selected.role}
+                    </div>
+                    {selected.role === "super_admin" || selected.role === "admin" ? (
+                      <div style={{ fontSize: 12, color: "var(--t1)" }}>Full access to all modules</div>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {getModulesForRole(selected.role).map((mod) => (
+                          <span key={mod} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 3, background: "var(--bg1)", color: "var(--t2)", border: "0.5px solid var(--b3)", textTransform: "capitalize" }}>
+                            {mod.replace("-", " ")}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      <AddUserModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onCreated={(u) => { refresh(); setSelected(u); }}
-      />
-      <EditUserModal
-        open={editOpen}
-        user={selected}
-        isAdmin={isAdmin}
-        onClose={() => setEditOpen(false)}
-        onUpdated={(u) => { setSelected(u); refresh(); }}
-      />
-
-      <style>{`@keyframes skPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+      <AddUserModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={(u) => { refresh(); setSelected(u); }} />
+      <EditUserModal open={editOpen} user={selected} isAdmin={isAdmin} onClose={() => setEditOpen(false)} onUpdated={(u) => { setSelected(u); refresh(); }} />
     </>
   );
 }
@@ -707,7 +580,7 @@ export default function UsersPage() {
 function getModulesForRole(role: string): string[] {
   const map: Record<string, string[]> = {
     manager: ["dashboard", "clients", "projects", "pipeline", "income", "invoices", "transactions", "expenses", "time-tracking", "commissions", "users", "reports"],
-    staff: ["dashboard", "clients", "projects", "pipeline", "time-tracking"],
+    staff:   ["dashboard", "clients", "projects", "pipeline", "time-tracking"],
     finance: ["dashboard", "income", "invoices", "transactions", "expenses", "payroll", "accounts", "reports", "settings"],
   };
   return map[role] ?? [];

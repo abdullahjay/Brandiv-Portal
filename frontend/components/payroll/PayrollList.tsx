@@ -62,6 +62,52 @@ const TH: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+function PayrollMobileCard({ rec, selected, onClick }: { rec: PayrollRecord; selected: boolean; onClick: () => void }) {
+  const name = getRecipientName(rec);
+  const sub = getRecipientSub(rec);
+  const isEmployee = !!rec.employee;
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 14px",
+        borderBottom: "0.5px solid var(--b3)",
+        background: selected ? "var(--blue-bg)" : "transparent",
+        cursor: "pointer",
+      }}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+        background: isEmployee ? "var(--green-bg)" : "var(--blue-bg)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 11, fontWeight: 700,
+        color: isEmployee ? "var(--green)" : "var(--blue)",
+        overflow: "hidden",
+      }}>
+        {rec.user?.avatarUrl
+          ? <img src={rec.user.avatarUrl} alt="" style={{ width: 36, height: 36, objectFit: "cover" }} />
+          : getInitials(name)
+        }
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {name}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {sub ? `${sub} · ` : ""}{rec.period}
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--green)" }}>
+          PKR {fmt(rec.netPkr)}
+        </div>
+        <Badge status={rec.status} />
+      </div>
+    </div>
+  );
+}
+
 export default function PayrollList({
   records,
   selectedId,
@@ -118,8 +164,8 @@ export default function PayrollList({
         </div>
       </div>
 
-      {/* Table */}
-      <div style={{ overflowX: "auto" }}>
+      {/* Desktop Table */}
+      <div className="ledger-desktop-only" style={{ display: "block", overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -232,6 +278,25 @@ export default function PayrollList({
             )}
           </tbody>
         </table>
+      </div>
+      {/* Mobile Cards */}
+      <div className="ledger-mobile-only" style={{ display: "none" }}>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--t3)" }}>
+            <i className="ti ti-loader-2" style={{ fontSize: 20, display: "block", marginBottom: 8 }} />
+            <span style={{ fontSize: 12 }}>Loading payroll records…</span>
+          </div>
+        ) : records.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 16px" }}>
+            <i className="ti ti-users" style={{ fontSize: 28, display: "block", marginBottom: 8, opacity: 0.5, color: "var(--t3)" }} />
+            <div style={{ fontSize: 13, color: "var(--t2)", marginBottom: 4, fontWeight: 500 }}>No payroll records</div>
+            <div style={{ fontSize: 12, color: "var(--t3)" }}>Run payroll or add a record to get started</div>
+          </div>
+        ) : (
+          records.map((rec) => (
+            <PayrollMobileCard key={rec.id} rec={rec} selected={rec.id === selectedId} onClick={() => onSelect(rec.id)} />
+          ))
+        )}
       </div>
     </div>
   );

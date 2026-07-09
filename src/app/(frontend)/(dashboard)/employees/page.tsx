@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Modal from "@frontend/components/ui/Modal";
+import Topbar from "@frontend/components/layout/Topbar";
 import {
   useEmployees,
   createEmployeeRequest,
@@ -276,6 +277,7 @@ export default function EmployeesPage() {
       refresh();
       setSelected(null);
       setDeleteConfirm(false);
+      setMobileView("list");
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -293,25 +295,40 @@ export default function EmployeesPage() {
         .emp-item.selected { background: var(--blue-bg); border-left: 2px solid var(--blue); padding-left: 12px; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
         .info-cell { background: var(--bg2); border-radius: var(--rm); padding: 10px 12px; }
+        .emp-body { padding: 20px 24px; }
+        .emp-stats-bar { padding: 0 20px; }
         @media (max-width: 767px) {
           .info-grid { grid-template-columns: 1fr !important; }
+          .emp-body { padding: 14px 14px !important; }
+          .emp-stats-bar { padding: 0 14px; }
+          .list-panel { border-left: none !important; border-right: none !important; border-top: none !important; border-radius: 0 !important; }
         }
       `}</style>
 
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)" }}>Employees</div>
-          <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>{total} total · {activeCount} active</div>
+      <Topbar title="Employees" />
+
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "14px 0 0", gap: 12 }}>
+
+      {/* Stats bar */}
+      <div className="emp-stats-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 12, color: "var(--t3)" }}>
+            <strong style={{ color: "var(--t1)", fontWeight: 600 }}>{total}</strong> employee{total !== 1 ? "s" : ""}
+          </span>
+          <span style={{ width: 1, height: 12, background: "var(--b3)" }} />
+          <span style={{ fontSize: 12, color: "var(--green)", fontWeight: 500 }}>
+            <i className="ti ti-circle-filled" style={{ fontSize: 8, verticalAlign: "middle", marginRight: 4 }} />
+            {activeCount} active
+          </span>
         </div>
         {canManage && (
-          <button className="btn-primary" onClick={() => { setEditTarget(null); setModalOpen(true); }}>
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add employee
+          <button className="btn-primary" style={{ flexShrink: 0 }} onClick={() => { setEditTarget(null); setModalOpen(true); }}>
+            <i className="ti ti-user-plus" style={{ fontSize: 12 }} /> Add employee
           </button>
         )}
       </div>
 
-      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden" }}>
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden", minHeight: 0 }}>
         {/* Left — employee list */}
         <div className="list-panel" style={{ width: 300, flexShrink: 0, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--b3)", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -370,11 +387,11 @@ export default function EmployeesPage() {
           <div style={{ padding: "8px 14px", borderTop: "0.5px solid var(--b3)", display: "flex", gap: 8 }}>
             <div style={{ flex: 1, background: "var(--bg2)", borderRadius: "var(--rm)", padding: "8px 10px" }}>
               <div style={{ fontSize: 9, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Active</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>{activeCount}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>{activeCount}</div>
             </div>
             <div style={{ flex: 1, background: "var(--bg2)", borderRadius: "var(--rm)", padding: "8px 10px" }}>
               <div style={{ fontSize: 9, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--t1)" }}>{total}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)" }}>{total}</div>
             </div>
           </div>
         </div>
@@ -400,7 +417,7 @@ export default function EmployeesPage() {
               <div className="emp-detail-header" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", gap: 16 }}>
                 <Avatar name={selected.name} dept={selected.department} size={52} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.name}</div>
                   <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {[selected.designation, selected.department].filter(Boolean).join(" · ") || "No designation"}
                   </div>
@@ -437,7 +454,7 @@ export default function EmployeesPage() {
               </div>
 
               {/* Body */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              <div className="emp-body" style={{ flex: 1, overflowY: "auto" }}>
                 {actionError && (
                   <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 16 }}>
                     {actionError}
@@ -498,6 +515,7 @@ export default function EmployeesPage() {
             </>
           )}
         </div>
+      </div>
       </div>
 
       <EmployeeModal

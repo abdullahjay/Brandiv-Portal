@@ -449,6 +449,75 @@ function AddLookupModal({ open, defaultType, onClose, onCreated }: {
   );
 }
 
+// ─── Lookup Mobile Card ───────────────────────────────────────────────────────
+
+function LookupMobileCard({ item, editingId, editLabel, editCode, canEdit, savingId, deletingId, setEditLabel, setEditCode, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onToggleActive }: {
+  item: LookupItem;
+  editingId: string | null;
+  editLabel: string;
+  editCode: string;
+  canEdit: boolean;
+  savingId: string | null;
+  deletingId: string | null;
+  setEditLabel: (v: string) => void;
+  setEditCode: (v: string) => void;
+  onStartEdit: (item: LookupItem) => void;
+  onSaveEdit: (id: string) => void;
+  onCancelEdit: () => void;
+  onDelete: (id: string) => void;
+  onToggleActive: (item: LookupItem) => void;
+}) {
+  const isEditing = editingId === item.id;
+  return (
+    <div style={{ padding: "11px 14px", borderBottom: "0.5px solid var(--b3)" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: "var(--t3)", fontFamily: "monospace", marginBottom: 3 }}>{item.value}</div>
+          {isEditing ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <input value={editLabel} onChange={(e) => setEditLabel(e.target.value)}
+                style={{ fontSize: 12, padding: "3px 8px", flex: "1 1 100px" }} placeholder="Label" autoFocus />
+              <input value={editCode} onChange={(e) => setEditCode(e.target.value)}
+                style={{ fontSize: 12, padding: "3px 8px", width: 70 }} placeholder="Code" />
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)" }}>{item.label}</div>
+          )}
+          {!isEditing && item.code && (
+            <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{item.code}</div>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {!canEdit && (
+            <span style={{ fontSize: 10, color: item.active ? "var(--green)" : "var(--t3)" }}>{item.active ? "Active" : "Inactive"}</span>
+          )}
+          {canEdit && !isEditing && (
+            <>
+              <input type="checkbox" checked={item.active} onChange={() => onToggleActive(item)} style={{ cursor: "pointer" }} title={item.active ? "Deactivate" : "Activate"} />
+              <button className="btn-outline" style={{ fontSize: 11, padding: "2px 8px" }} onClick={() => onStartEdit(item)}>
+                <i className="ti ti-pencil" style={{ fontSize: 11 }} />
+              </button>
+              <button className="btn-outline" style={{ fontSize: 11, padding: "2px 8px", color: "var(--red)", borderColor: "var(--red)" }}
+                onClick={() => onDelete(item.id)} disabled={deletingId === item.id}>
+                {deletingId === item.id ? "…" : <i className="ti ti-trash" style={{ fontSize: 11 }} />}
+              </button>
+            </>
+          )}
+          {canEdit && isEditing && (
+            <>
+              <button className="btn-primary" style={{ fontSize: 11, padding: "2px 10px" }}
+                onClick={() => onSaveEdit(item.id)} disabled={savingId === item.id}>
+                {savingId === item.id ? "…" : "Save"}
+              </button>
+              <button className="btn-outline" style={{ fontSize: 11, padding: "2px 8px" }} onClick={onCancelEdit}>Cancel</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab: Lookup Tables ───────────────────────────────────────────────────────
 
 function LookupsTab({ canEdit }: { canEdit: boolean }) {
@@ -578,7 +647,8 @@ function LookupsTab({ canEdit }: { canEdit: boolean }) {
             )}
           </div>
         ) : (
-          <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", overflow: "hidden" }}>
+          <>
+          <div className="ledger-desktop-only" style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "0.5px solid var(--b3)", background: "var(--bg2)" }}>
@@ -662,6 +732,28 @@ function LookupsTab({ canEdit }: { canEdit: boolean }) {
               </tbody>
             </table>
           </div>
+          <div className="ledger-mobile-only" style={{ display: "none", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", overflow: "hidden" }}>
+            {items.map((item) => (
+              <LookupMobileCard
+                key={item.id}
+                item={item}
+                editingId={editingId}
+                editLabel={editLabel}
+                editCode={editCode}
+                canEdit={canEdit}
+                savingId={savingId}
+                deletingId={deletingId}
+                setEditLabel={setEditLabel}
+                setEditCode={setEditCode}
+                onStartEdit={startEdit}
+                onSaveEdit={saveEdit}
+                onCancelEdit={() => setEditingId(null)}
+                onDelete={handleDelete}
+                onToggleActive={handleToggleActive}
+              />
+            ))}
+          </div>
+          </>
         )}
       </div>
 

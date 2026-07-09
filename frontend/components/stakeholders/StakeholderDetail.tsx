@@ -113,7 +113,7 @@ export default function StakeholderDetail({ stakeholder, onUpdated, onDeleted }:
             {stakeholder.name.slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: "var(--t1)" }}>{stakeholder.name}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--t1)" }}>{stakeholder.name}</div>
             <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>
               Stakeholder · {Number(stakeholder.sharePct)}% profit share
               {stakeholder.ownerUser && ` · ${stakeholder.ownerUser.name}`}
@@ -200,7 +200,7 @@ export default function StakeholderDetail({ stakeholder, onUpdated, onDeleted }:
       {/* Share info */}
       <div style={{ background: "var(--blue-bg)", border: "0.5px solid #85B7EB", borderRadius: "var(--rm)", padding: "12px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 32, fontWeight: 700, color: "var(--blue)" }}>{Number(stakeholder.sharePct)}%</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--blue)" }}>{Number(stakeholder.sharePct)}%</div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 500, color: "var(--blue)" }}>Profit share allocation</div>
             <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>

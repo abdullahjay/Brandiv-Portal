@@ -91,6 +91,7 @@ export default function IncomeDetail({ recordId, onUpdated }: IncomeDetailProps)
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Top bar */}
       <div
+        className="client-detail-header"
         style={{
           display: "flex",
           alignItems: "center",
@@ -101,19 +102,19 @@ export default function IncomeDetail({ recordId, onUpdated }: IncomeDetailProps)
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
           <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--green-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <i className="ti ti-cash" style={{ fontSize: 14, color: "var(--green)" }} />
           </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)" }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {record.client?.companyName ?? "Income"}
             </div>
             <div style={{ fontSize: 11, color: "var(--t2)" }}>{record.period}</div>
           </div>
           <Badge status={record.status} />
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="client-detail-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           {actionError && <span style={{ fontSize: 11, color: "var(--red)" }}>{actionError}</span>}
           {record.status === "pending" && (
             <button
@@ -132,7 +133,7 @@ export default function IncomeDetail({ recordId, onUpdated }: IncomeDetailProps)
       {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
         {/* Metrics */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 18 }}>
+        <div className="metrics-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 18 }}>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Original</div>
             <div style={{ fontSize: 16, fontWeight: 500, color: "var(--t1)" }}>
@@ -154,7 +155,7 @@ export default function IncomeDetail({ recordId, onUpdated }: IncomeDetailProps)
           </div>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Net PKR</div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--green)" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)" }}>
               PKR {fmt(record.netPkr / 100)}
             </div>
           </div>
@@ -182,7 +183,7 @@ export default function IncomeDetail({ recordId, onUpdated }: IncomeDetailProps)
 
         {/* Payment details */}
         <Section title="Payment details">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="f2" style={{ gap: 10 }}>
             <InfoItem label="Client" value={<span style={{ color: "var(--blue)" }}>{record.client?.companyName ?? "—"}</span>} />
             <InfoItem label="Invoice" value={record.invoice?.invoiceNumber ?? "—"} />
             <InfoItem label="Received" value={fmtDate(record.receivedAt)} />

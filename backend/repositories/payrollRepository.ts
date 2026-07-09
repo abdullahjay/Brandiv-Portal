@@ -293,37 +293,48 @@ export async function runPayrollBatch(input: RunPayrollInput) {
           skipped++;
           continue;
         }
-        // existing is pending
-        if (!markAsPaid || !paidAt) {
-          skipped++;
-          continue;
+
+        // existing is pending — always update amounts from the submitted entry
+        const grossPkr   = BigInt(Math.round(entry.grossPkr * AMOUNT_MULTIPLIER));
+        const taxPkr     = BigInt(Math.round((entry.taxPkr ?? 0) * AMOUNT_MULTIPLIER));
+        const deductions = BigInt(Math.round((entry.deductions ?? 0) * AMOUNT_MULTIPLIER));
+        const netPkr     = grossPkr - taxPkr - deductions;
+
+        if (markAsPaid && paidAt) {
+          const expenseNotes = [
+            `Tax: PKR ${(Number(taxPkr) / 100).toLocaleString()}`,
+            `Deductions: PKR ${(Number(deductions) / 100).toLocaleString()}`,
+            `Net paid: PKR ${(Number(netPkr) / 100).toLocaleString()}`,
+          ].join(" · ");
+
+          const updatedRecord = await tx.payrollRecord.update({
+            where: { id: existing.id },
+            data: { grossPkr, taxPkr, deductions, netPkr, status: "paid", paidAt },
+            select: payrollSelect,
+          });
+
+          await tx.expense.create({
+            data: {
+              description: `Salary — ${existing.name} (${period})`,
+              category: "Salaries",
+              amountPkr: grossPkr,
+              period: expensePeriod,
+              date: paidAt,
+              notes: expenseNotes,
+            },
+          });
+
+          totalNet += netPkr;
+          created.push(updatedRecord);
+        } else {
+          // Update amounts only, keep pending status
+          const updatedRecord = await tx.payrollRecord.update({
+            where: { id: existing.id },
+            data: { grossPkr, taxPkr, deductions, netPkr },
+            select: payrollSelect,
+          });
+          created.push(updatedRecord);
         }
-        // markAsPaid = true + pending record → update to paid
-        const expenseNotes = [
-          `Tax: PKR ${(Number(existing.taxPkr) / 100).toLocaleString()}`,
-          `Deductions: PKR ${(Number(existing.deductions) / 100).toLocaleString()}`,
-          `Net paid: PKR ${(Number(existing.netPkr) / 100).toLocaleString()}`,
-        ].join(" · ");
-
-        const updatedRecord = await tx.payrollRecord.update({
-          where: { id: existing.id },
-          data: { status: "paid", paidAt },
-          select: payrollSelect,
-        });
-
-        await tx.expense.create({
-          data: {
-            description: `Salary — ${existing.name} (${period})`,
-            category: "Salaries",
-            amountPkr: existing.grossPkr,
-            period: expensePeriod,
-            date: paidAt,
-            notes: expenseNotes,
-          },
-        });
-
-        totalNet += existing.netPkr;
-        created.push(updatedRecord);
         continue;
       }
 

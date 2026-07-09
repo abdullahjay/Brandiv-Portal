@@ -60,13 +60,13 @@ function MetricCard({ icon, label, value, sub, iconColor, iconBg }: {
         width: 48, height: 48, borderRadius: 14, flexShrink: 0,
         background: iconBg, display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 22, color: iconColor }} />
+        <i className={`ti ${icon}`} style={{ fontSize: 16, color: iconColor }} />
       </div>
       <div>
         <div style={{ fontSize: 11, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
           {label}
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
           {value}
         </div>
         {sub && <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>{sub}</div>}
@@ -87,6 +87,47 @@ const TD: React.CSSProperties = {
   padding: "13px 16px", fontSize: 13, color: "var(--t1)",
   verticalAlign: "middle", borderBottom: "0.5px solid var(--b3)",
 };
+
+function AccountMobileCard({ acc, selected, onClick }: { acc: CrmAccount; selected: boolean; onClick: () => void }) {
+  const meta = TYPE_META[acc.type as keyof typeof TYPE_META];
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 14px",
+        borderBottom: "0.5px solid var(--b3)",
+        background: selected ? "var(--blue-bg)" : "transparent",
+        cursor: "pointer",
+      }}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+        background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 12, fontWeight: 700, color: meta.color, overflow: "hidden",
+      }}>
+        {acc.ownerUser?.avatarUrl
+          ? <img src={acc.ownerUser.avatarUrl} alt="" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "50%" }} />
+          : initials(acc.name)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {acc.name}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+          <i className={`ti ${meta.icon}`} style={{ fontSize: 10 }} />
+          <span>{meta.label}{acc.type !== "operating" && Number(acc.sharePct) > 0 ? ` · ${Number(acc.sharePct)}%` : ""}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: pkrColor(acc.currentBalancePkr, meta.color) }}>
+          {fmtPkr(acc.currentBalancePkr)}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>Balance</div>
+      </div>
+    </div>
+  );
+}
 
 function AccountsTable({ accounts, selectedId, loading, onSelect }: {
   accounts: CrmAccount[]; selectedId: string | null; loading: boolean; onSelect: (id: string) => void;
@@ -112,7 +153,7 @@ function AccountsTable({ accounts, selectedId, loading, onSelect }: {
         </span>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
+      <div className="ledger-desktop-only" style={{ display: "block", overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -213,6 +254,22 @@ function AccountsTable({ accounts, selectedId, loading, onSelect }: {
           </tbody>
         </table>
       </div>
+      <div className="ledger-mobile-only" style={{ display: "none" }}>
+        {loading ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 48, color: "var(--t3)", fontSize: 12 }}>
+            <i className="ti ti-loader-2" style={{ fontSize: 18 }} /> Loading accounts…
+          </div>
+        ) : ordered.length === 0 ? (
+          <div style={{ padding: 48, textAlign: "center", color: "var(--t2)" }}>
+            <i className="ti ti-building-bank" style={{ fontSize: 32, color: "var(--t3)", display: "block", marginBottom: 10, opacity: 0.5 }} />
+            <div style={{ fontSize: 13 }}>No accounts yet</div>
+          </div>
+        ) : (
+          ordered.map((acc) => (
+            <AccountMobileCard key={acc.id} acc={acc} selected={acc.id === selectedId} onClick={() => onSelect(acc.id)} />
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -249,7 +306,7 @@ function AccountDetailContent({ account, preview, distributions, onEdit }: {
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: 22 }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{
             width: 44, height: 44, borderRadius: "50%", background: meta.bg,
@@ -261,7 +318,7 @@ function AccountDetailContent({ account, preview, distributions, onEdit }: {
               : initials(account.name)}
           </div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)" }}>{account.name}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)" }}>{account.name}</div>
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10,
               padding: "2px 7px", borderRadius: 20, background: meta.bg, color: meta.color, fontWeight: 600, marginTop: 3,
@@ -285,7 +342,7 @@ function AccountDetailContent({ account, preview, distributions, onEdit }: {
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: "var(--bg2)", borderRadius: "var(--rl)", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{label}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color }}>{value}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color }}>{value}</div>
           </div>
         ))}
       </div>
@@ -294,13 +351,13 @@ function AccountDetailContent({ account, preview, distributions, onEdit }: {
       <div style={{
         background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)",
         padding: "14px 16px", marginBottom: 14,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10,
       }}>
         <div>
           <div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>All-Time Total Paid Out</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--t1)" }}>PKR {fmt(lifeTotal)}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--t1)" }}>PKR {fmt(lifeTotal)}</div>
         </div>
-        <div style={{ display: "flex", gap: 20, textAlign: "right" }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 10, color: "var(--t3)", marginBottom: 3 }}>Distribution</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--blue)" }}>PKR {fmt(account.lifetimeDistPkr)}</div>
@@ -318,7 +375,7 @@ function AccountDetailContent({ account, preview, distributions, onEdit }: {
           <div style={{ fontSize: 11, color: "#D97706", fontWeight: 600, marginBottom: 8 }}>
             <i className="ti ti-clock" style={{ fontSize: 12, marginRight: 4 }} />Pending — if distributed now
           </div>
-          <div style={{ display: "flex", gap: 24 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: 10, color: "#92400E" }}>Distribution ({pendingItem.sharePct}%)</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#D97706" }}>PKR {fmt(pendingItem.distributionAmountPkr)}</div>
@@ -459,7 +516,7 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
           <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
             Distribution Engine · Operating Balance
           </div>
-          <div className="dist-hero-amount" style={{ fontSize: 36, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 8 }}>
+          <div className="dist-hero-amount" style={{ fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 8 }}>
             PKR {fmt(operatingPkr)}
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
@@ -517,7 +574,7 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
                   <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>{item.sharePct}% of balance</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#6D28D9", letterSpacing: "-0.02em" }}>PKR {fmt(item.distributionAmountPkr)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#6D28D9", letterSpacing: "-0.02em" }}>PKR {fmt(item.distributionAmountPkr)}</div>
                 </div>
               </div>
             ))}
@@ -580,7 +637,7 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#059669", letterSpacing: "-0.02em" }}>PKR {fmt(item.distributionAmountPkr)}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "#059669", letterSpacing: "-0.02em" }}>PKR {fmt(item.distributionAmountPkr)}</div>
                       {item.commissionAmountPkr > 0 && (
                         <div style={{ fontSize: 11, color: "var(--blue)", marginTop: 2 }}>
                           + PKR {fmt(item.commissionAmountPkr)} commission
@@ -652,7 +709,7 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 26, fontWeight: 800, color: "#6D28D9", letterSpacing: "-0.02em", lineHeight: 1 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#6D28D9", letterSpacing: "-0.02em", lineHeight: 1 }}>
                 PKR {fmt(finalReserveTotal)}
               </div>
               {operatingPkr > 0 && (
@@ -692,7 +749,7 @@ function DistributionTabContent({ onDistributed }: { onDistributed: () => void }
                   <>
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 11, color: "var(--t3)", marginBottom: 4 }}>Amount to distribute</div>
-                      <div style={{ fontSize: 24, fontWeight: 800, color: hasBalance ? "#6D28D9" : "var(--t3)", letterSpacing: "-0.02em" }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: hasBalance ? "#6D28D9" : "var(--t3)", letterSpacing: "-0.02em" }}>
                         PKR {fmt(operatingPkr)}
                       </div>
                     </div>
@@ -878,15 +935,9 @@ export default function AccountsPage() {
 
         {/* ── Header + Tabs bar ──────────────────────────────────────────────── */}
         <div style={{ background: "var(--bg1)", borderBottom: "0.5px solid var(--b3)", flexShrink: 0 }}>
-          <div className="accounts-header" style={{ padding: "18px 28px 0", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-            {/* Page title */}
+          <div className="accounts-header" style={{ padding: "18px 28px 0", display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            {/* Tabs */}
             <div style={{ marginBottom: 0 }}>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 2 }}>
-                Accounts
-              </h1>
-              <p style={{ fontSize: 12, color: "var(--t3)", marginBottom: 14 }}>
-                Manage operating, reserve and stakeholder accounts
-              </p>
               {/* Tabs */}
               <div style={{ display: "flex", gap: 0 }}>
                 {TABS.map((t) => (
@@ -912,7 +963,7 @@ export default function AccountsPage() {
             </div>
 
             {/* Actions */}
-            <div style={{ paddingBottom: 14, display: "flex", gap: 8, flexShrink: 0 }}>
+            <div style={{ paddingBottom: 14, paddingTop: 4, display: "flex", gap: 8, flexShrink: 0 }}>
               {tab === "accounts" && (
                 <button className="btn-primary" style={{ height: 36, fontSize: 13, paddingInline: 16 }} onClick={() => setShowAdd(true)}>
                   <i className="ti ti-plus" style={{ fontSize: 13 }} /> Add Account
@@ -928,40 +979,28 @@ export default function AccountsPage() {
           {/* ── ACCOUNTS TAB ─────────────────────────────────────────────────── */}
           {tab === "accounts" && (
             <>
-              {/* Metric cards */}
-              <div className="metrics-4">
-                <MetricCard
-                  icon="ti-building-bank"
-                  label="Operating Balance"
-                  value={operatingAcc ? fmtPkr(operatingAcc.currentBalancePkr, true) : "PKR 0"}
-                  sub="Available to distribute"
-                  iconColor="var(--blue)"
-                  iconBg="var(--blue-bg)"
-                />
-                <MetricCard
-                  icon="ti-safe"
-                  label="Company Reserve"
-                  value={reserveAcc ? fmtPkr(reserveAcc.currentBalancePkr, true) : "PKR 0"}
-                  sub={reserveAcc ? `${Number(reserveAcc.sharePct)}% allocation` : "Not configured"}
-                  iconColor="#6D28D9"
-                  iconBg="#EDE9FE"
-                />
-                <MetricCard
-                  icon="ti-users"
-                  label="Stakeholder Balances"
-                  value={fmtPkr(stakeholderBalance, true)}
-                  sub={`${stakeholderAccounts.length} stakeholder${stakeholderAccounts.length !== 1 ? "s" : ""}`}
-                  iconColor="var(--green)"
-                  iconBg="var(--green-bg)"
-                />
-                <MetricCard
-                  icon="ti-chart-pie"
-                  label="Total Accounts"
-                  value={String(accounts.length)}
-                  sub={`${accounts.filter(a => a.type === "operating").length} operating · ${stakeholderAccounts.length} stakeholder`}
-                  iconColor="var(--teal)"
-                  iconBg="var(--teal-bg)"
-                />
+              {/* Summary bar */}
+              <div className="stat-bar">
+                <div className="stat-bar-item">
+                  <div className="stat-bar-label">Operating Balance</div>
+                  <div className="stat-bar-value" style={{ color: "var(--blue)" }}>{operatingAcc ? fmtPkr(operatingAcc.currentBalancePkr, true) : "PKR 0"}</div>
+                  <div className="stat-bar-sub">Available to distribute</div>
+                </div>
+                <div className="stat-bar-item">
+                  <div className="stat-bar-label">Company Reserve</div>
+                  <div className="stat-bar-value" style={{ color: "#6D28D9" }}>{reserveAcc ? fmtPkr(reserveAcc.currentBalancePkr, true) : "PKR 0"}</div>
+                  <div className="stat-bar-sub">{reserveAcc ? `${Number(reserveAcc.sharePct)}% allocation` : "Not configured"}</div>
+                </div>
+                <div className="stat-bar-item">
+                  <div className="stat-bar-label">Stakeholder Balances</div>
+                  <div className="stat-bar-value" style={{ color: "var(--green)" }}>{fmtPkr(stakeholderBalance, true)}</div>
+                  <div className="stat-bar-sub">{stakeholderAccounts.length} stakeholder{stakeholderAccounts.length !== 1 ? "s" : ""}</div>
+                </div>
+                <div className="stat-bar-item">
+                  <div className="stat-bar-label">Total Accounts</div>
+                  <div className="stat-bar-value" style={{ color: "var(--t1)" }}>{accounts.length}</div>
+                  <div className="stat-bar-sub">{accounts.filter(a => a.type === "operating").length} operating · {stakeholderAccounts.length} stakeholder</div>
+                </div>
               </div>
 
               {/* Accounts table */}
