@@ -8,20 +8,51 @@ export async function upsertCompensation(data: {
   defaultTaxPkr: number;
   notes?: string | null;
 }) {
-  return prisma.employeeCompensation.upsert({
-    where: { employeeId_effectiveFrom: { employeeId: data.employeeId, effectiveFrom: data.effectiveFrom } },
-    create: {
-      employeeId: data.employeeId,
-      effectiveFrom: data.effectiveFrom,
-      baseSalary: BigInt(Math.round(data.baseSalary * AMOUNT_MULTIPLIER)),
-      defaultTaxPkr: BigInt(Math.round(data.defaultTaxPkr * AMOUNT_MULTIPLIER)),
-      notes: data.notes ?? null,
-    },
-    update: {
-      baseSalary: BigInt(Math.round(data.baseSalary * AMOUNT_MULTIPLIER)),
-      defaultTaxPkr: BigInt(Math.round(data.defaultTaxPkr * AMOUNT_MULTIPLIER)),
-      notes: data.notes ?? null,
-    },
+  const grossBig = BigInt(Math.round(data.baseSalary * AMOUNT_MULTIPLIER));
+  const taxBig   = BigInt(Math.round(data.defaultTaxPkr * AMOUNT_MULTIPLIER));
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Save the compensation record
+    const comp = await tx.employeeCompensation.upsert({
+      where: { employeeId_effectiveFrom: { employeeId: data.employeeId, effectiveFrom: data.effectiveFrom } },
+      create: {
+        employeeId: data.employeeId,
+        effectiveFrom: data.effectiveFrom,
+        baseSalary: grossBig,
+        defaultTaxPkr: taxBig,
+        notes: data.notes ?? null,
+      },
+      update: {
+        baseSalary: grossBig,
+        defaultTaxPkr: taxBig,
+        notes: data.notes ?? null,
+      },
+    });
+
+    // 2. Propagate to pending payroll records for period >= effectiveFrom
+    //    Deductions are preserved per-record; only gross + tax are overwritten.
+    const pendingRecords = await tx.payrollRecord.findMany({
+      where: {
+        employeeId: data.employeeId,
+        period: { gte: data.effectiveFrom },
+        status: "pending",
+      },
+      select: { id: true, deductions: true },
+    });
+
+    for (const record of pendingRecords) {
+      const netPkr = grossBig - taxBig - record.deductions;
+      await tx.payrollRecord.update({
+        where: { id: record.id },
+        data: {
+          grossPkr: grossBig,
+          taxPkr: taxBig,
+          netPkr: netPkr > BigInt(0) ? netPkr : BigInt(0),
+        },
+      });
+    }
+
+    return comp;
   });
 }
 

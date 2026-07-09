@@ -90,19 +90,27 @@ function ProjectRow({ p }: { p: ClientProject }) {
 function InvoiceRow({ inv }: { inv: ClientInvoice }) {
   return (
     <div className="trow">
-      <div style={{ fontSize: 12, color: "var(--blue)", width: 82, flexShrink: 0, fontWeight: 500 }}>
-        {inv.invoiceNumber}
+      {/* Left: number + date — truncates on small screens */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: "var(--blue)", fontWeight: 500, flexShrink: 0 }}>
+          {inv.invoiceNumber}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {fmtDate(inv.issueDate)}
+        </div>
       </div>
-      <div style={{ fontSize: 11, color: "var(--t2)", flex: 1 }}>{fmtDate(inv.issueDate)}</div>
-      <div style={{ fontSize: 12, fontWeight: 500 }}>
-        {inv.currency} {fmt(inv.totalAmount / 100)}
+      {/* Right: amount + badge + optional button — stay together */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 500 }}>
+          {inv.currency} {fmt(inv.totalAmount / 100)}
+        </div>
+        <Badge status={inv.status} />
+        {inv.status === "overdue" && (
+          <button className="btn-primary" style={{ height: 24, fontSize: 10, padding: "0 8px" }}>
+            Record
+          </button>
+        )}
       </div>
-      <Badge status={inv.status} />
-      {inv.status === "overdue" && (
-        <button className="btn-primary" style={{ height: 24, fontSize: 10, padding: "0 8px" }}>
-          Record
-        </button>
-      )}
     </div>
   );
 }
@@ -191,6 +199,7 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Top bar */}
       <div
+        className="client-detail-header"
         style={{
           display: "flex",
           alignItems: "center",
@@ -201,14 +210,14 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
           <Avatar name={client.companyName} size={30} fontSize={10} />
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)" }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {client.companyName}
           </div>
           <Badge status={client.status} />
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="client-detail-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           {actionError && (
             <span style={{ fontSize: 11, color: "var(--red)" }}>{actionError}</span>
           )}
@@ -261,6 +270,7 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
         {/* Metrics row */}
         <div
+          className="metrics-4"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
@@ -270,7 +280,7 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
         >
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Total invoiced</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "var(--t1)" }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)" }}>
               {client.currency} {fmt(totalInvoiced)}
             </div>
             <div style={{ fontSize: 11, color: "var(--t2)", marginTop: 3 }}>
@@ -279,7 +289,7 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
           </div>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Projects</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "var(--t1)" }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)" }}>
               {client._count?.projects ?? client.projects?.length ?? 0}
             </div>
           </div>
@@ -310,7 +320,7 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
             </button>
           }
         >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="f2" style={{ gap: 10 }}>
             <InfoItem
               label="Contact"
               value={`${client.contactName}${client.contactTitle ? ` · ${client.contactTitle}` : ""}`}

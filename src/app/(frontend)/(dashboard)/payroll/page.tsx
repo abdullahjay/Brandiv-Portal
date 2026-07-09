@@ -85,7 +85,7 @@ function MonthNav({ period, onChange }: { period: string; onChange: (p: string) 
       >
         <i className="ti ti-chevron-left" style={{ fontSize: 14 }} />
       </button>
-      <span style={{ minWidth: 128, textAlign: "center", fontSize: 13, fontWeight: 600, color: "var(--t1)", padding: "0 8px" }}>
+      <span style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 600, color: "var(--t1)", padding: "0 8px", minWidth: 100 }}>
         {periodLabel(period)}
       </span>
       <button
@@ -120,13 +120,13 @@ function MetricCard({ icon, label, value, sub, iconColor, iconBg }: {
       boxShadow: "var(--shadow-sm)",
     }}>
       <div style={{ width: 48, height: 48, borderRadius: 14, flexShrink: 0, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 22, color: iconColor }} />
+        <i className={`ti ${icon}`} style={{ fontSize: 16, color: iconColor }} />
       </div>
       <div>
         <div style={{ fontSize: 11, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
           {label}
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
           {value}
         </div>
         {sub && <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>{sub}</div>}
@@ -515,85 +515,67 @@ export default function PayrollPage() {
       <div className="page-content">
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div className="payroll-page-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, gap: 12, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 3 }}>
-              Payroll
-            </h1>
-            <p style={{ fontSize: 12, color: "var(--t3)" }}>
-              Monthly salary management for all employees
-            </p>
-          </div>
+        <div className="payroll-page-header" style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+          {/* Month nav + action buttons */}
+          <div className="payroll-controls" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <MonthNav period={period} onChange={(p) => { setPeriod(p); setSelectedRecordId(null); }} />
 
-          <MonthNav period={period} onChange={(p) => { setPeriod(p); setSelectedRecordId(null); }} />
+            <div style={{ width: "0.5px", height: 24, background: "var(--b3)", flexShrink: 0 }} />
 
-          {/* Actions */}
-          <div className="page-actions" style={{ flexShrink: 0 }}>
-            {unprocessedWithCompensation.length > 0 && (
-              <button
-                className="btn-primary"
-                style={{ height: 36, fontSize: 13, paddingInline: 14, background: "var(--green)", borderColor: "var(--green)", whiteSpace: "nowrap" }}
-                onClick={handleAutoCreate}
-                disabled={autoCreating}
-              >
-                {autoCreating
-                  ? <><i className="ti ti-loader-2" style={{ fontSize: 13 }} /> Creating…</>
-                  : <><i className="ti ti-bolt" style={{ fontSize: 13 }} /> Create All ({unprocessedWithCompensation.length})</>
-                }
+            <div className="page-actions" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              {unprocessedWithCompensation.length > 0 && (
+                <button
+                  className="btn-primary"
+                  style={{ height: 34, fontSize: 12, paddingInline: 12, background: "var(--green)", borderColor: "var(--green)", whiteSpace: "nowrap" }}
+                  onClick={handleAutoCreate}
+                  disabled={autoCreating}
+                >
+                  {autoCreating
+                    ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> Creating…</>
+                    : <><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Create All ({unprocessedWithCompensation.length})</>
+                  }
+                </button>
+              )}
+              <button className="btn-outline" style={{ height: 34, fontSize: 12, paddingInline: 12, whiteSpace: "nowrap" }} onClick={() => setShowRun(true)}>
+                <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Run Payroll
               </button>
-            )}
-            <button className="btn-outline" style={{ height: 36, fontSize: 13, paddingInline: 14, whiteSpace: "nowrap" }} onClick={() => setShowRun(true)}>
-              <i className="ti ti-player-play" style={{ fontSize: 13 }} /> Run Payroll
-            </button>
-            <button className="btn-outline" style={{ height: 36, fontSize: 13, paddingInline: 14, whiteSpace: "nowrap" }} onClick={() => { setAddPrefill(undefined); setShowAdd(true); }}>
-              <i className="ti ti-plus" style={{ fontSize: 13 }} /> Add Record
-            </button>
+              <button className="btn-outline" style={{ height: 34, fontSize: 12, paddingInline: 12, whiteSpace: "nowrap" }} onClick={() => { setAddPrefill(undefined); setShowAdd(true); }}>
+                <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add Record
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── Metric cards ────────────────────────────────────────────────── */}
-        <div className="metrics-4">
-          <MetricCard
-            icon="ti-coin"
-            label="Total Gross"
-            value={fmtCompact(totalGross)}
-            sub={`${records.length} record${records.length !== 1 ? "s" : ""}`}
-            iconColor="var(--blue)"
-            iconBg="var(--blue-bg)"
-          />
-          <MetricCard
-            icon="ti-wallet"
-            label="Net Payroll"
-            value={fmtCompact(totalNet)}
-            sub="Total take-home"
-            iconColor="var(--green)"
-            iconBg="var(--green-bg)"
-          />
-          <MetricCard
-            icon="ti-clock"
-            label="Pending"
-            value={String(pendingRecords.length)}
-            sub={pendingRecords.length > 0 ? fmtCompact(pendingRecords.reduce((s, r) => s + r.netPkr, 0)) : "All clear"}
-            iconColor="var(--amber)"
-            iconBg="var(--amber-bg)"
-          />
-          <MetricCard
-            icon="ti-user-exclamation"
-            label="Not Added"
-            value={String(notAddedCount)}
-            sub={notAddedCount > 0 ? `${merged.length} eligible this month` : "Everyone has a record"}
-            iconColor={notAddedCount > 0 ? "var(--red)" : "var(--green)"}
-            iconBg={notAddedCount > 0 ? "var(--red-bg)" : "var(--green-bg)"}
-          />
+        {/* ── Summary bar ─────────────────────────────────────────────────── */}
+        <div className="stat-bar">
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">Total Gross</div>
+            <div className="stat-bar-value" style={{ color: "var(--blue)" }}>{fmtCompact(totalGross)}</div>
+            <div className="stat-bar-sub">{records.length} record{records.length !== 1 ? "s" : ""}</div>
+          </div>
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">Net Payroll</div>
+            <div className="stat-bar-value" style={{ color: "var(--green)" }}>{fmtCompact(totalNet)}</div>
+            <div className="stat-bar-sub">Total take-home</div>
+          </div>
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">Pending</div>
+            <div className="stat-bar-value" style={{ color: pendingRecords.length > 0 ? "#D97706" : "var(--t3)" }}>{pendingRecords.length}</div>
+            <div className="stat-bar-sub">{pendingRecords.length > 0 ? fmtCompact(pendingRecords.reduce((s, r) => s + r.netPkr, 0)) : "All clear"}</div>
+          </div>
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">Not Added</div>
+            <div className="stat-bar-value" style={{ color: notAddedCount > 0 ? "var(--red)" : "var(--green)" }}>{notAddedCount}</div>
+            <div className="stat-bar-sub">{notAddedCount > 0 ? `${merged.length} eligible` : "Everyone added"}</div>
+          </div>
         </div>
 
         {/* ── Status filter tabs ───────────────────────────────────────────── */}
         <div className="payroll-filter-bar" style={{
-          display: "flex", alignItems: "center", gap: 6,
-          background: "var(--bg1)", border: "0.5px solid var(--b3)",
-          borderRadius: "var(--rl)", padding: "6px 8px",
-          marginBottom: 20,
-          boxShadow: "var(--shadow-sm)",
+          display: "flex", alignItems: "center", gap: 4,
+          background: "var(--bg2)", border: "0.5px solid var(--b3)",
+          borderRadius: "var(--rm)", padding: "3px",
+          marginBottom: 16,
         }}>
           {FILTERS.map((f) => {
             const active = filter === f.value;
@@ -602,31 +584,28 @@ export default function PayrollPage() {
                 key={f.value}
                 onClick={() => setFilter(f.value)}
                 style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 12px", borderRadius: "var(--rm)", border: "none",
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "5px 10px", borderRadius: "var(--rm)", border: "none",
                   cursor: "pointer", transition: "all .12s", whiteSpace: "nowrap",
-                  background: active ? "var(--blue)" : "transparent",
-                  color: active ? "#fff" : "var(--t2)",
+                  background: active ? "var(--bg1)" : "transparent",
+                  color: active ? "var(--t1)" : "var(--t3)",
                   fontSize: 12, fontWeight: active ? 600 : 400,
+                  boxShadow: active ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
                 }}
               >
-                <i className={`ti ${f.icon}`} style={{ fontSize: 13 }} />
+                <i className={`ti ${f.icon}`} style={{ fontSize: 12, color: active ? "var(--blue)" : "var(--t3)" }} />
                 {f.label}
                 <span style={{
-                  fontSize: 10, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9,
+                  fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, borderRadius: 8,
                   display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px",
-                  background: active ? "rgba(255,255,255,0.25)" : "var(--bg2)",
-                  color: active ? "#fff" : "var(--t3)",
+                  background: active ? "var(--blue-bg)" : "var(--bg3)",
+                  color: active ? "var(--blue)" : "var(--t3)",
                 }}>
                   {counts[f.value]}
                 </span>
               </button>
             );
           })}
-
-          <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--t3)", whiteSpace: "nowrap", flexShrink: 0 }}>
-            {periodLabel(period)}
-          </div>
         </div>
 
         {/* ── Employee Grid ────────────────────────────────────────────────── */}

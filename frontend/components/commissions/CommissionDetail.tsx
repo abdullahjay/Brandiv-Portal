@@ -157,7 +157,7 @@ export default function CommissionDetail({ commission, loading, onApproved }: Co
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Commission</div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--t1)" }}>
               PKR {fmt(commAmt)}
             </div>
             <div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2 }}>{ratePct}% of net</div>

@@ -24,16 +24,17 @@ function Row({ label, value, color, bold, indent, note }: {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
+      gap: 12,
       padding: "8px 20px",
       borderBottom: "0.5px solid var(--b3)",
     }}>
-      <div style={{ paddingLeft: indent ? 16 : 0 }}>
+      <div style={{ paddingLeft: indent ? 16 : 0, minWidth: 0 }}>
         <span style={{ fontSize: 13, fontWeight: bold ? 600 : 400, color: bold ? "var(--t1)" : "var(--t2)" }}>
           {label}
         </span>
         {note && <span style={{ fontSize: 11, color: "var(--t3)", marginLeft: 8 }}>{note}</span>}
       </div>
-      <span style={{ fontSize: 13, fontWeight: bold ? 700 : 500, color: color ?? "var(--t1)" }}>
+      <span style={{ fontSize: 13, fontWeight: bold ? 700 : 500, color: color ?? "var(--t1)", flexShrink: 0 }}>
         {fmtPkr(value)}
       </span>
     </div>
@@ -74,7 +75,7 @@ export default function PLStatement({ period }: Props) {
   return (
     <div>
       {/* Summary metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+      <div className="metrics-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
         {[
           { label: "Gross Revenue", value: data.totalGrossPkr, color: "var(--t1)" },
           { label: "Net Income", value: data.totalIncomePkr, color: "var(--green)" },
@@ -122,13 +123,13 @@ export default function PLStatement({ period }: Props) {
         {/* Revenue by client */}
         {data.incomeByClient.length > 0 && (
           <>
-            <div style={{ padding: "6px 20px 4px 36px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+            <div style={{ padding: "6px 20px 4px 30px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
               <span style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Revenue breakdown</span>
             </div>
             {data.incomeByClient.map((c) => (
-              <div key={c.clientName} style={{ display: "flex", justifyContent: "space-between", padding: "7px 20px 7px 36px", borderBottom: "0.5px solid var(--b3)" }}>
-                <span style={{ fontSize: 12, color: "var(--t2)" }}>{c.clientName}</span>
-                <span style={{ fontSize: 12, color: "var(--green)", fontWeight: 500 }}>PKR {fmt(c.amountPkr)}</span>
+              <div key={c.clientName} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "7px 20px 7px 30px", borderBottom: "0.5px solid var(--b3)" }}>
+                <span style={{ fontSize: 12, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.clientName}</span>
+                <span style={{ fontSize: 12, color: "var(--green)", fontWeight: 500, flexShrink: 0 }}>PKR {fmt(c.amountPkr)}</span>
               </div>
             ))}
           </>
@@ -144,13 +145,13 @@ export default function PLStatement({ period }: Props) {
         {/* Expense breakdown */}
         {data.expenseByCategory.length > 0 && (
           <>
-            <div style={{ padding: "6px 20px 4px 36px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+            <div style={{ padding: "6px 20px 4px 30px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
               <span style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Expenses by category</span>
             </div>
             {data.expenseByCategory.map((e) => (
-              <div key={e.category} style={{ display: "flex", justifyContent: "space-between", padding: "7px 20px 7px 36px", borderBottom: "0.5px solid var(--b3)" }}>
-                <span style={{ fontSize: 12, color: "var(--t2)" }}>{e.category}</span>
-                <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 500 }}>PKR {fmt(e.amountPkr)}</span>
+              <div key={e.category} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "7px 20px 7px 30px", borderBottom: "0.5px solid var(--b3)" }}>
+                <span style={{ fontSize: 12, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{e.category}</span>
+                <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 500, flexShrink: 0 }}>PKR {fmt(e.amountPkr)}</span>
               </div>
             ))}
           </>
@@ -159,18 +160,18 @@ export default function PLStatement({ period }: Props) {
         {/* Payroll breakdown */}
         {data.payrollByEmployee.length > 0 && (
           <>
-            <div style={{ padding: "6px 20px 4px 36px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+            <div style={{ padding: "6px 20px 4px 30px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
               <span style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Payroll by employee</span>
             </div>
             {data.payrollByEmployee.map((p) => (
-              <div key={p.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 20px 7px 36px", borderBottom: "0.5px solid var(--b3)" }}>
-                <div>
-                  <span style={{ fontSize: 12, color: "var(--t2)" }}>{p.name}</span>
+              <div key={p.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "7px 20px 7px 30px", borderBottom: "0.5px solid var(--b3)" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
                   {p.deductions > 0 && (
-                    <span style={{ fontSize: 11, color: "var(--t3)", marginLeft: 8 }}>gross PKR {fmt(p.grossPkr)} − deductions PKR {fmt(p.deductions)}</span>
+                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>gross PKR {fmt(p.grossPkr)} − deductions PKR {fmt(p.deductions)}</div>
                   )}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   <span style={{ fontSize: 10, background: p.status === "paid" ? "var(--green-bg)" : "var(--amber-bg)", color: p.status === "paid" ? "var(--green)" : "#92400e", padding: "1px 6px", borderRadius: 10, fontWeight: 500 }}>{p.status}</span>
                   <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 500 }}>PKR {fmt(p.netPkr)}</span>
                 </div>
@@ -182,13 +183,13 @@ export default function PLStatement({ period }: Props) {
         {/* Commission breakdown */}
         {data.commissionByStakeholder.length > 0 && (
           <>
-            <div style={{ padding: "6px 20px 4px 36px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+            <div style={{ padding: "6px 20px 4px 30px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
               <span style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Commissions by stakeholder</span>
             </div>
             {data.commissionByStakeholder.map((c) => (
-              <div key={c.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 20px 7px 36px", borderBottom: "0.5px solid var(--b3)" }}>
-                <span style={{ fontSize: 12, color: "var(--t2)" }}>{c.name}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div key={c.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "7px 20px 7px 30px", borderBottom: "0.5px solid var(--b3)" }}>
+                <span style={{ fontSize: 12, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.name}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   <span style={{ fontSize: 10, background: c.status === "paid" ? "var(--green-bg)" : c.status === "approved" ? "var(--blue-bg)" : "var(--amber-bg)", color: c.status === "paid" ? "var(--green)" : c.status === "approved" ? "var(--blue)" : "#92400e", padding: "1px 6px", borderRadius: 10, fontWeight: 500 }}>{c.status}</span>
                   <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 500 }}>PKR {fmt(c.amountPkr)}</span>
                 </div>
@@ -199,13 +200,13 @@ export default function PLStatement({ period }: Props) {
 
         {/* Net profit */}
         <SectionHeader title="Bottom Line" icon="ti-chart-bar" />
-        <div style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)" }}>Net Profit / (Loss)</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: data.netProfitPkr >= 0 ? "var(--blue)" : "var(--red)" }}>
             {fmtPkr(data.netProfitPkr)}
           </span>
         </div>
-        <div style={{ padding: "0 20px 14px", display: "flex", gap: 20 }}>
+        <div style={{ padding: "0 20px 14px", display: "flex", gap: 20, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "var(--t3)" }}>Margin: {data.grossMarginPct.toFixed(1)}%</span>
           {data.totalWhtPkr > 0 && (
             <span style={{ fontSize: 12, color: "var(--t3)" }}>WHT withheld: PKR {fmt(data.totalWhtPkr)}</span>

@@ -9,7 +9,7 @@ export const createExpenseSchema = z.object({
   exchangeRate: z.coerce.number().positive().optional().nullable(),
   date: z.string().min(1, "Date is required"),
   projectId: z.string().uuid().optional().nullable(),
-  receiptUrl: z.string().url().optional().nullable(),
+  receiptUrl: z.string().min(1).optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 

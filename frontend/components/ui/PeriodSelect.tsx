@@ -29,6 +29,7 @@ export default function PeriodSelect({
 }: PeriodSelectProps) {
   const now = new Date();
   const [open, setOpen] = useState(false);
+  const [flipRight, setFlipRight] = useState(false);
   const [viewYear, setViewYear] = useState(() => {
     if (value) return parseInt(value.split("-")[0]);
     return now.getFullYear();
@@ -42,6 +43,14 @@ export default function PeriodSelect({
     if (open) document.addEventListener("mousedown", onOutside);
     return () => document.removeEventListener("mousedown", onOutside);
   }, [open]);
+
+  function handleToggle() {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setFlipRight(rect.left + 216 > window.innerWidth - 8);
+    }
+    setOpen((o) => !o);
+  }
 
   // Sync viewYear when value changes externally
   useEffect(() => {
@@ -65,7 +74,7 @@ export default function PeriodSelect({
     <div ref={ref} style={{ position: "relative", display: "inline-block", ...style }}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={handleToggle}
         style={{
           height: 32,
           padding: "0 10px",
@@ -94,7 +103,7 @@ export default function PeriodSelect({
           style={{
             position: "absolute",
             top: "calc(100% + 4px)",
-            left: 0,
+            ...(flipRight ? { right: 0 } : { left: 0 }),
             zIndex: 1000,
             background: "var(--bg1)",
             border: "0.5px solid var(--b3)",

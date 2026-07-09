@@ -141,7 +141,7 @@ export default function ExpenseDetail({ expense, loading, onDeleted }: ExpenseDe
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Amount</div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--red)" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--red)" }}>
               PKR {fmt(expense.amountPkr / 100)}
             </div>
           </div>

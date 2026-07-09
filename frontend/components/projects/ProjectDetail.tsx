@@ -190,6 +190,7 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Top bar */}
       <div
+        className="client-detail-header"
         style={{
           display: "flex",
           alignItems: "center",
@@ -200,7 +201,7 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
           <div
             style={{
               width: 30,
@@ -215,10 +216,10 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
           >
             <i className="ti ti-briefcase" style={{ fontSize: 14, color: "var(--blue)" }} />
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)" }}>{project.name}</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.name}</div>
           <Badge status={project.status} />
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="client-detail-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           {actionError && (
             <span style={{ fontSize: 11, color: "var(--red)" }}>{actionError}</span>
           )}
@@ -264,6 +265,7 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
         {/* Metrics */}
         <div
+          className="metrics-3"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
@@ -273,18 +275,18 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
         >
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Project value</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "var(--t1)" }}>{valueDisplay}</div>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)" }}>{valueDisplay}</div>
           </div>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Progress</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "var(--t1)" }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)" }}>
               {project.progressPct}%
             </div>
             <ProgressBar value={project.progressPct} />
           </div>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Hours logged</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "var(--t1)" }}>{totalHours}h</div>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)" }}>{totalHours}h</div>
           </div>
         </div>
 
@@ -294,7 +296,7 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
             <i className="ti ti-edit" style={{ fontSize: 11 }} /> Edit
           </button>
         }>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="f2" style={{ gap: 10 }}>
             <InfoItem
               label="Client"
               value={
@@ -350,16 +352,22 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
           {project.invoices?.length ? (
             project.invoices.map((inv) => (
               <div key={inv.id} className="trow">
-                <div style={{ fontSize: 12, color: "var(--blue)", width: 82, flexShrink: 0, fontWeight: 500 }}>
-                  {inv.invoiceNumber}
+                {/* Left: number + date */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: "var(--blue)", fontWeight: 500, flexShrink: 0 }}>
+                    {inv.invoiceNumber}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {fmtDate(inv.issueDate)}
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--t2)", flex: 1 }}>
-                  {fmtDate(inv.issueDate)}
+                {/* Right: amount + badge */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500 }}>
+                    {inv.currency} {(inv.totalAmount / 100).toLocaleString()}
+                  </div>
+                  <Badge status={inv.status} size="sm" />
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 500 }}>
-                  {inv.currency} {(inv.totalAmount / 100).toLocaleString()}
-                </div>
-                <Badge status={inv.status} size="sm" />
               </div>
             ))
           ) : (

@@ -127,7 +127,7 @@ function KpiCard({ icon, label, value, sub, accent, loading }: {
         <><Skeleton h={22} w="70%" /><Skeleton h={11} w="50%" /></>
       ) : (
         <>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", lineHeight: 1.2 }}>{value}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)", lineHeight: 1.2 }}>{value}</div>
           {sub && <div style={{ fontSize: 11, color: "var(--t3)" }}>{sub}</div>}
         </>
       )}
@@ -248,40 +248,26 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Row 1 — KPI cards */}
-        <div className="dash-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-          <KpiCard
-            icon="ti-trending-up"
-            label="Revenue this month"
-            value={cp ? fmt(cp.incomePkr) : "—"}
-            sub={cp ? fmtFull(cp.incomePkr) : undefined}
-            accent="var(--blue)"
-            loading={loading}
-          />
-          <KpiCard
-            icon="ti-chart-pie"
-            label="Net profit"
-            value={cp ? fmt(cp.netProfitPkr) : "—"}
-            sub={cp ? `${cp.grossMarginPct.toFixed(1)}% margin` : undefined}
-            accent={!cp ? "var(--green)" : cp.netProfitPkr >= 0 ? "var(--green)" : "var(--red)"}
-            loading={loading}
-          />
-          <KpiCard
-            icon="ti-building-bank"
-            label="Operating balance"
-            value={data ? fmt(data.operatingBalancePkr) : "—"}
-            sub={data ? fmtFull(data.operatingBalancePkr) : undefined}
-            accent="#7C3AED"
-            loading={loading}
-          />
-          <KpiCard
-            icon="ti-file-invoice"
-            label="Unpaid invoices"
-            value={counts ? String(counts.unpaidInvoices) : "—"}
-            sub={counts ? `${counts.pendingCommissions} pending commission${counts.pendingCommissions !== 1 ? "s" : ""}` : undefined}
-            accent="#D97706"
-            loading={loading}
-          />
+        {/* Row 1 — KPI summary bar */}
+        <div className="stat-bar" style={{ marginBottom: 16 }}>
+          {[
+            { label: "Revenue this month", value: cp ? fmt(cp.incomePkr) : "—", sub: cp ? fmtFull(cp.incomePkr) : "…", color: "var(--blue)" },
+            { label: "Net profit", value: cp ? fmt(cp.netProfitPkr) : "—", sub: cp ? `${cp.grossMarginPct.toFixed(1)}% margin` : "…", color: !cp ? "var(--green)" : cp.netProfitPkr >= 0 ? "var(--green)" : "var(--red)" },
+            { label: "Operating balance", value: data ? fmt(data.operatingBalancePkr) : "—", sub: data ? fmtFull(data.operatingBalancePkr) : "…", color: "#7C3AED" },
+            { label: "Unpaid invoices", value: counts ? String(counts.unpaidInvoices) : "—", sub: counts ? `${counts.pendingCommissions} pending commission${counts.pendingCommissions !== 1 ? "s" : ""}` : "…", color: "#D97706" },
+          ].map((k) => (
+            <div key={k.label} className="stat-bar-item">
+              <div className="stat-bar-label">{k.label}</div>
+              {loading ? (
+                <><Skeleton h={16} w="60%" /><Skeleton h={10} w="40%" /></>
+              ) : (
+                <>
+                  <div className="stat-bar-value" style={{ color: k.color }}>{k.value}</div>
+                  <div className="stat-bar-sub">{k.sub}</div>
+                </>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Row 2 — Revenue chart + P&L breakdown */}

@@ -46,13 +46,13 @@ function MetricCard({ icon, label, value, sub, iconColor, iconBg }: MetricCardPr
         background: iconBg,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 22, color: iconColor }} />
+        <i className={`ti ${icon}`} style={{ fontSize: 16, color: iconColor }} />
       </div>
       <div>
         <div style={{ fontSize: 11, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
           {label}
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
           {value}
         </div>
         {sub && <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>{sub}</div>}
@@ -116,59 +116,38 @@ export default function ExpensesPage() {
         }
       `}</style>
 
-      <Topbar title="Expenses" />
+      <Topbar title="Expenses" actions={
+        <button className="btn-primary" style={{ height: 34, fontSize: 12, paddingInline: 14 }} onClick={() => setShowAdd(true)}>
+          <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add Expense
+        </button>
+      } />
 
       <div className="page-content">
 
-        {/* Page header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 3 }}>
-              Expenses
-            </h1>
-            <p style={{ fontSize: 12, color: "var(--t3)" }}>
-              Track all operational and business expenses
-            </p>
+        {/* Summary bar */}
+        <div className="stat-bar">
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">Total Expenses</div>
+            <div className="stat-bar-value" style={{ color: "var(--red)" }}>{fmtCompact(grandTotal)}</div>
+            <div className="stat-bar-sub">{expenses.length} record{expenses.length !== 1 ? "s" : ""}</div>
           </div>
-          <button className="btn-primary" style={{ height: 36, fontSize: 13, paddingInline: 16 }} onClick={() => setShowAdd(true)}>
-            <i className="ti ti-plus" style={{ fontSize: 13 }} /> Add Expense
-          </button>
-        </div>
-
-        {/* Metric cards */}
-        <div className="metrics-4">
-          <MetricCard
-            icon="ti-receipt"
-            label="Total Expenses"
-            value={fmtCompact(grandTotal)}
-            sub={`${expenses.length} record${expenses.length !== 1 ? "s" : ""}`}
-            iconColor="var(--red)"
-            iconBg="var(--red-bg)"
-          />
-          <MetricCard
-            icon="ti-calendar-month"
-            label="This Month"
-            value={fmtCompact(thisMonthTotal)}
-            sub={currentPeriod()}
-            iconColor="var(--blue)"
-            iconBg="var(--blue-bg)"
-          />
-          <MetricCard
-            icon="ti-chart-bar"
-            label="Top Category"
-            value={topCategory}
-            sub={topCategory !== "—" ? fmtCompact(catTotals[topCategory] ?? 0) : undefined}
-            iconColor="var(--purple)"
-            iconBg="var(--purple-bg)"
-          />
-          <MetricCard
-            icon="ti-trending-up"
-            label="Avg per Record"
-            value={expenses.length > 0 ? fmtCompact(Math.round(grandTotal / expenses.length)) : "PKR 0"}
-            sub="based on current filter"
-            iconColor="var(--teal)"
-            iconBg="var(--teal-bg)"
-          />
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">This Month</div>
+            <div className="stat-bar-value" style={{ color: "var(--blue)" }}>{fmtCompact(thisMonthTotal)}</div>
+            <div className="stat-bar-sub">{currentPeriod()}</div>
+          </div>
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">Top Category</div>
+            <div className="stat-bar-value" style={{ color: "var(--purple, #7C3AED)" }}>{topCategory}</div>
+            {topCategory !== "—" && <div className="stat-bar-sub">{fmtCompact(catTotals[topCategory] ?? 0)}</div>}
+          </div>
+          <div className="stat-bar-item">
+            <div className="stat-bar-label">Avg per Record</div>
+            <div className="stat-bar-value" style={{ color: "var(--teal, #0891b2)" }}>
+              {expenses.length > 0 ? fmtCompact(Math.round(grandTotal / expenses.length)) : "PKR 0"}
+            </div>
+            <div className="stat-bar-sub">based on current filter</div>
+          </div>
         </div>
 
         {/* Table */}

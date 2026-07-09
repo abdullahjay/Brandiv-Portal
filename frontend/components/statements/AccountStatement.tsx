@@ -108,6 +108,48 @@ interface AccountStatementProps {
   onExportReady?: (handlers: { exportCSV: () => void; exportPDF: () => void }) => void;
 }
 
+const TYPE_ICONS: Record<string, string> = {
+  income: "ti-trending-up",
+  expense: "ti-receipt",
+  payroll: "ti-users",
+  distribution: "ti-arrows-split",
+};
+
+function StatementMobileEntry({ entry }: { entry: StatementEntry }) {
+  const tc = TYPE_COLORS[entry.type] ?? TYPE_COLORS.expense;
+  const icon = TYPE_ICONS[entry.type] ?? "ti-receipt";
+  const isCredit = entry.credit > 0;
+  const amount = isCredit ? entry.credit : entry.debit;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12,
+      padding: "11px 14px",
+      borderBottom: "0.5px solid var(--b3)",
+    }}>
+      <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, background: tc.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 14, color: tc.fg }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {entry.description}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1, display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 20, background: tc.bg, color: tc.fg, fontWeight: 500 }}>{entry.type}</span>
+          <span>{fmtDate(entry.date)}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: isCredit ? "var(--green)" : "var(--red)" }}>
+          {isCredit ? "+" : "−"}PKR {fmt(amount)}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>
+          {fmtPkr(entry.balance)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AccountStatement({ onExportReady }: AccountStatementProps) {
   const { data: accounts, loading: accLoading } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -152,20 +194,21 @@ export default function AccountStatement({ onExportReady }: AccountStatementProp
                 background: (selectedAccountId ?? accounts[0]?.id) === a.id ? "var(--blue-bg)" : "transparent",
                 color: (selectedAccountId ?? accounts[0]?.id) === a.id ? "var(--blue)" : "var(--t1)",
                 transition: "all .1s",
+                whiteSpace: "nowrap",
               }}
             >
               {a.name}
             </button>
           ))
         )}
-        <div style={{ marginLeft: "auto" }}>
+        <div style={{ marginLeft: "auto", flexShrink: 0 }}>
           <PeriodSelect value={period} onChange={setPeriod} includeAll allLabel="All time" />
         </div>
       </div>
 
       {/* Summary metrics */}
       {stmt && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
+        <div className="metrics-3" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
           {[
             { label: "Opening balance", value: fmtPkr(stmt.openingBalance), color: pkrColor(stmt.openingBalance, "var(--t1)") },
             { label: "Total in", value: `+PKR ${fmt(stmt.totalIn)}`, color: "var(--green)" },
@@ -190,76 +233,94 @@ export default function AccountStatement({ onExportReady }: AccountStatementProp
         ) : !stmt ? (
           <div style={{ padding: 48, textAlign: "center", fontSize: 12, color: "var(--t3)" }}>Select an account to view its statement</div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
-            <colgroup>
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "36%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "14%" }} />
-              <col style={{ width: "14%" }} />
-              <col style={{ width: "14%" }} />
-            </colgroup>
-            <thead>
-              <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
-                {["Date", "Description", "Type", "Debit", "Credit", "Balance"].map((h, i) => (
-                  <th key={h} style={{ textAlign: i >= 3 ? "right" : "left", padding: "10px 14px", fontWeight: 500, fontSize: 11, color: "var(--t2)" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* Opening balance row */}
-              <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
-                <td style={{ padding: "9px 14px", fontSize: 11, color: "var(--t3)" }}>Opening</td>
-                <td style={{ padding: "9px 14px", color: "var(--t2)", fontSize: 11 }}>Balance brought forward</td>
-                <td /><td /><td />
-                <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, fontSize: 12, color: pkrColor(stmt.openingBalance) }}>
-                  {fmtPkr(stmt.openingBalance)}
-                </td>
-              </tr>
-
-              {stmt.entries.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ padding: "32px 14px", textAlign: "center", color: "var(--t3)", fontSize: 12 }}>
-                    No transactions for this period
-                  </td>
-                </tr>
-              ) : (
-                stmt.entries.map((entry: StatementEntry) => {
-                  const tc = TYPE_COLORS[entry.type] ?? TYPE_COLORS.expense;
-                  return (
-                    <tr key={entry.id} style={{ borderBottom: "0.5px solid var(--b3)" }}>
-                      <td style={{ padding: "9px 14px", color: "var(--t2)", fontSize: 11, whiteSpace: "nowrap" }}>{fmtDate(entry.date)}</td>
-                      <td style={{ padding: "9px 14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {entry.description}
-                      </td>
-                      <td style={{ padding: "9px 14px" }}>
-                        <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, fontWeight: 500, background: tc.bg, color: tc.fg }}>
-                          {entry.type}
-                        </span>
-                      </td>
-                      <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--red)" }}>
-                        {entry.debit > 0 ? fmt(entry.debit) : "—"}
-                      </td>
-                      <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--green)" }}>
-                        {entry.credit > 0 ? fmt(entry.credit) : "—"}
-                      </td>
-                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: pkrColor(entry.balance, "var(--t1)") }}>
-                        {fmtPkr(entry.balance)}
+          <>
+            {/* Desktop table */}
+            <div className="ledger-desktop-only" style={{ display: "block" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "36%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "14%" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+                    {["Date", "Description", "Type", "Debit", "Credit", "Balance"].map((h, i) => (
+                      <th key={h} style={{ textAlign: i >= 3 ? "right" : "left", padding: "10px 14px", fontWeight: 500, fontSize: 11, color: "var(--t2)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)" }}>
+                    <td style={{ padding: "9px 14px", fontSize: 11, color: "var(--t3)" }}>Opening</td>
+                    <td style={{ padding: "9px 14px", color: "var(--t2)", fontSize: 11 }}>Balance brought forward</td>
+                    <td /><td /><td />
+                    <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, fontSize: 12, color: pkrColor(stmt.openingBalance) }}>
+                      {fmtPkr(stmt.openingBalance)}
+                    </td>
+                  </tr>
+                  {stmt.entries.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "32px 14px", textAlign: "center", color: "var(--t3)", fontSize: 12 }}>
+                        No transactions for this period
                       </td>
                     </tr>
-                  );
-                })
-              )}
+                  ) : (
+                    stmt.entries.map((entry: StatementEntry) => {
+                      const tc = TYPE_COLORS[entry.type] ?? TYPE_COLORS.expense;
+                      return (
+                        <tr key={entry.id} style={{ borderBottom: "0.5px solid var(--b3)" }}>
+                          <td style={{ padding: "9px 14px", color: "var(--t2)", fontSize: 11, whiteSpace: "nowrap" }}>{fmtDate(entry.date)}</td>
+                          <td style={{ padding: "9px 14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {entry.description}
+                          </td>
+                          <td style={{ padding: "9px 14px" }}>
+                            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, fontWeight: 500, background: tc.bg, color: tc.fg }}>
+                              {entry.type}
+                            </span>
+                          </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--red)" }}>
+                            {entry.debit > 0 ? fmt(entry.debit) : "—"}
+                          </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--green)" }}>
+                            {entry.credit > 0 ? fmt(entry.credit) : "—"}
+                          </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: pkrColor(entry.balance, "var(--t1)") }}>
+                            {fmtPkr(entry.balance)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                  <tr style={{ background: "var(--bg2)", borderTop: "0.5px solid var(--b2)" }}>
+                    <td colSpan={5} style={{ padding: "10px 14px", fontWeight: 600, fontSize: 12 }}>Closing balance</td>
+                    <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 14, fontWeight: 700, color: pkrColor(stmt.closingBalance, "var(--blue)") }}>
+                      {fmtPkr(stmt.closingBalance)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-              {/* Closing balance row */}
-              <tr style={{ background: "var(--bg2)", borderTop: "0.5px solid var(--b2)" }}>
-                <td colSpan={5} style={{ padding: "10px 14px", fontWeight: 600, fontSize: 12 }}>Closing balance</td>
-                <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 14, fontWeight: 700, color: pkrColor(stmt.closingBalance, "var(--blue)") }}>
-                  {fmtPkr(stmt.closingBalance)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            {/* Mobile entries */}
+            <div className="ledger-mobile-only" style={{ display: "none" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "var(--bg2)", borderBottom: "0.5px solid var(--b3)", fontSize: 12 }}>
+                <span style={{ color: "var(--t2)" }}>Opening balance</span>
+                <span style={{ fontWeight: 600, color: pkrColor(stmt.openingBalance) }}>{fmtPkr(stmt.openingBalance)}</span>
+              </div>
+              {stmt.entries.length === 0 ? (
+                <div style={{ padding: "28px 14px", textAlign: "center", color: "var(--t3)", fontSize: 12 }}>No transactions for this period</div>
+              ) : (
+                stmt.entries.map((entry: StatementEntry) => <StatementMobileEntry key={entry.id} entry={entry} />)
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "var(--bg2)", borderTop: "0.5px solid var(--b2)", fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: "var(--t1)" }}>Closing balance</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: pkrColor(stmt.closingBalance, "var(--blue)") }}>{fmtPkr(stmt.closingBalance)}</span>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

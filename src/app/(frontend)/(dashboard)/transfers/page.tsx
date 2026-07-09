@@ -104,10 +104,10 @@ function NewTransferModal({
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: "var(--bg1)", borderRadius: "var(--rl)", width: 480, maxWidth: "95vw", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+      <div style={{ background: "var(--bg1)", borderRadius: "var(--rl)", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "18px 20px", borderBottom: "0.5px solid var(--b3)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--t1)" }}>New Transfer</div>
@@ -119,8 +119,9 @@ function NewTransferModal({
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 36px 1fr", alignItems: "end", gap: 8 }}>
-            <div>
+          {/* From → To: side-by-side with arrow */}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label style={label12}>From account</label>
               <select value={fromId} onChange={(e) => { setFromId(e.target.value); setToId(""); }} style={selectStyle}>
                 {accounts.map((a) => (
@@ -128,10 +129,10 @@ function NewTransferModal({
                 ))}
               </select>
             </div>
-            <div style={{ display: "flex", justifyContent: "center", paddingBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", paddingBottom: 7, flexShrink: 0 }}>
               <i className="ti ti-arrow-right" style={{ fontSize: 16, color: "var(--blue)" }} />
             </div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label style={label12}>To account</label>
               <select value={effectiveToId} onChange={(e) => setToId(e.target.value)} style={selectStyle}>
                 {toAccounts.map((a) => (
@@ -167,11 +168,9 @@ function NewTransferModal({
               onChange={(e) => setDescription(e.target.value)} required style={inputStyle} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div>
-              <label style={label12}>Transfer date</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
-            </div>
+          <div>
+            <label style={label12}>Transfer date</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
           </div>
 
           <div>
@@ -415,6 +414,54 @@ function TransferRow({
   );
 }
 
+// ─── Transfer Mobile Card ─────────────────────────────────────────────────────
+
+function TransferMobileCard({
+  transfer,
+  selected,
+  onClick,
+}: {
+  transfer: TransferRecord;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const sc = STATUS_COLORS[transfer.status] ?? { color: "var(--t2)", bg: "var(--bg2)" };
+  const isReversed = transfer.status === "reversed";
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 14px",
+        borderBottom: "0.5px solid var(--b3)",
+        background: selected ? "var(--blue-bg)" : "transparent",
+        cursor: "pointer",
+        opacity: isReversed ? 0.7 : 1,
+      }}
+    >
+      <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: "#cffafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <i className="ti ti-transfer" style={{ fontSize: 16, color: "#0891b2" }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReversed ? "line-through" : "none" }}>
+          {transfer.description}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {transfer.fromAccount.name} → {transfer.toAccount.name} · {fmtDate(transfer.transferAt)}
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: isReversed ? "var(--t3)" : "#0891b2", textDecoration: isReversed ? "line-through" : "none" }}>
+          PKR {fmt(transfer.amountPkr)}
+        </div>
+        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 20, background: sc.bg, color: sc.color, fontWeight: 500, textTransform: "capitalize", display: "inline-block", marginTop: 2 }}>
+          {transfer.status}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Summary Card ─────────────────────────────────────────────────────────────
 
 function SummaryCard({ label, value, color, icon, sub }: { label: string; value: string; color: string; icon: string; sub?: string }) {
@@ -500,12 +547,12 @@ export default function TransfersPage() {
 
         {/* ── Filter bar ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: "0 10px", height: 32, flex: "1 1 140px", minWidth: 140, maxWidth: 260 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", padding: "0 10px", height: 32, flex: "1 1 140px", minWidth: 140 }}>
             <i className="ti ti-search" style={{ fontSize: 14, color: "var(--t3)", flexShrink: 0 }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" style={{ border: "none", background: "transparent", fontSize: 12, color: "var(--t1)", outline: "none", width: "100%" }} />
           </div>
           <PeriodSelect value={period} onChange={handlePeriodChange} includeAll allLabel="All periods" style={{ height: 32 }} />
-          <button className="btn-primary" style={{ height: 32, fontSize: 12, marginLeft: "auto", flexShrink: 0 }} onClick={() => setShowModal(true)}>
+          <button className="btn-primary" style={{ height: 32, fontSize: 12, flexShrink: 0 }} onClick={() => setShowModal(true)}>
             <i className="ti ti-plus" style={{ fontSize: 12 }} /> New transfer
           </button>
         </div>
@@ -522,6 +569,7 @@ export default function TransfersPage() {
 
           {/* List */}
           <div style={{ display: "flex", flexDirection: "column", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
+            <div className="ledger-desktop-only" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", flexShrink: 0 }}>
               <colgroup><col width="13%" /><col width="30%" /><col width="32%" /><col width="15%" /><col width="10%" /></colgroup>
               <thead>
@@ -563,6 +611,28 @@ export default function TransfersPage() {
                 {filtered.length} record{filtered.length !== 1 ? "s" : ""}{search && ` matching "${search}"`}
               </div>
             )}
+            </div>
+
+            <div className="ledger-mobile-only" style={{ display: "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              {loading ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 48, color: "var(--t3)", fontSize: 12 }}>
+                  <i className="ti ti-loader-2" style={{ fontSize: 18 }} /> Loading transfers…
+                </div>
+              ) : error ? (
+                <div style={{ padding: 24, fontSize: 12, color: "var(--red)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <i className="ti ti-alert-circle" style={{ fontSize: 14 }} /> {error}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div style={{ padding: 48, textAlign: "center", color: "var(--t2)" }}>
+                  <i className="ti ti-transfer" style={{ fontSize: 32, color: "var(--t3)", display: "block", marginBottom: 10 }} />
+                  <div style={{ fontSize: 13 }}>{search ? "No matching transfers" : "No transfers recorded yet"}</div>
+                </div>
+              ) : (
+                filtered.map((t) => (
+                  <TransferMobileCard key={t.id} transfer={t} selected={selected?.id === t.id} onClick={() => setSelected(t)} />
+                ))
+              )}
+            </div>
           </div>
 
           {/* Right detail column — hidden on mobile via CSS */}
@@ -572,11 +642,11 @@ export default function TransfersPage() {
         </div>
       </div>
 
-      {/* ── Mobile detail drawer ── */}
+      {/* ── Mobile detail drawer (hidden on desktop via .mobile-drawer class) ── */}
       {selected && (
         <>
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }} onClick={() => setSelected(null)} />
-          <div className="drawer-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 400, background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-12px 0 48px rgba(0,0,0,0.12)", animation: "drawerIn 0.2s cubic-bezier(0.22,1,0.36,1)" }}>
+          <div className="mobile-drawer-backdrop" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200, backdropFilter: "blur(2px)" }} onClick={() => setSelected(null)} />
+          <div className="mobile-drawer drawer-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 400, background: "var(--bg2)", borderLeft: "0.5px solid var(--b3)", zIndex: 201, flexDirection: "column", boxShadow: "-12px 0 48px rgba(0,0,0,0.12)", animation: "drawerIn 0.2s cubic-bezier(0.22,1,0.36,1)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--b3)", background: "var(--bg1)", flexShrink: 0 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Transfer Detail</span>
               <button onClick={() => setSelected(null)} style={{ width: 28, height: 28, border: "none", background: "var(--bg2)", borderRadius: 6, cursor: "pointer", color: "var(--t2)", display: "flex", alignItems: "center", justifyContent: "center" }}>

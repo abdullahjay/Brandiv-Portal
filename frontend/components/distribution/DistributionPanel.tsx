@@ -50,7 +50,7 @@ function WaterfallPreview({ preview }: { preview: DistributionPreview }) {
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--blue)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--blue)", letterSpacing: "-0.02em", lineHeight: 1 }}>
             {fmtPkr(preview.operatingBalancePkr)}
           </div>
           {preview.totalCommissionPkr > 0 && (
@@ -211,7 +211,7 @@ function WaterfallPreview({ preview }: { preview: DistributionPreview }) {
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#6D28D9", letterSpacing: "-0.02em", lineHeight: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#6D28D9", letterSpacing: "-0.02em", lineHeight: 1 }}>
             PKR {fmt(finalReserveTotal)}
           </div>
           <div style={{ fontSize: 10, color: "#9D78E8", marginTop: 3 }}>

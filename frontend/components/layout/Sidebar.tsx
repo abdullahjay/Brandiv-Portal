@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import type { NavSection, SessionUser } from "@frontend/types";
 import { hasModuleAccess } from "@/lib/permissions";
+import { useTheme } from "@frontend/context/ThemeContext";
+import { useNotificationsContext } from "@frontend/context/NotificationsContext";
+import NotificationPanel from "./NotificationPanel";
 
 const NAV: NavSection[] = [
   {
@@ -73,6 +76,9 @@ export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const { items, unreadCount, loading, markRead, markAllRead, dismiss } = useNotificationsContext();
 
   useEffect(() => {
     setPendingHref(null);
@@ -97,8 +103,39 @@ export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
         >
           <i className="ti ti-menu-2" style={{ fontSize: 20 }} />
         </button>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--blue)", letterSpacing: "-0.02em" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--blue)", letterSpacing: "-0.02em", flex: 1 }}>
           {brandName}
+        </div>
+        {/* Notification bell in mobile topbar */}
+        <div style={{ position: "relative" }}>
+          <button
+            className="ib"
+            title="Notifications"
+            onClick={() => setShowNotifPanel((v) => !v)}
+            style={{ position: "relative" }}
+          >
+            <i className="ti ti-bell" style={{ fontSize: 17 }} />
+            {unreadCount > 0 && (
+              <span style={{
+                position: "absolute", top: 4, right: 4,
+                minWidth: 14, height: 14, borderRadius: 10,
+                background: "#E24B4A", color: "#fff",
+                fontSize: 9, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: "0 3px", pointerEvents: "none", lineHeight: 1,
+                border: "1.5px solid var(--bg1)",
+              }}>
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+          {showNotifPanel && (
+            <NotificationPanel
+              items={items} unreadCount={unreadCount} loading={loading}
+              onMarkRead={markRead} onMarkAllRead={markAllRead} onDismiss={dismiss}
+              onClose={() => setShowNotifPanel(false)}
+            />
+          )}
         </div>
       </div>
 
@@ -226,10 +263,11 @@ export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
       <div
         style={{
           borderTop: "0.5px solid var(--b3)",
-          padding: "12px 14px",
+          padding: "10px 12px",
           display: "flex",
           alignItems: "center",
-          gap: 9,
+          gap: 8,
+          position: "relative",
         }}
       >
         <div
@@ -271,14 +309,63 @@ export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
             {user.role.replace(/_/g, " ")}
           </div>
         </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          title="Sign out"
-          className="ib"
-          style={{ width: 26, height: 26, flexShrink: 0, border: "none" }}
-        >
-          <i className="ti ti-logout" style={{ fontSize: 13 }} />
-        </button>
+
+        {/* Utility icons */}
+        <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+          {/* Notification bell */}
+          <div style={{ position: "relative" }}>
+            <button
+              className="ib"
+              title="Notifications"
+              onClick={() => setShowNotifPanel((v) => !v)}
+              style={{ position: "relative", width: 26, height: 26 }}
+            >
+              <i className="ti ti-bell" style={{ fontSize: 13 }} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: "absolute", top: 3, right: 3,
+                  minWidth: 12, height: 12, borderRadius: 10,
+                  background: "#E24B4A", color: "#fff",
+                  fontSize: 8, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: "0 2px", pointerEvents: "none", lineHeight: 1,
+                  border: "1.5px solid var(--bg1)",
+                }}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+            {showNotifPanel && (
+              <div style={{ position: "absolute", bottom: 36, left: "50%", transform: "translateX(-50%)", zIndex: 200 }}>
+                <NotificationPanel
+                  items={items} unreadCount={unreadCount} loading={loading}
+                  onMarkRead={markRead} onMarkAllRead={markAllRead} onDismiss={dismiss}
+                  onClose={() => setShowNotifPanel(false)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Theme toggle */}
+          <button
+            className="ib"
+            title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            onClick={toggleTheme}
+            style={{ width: 26, height: 26 }}
+          >
+            <i className={`ti ${resolvedTheme === "dark" ? "ti-sun" : "ti-moon"}`} style={{ fontSize: 13 }} />
+          </button>
+
+          {/* Logout */}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            title="Sign out"
+            className="ib"
+            style={{ width: 26, height: 26, flexShrink: 0, border: "none" }}
+          >
+            <i className="ti ti-logout" style={{ fontSize: 13 }} />
+          </button>
+        </div>
       </div>
 
       <style>{`

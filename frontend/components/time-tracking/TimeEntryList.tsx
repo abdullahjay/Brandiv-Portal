@@ -34,6 +34,22 @@ function groupByDate(entries: TimeEntry[]): [string, TimeEntry[]][] {
   return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
 }
 
+function BillablePill({ billable }: { billable: boolean }) {
+  return (
+    <span style={{
+      fontSize: 10,
+      padding: "2px 7px",
+      borderRadius: 20,
+      fontWeight: 500,
+      flexShrink: 0,
+      background: billable ? "var(--green-bg)" : "var(--bg2)",
+      color: billable ? "var(--green)" : "var(--t3)",
+    }}>
+      {billable ? "Billable" : "Non-billable"}
+    </span>
+  );
+}
+
 export default function TimeEntryList() {
   const { data: session } = useSession();
   const [period, setPeriod] = useState(currentPeriod());
@@ -47,9 +63,9 @@ export default function TimeEntryList() {
   const entries = data?.items ?? [];
   const grouped = groupByDate(entries);
 
-  const totalHours = entries.reduce((s, e) => s + e.hours, 0);
+  const totalHours    = entries.reduce((s, e) => s + e.hours, 0);
   const billableHours = entries.filter((e) => e.billable).reduce((s, e) => s + e.hours, 0);
-  const projectCount = new Set(entries.map((e) => e.project.id)).size;
+  const projectCount  = new Set(entries.map((e) => e.project.id)).size;
 
   async function handleDelete(id: string) {
     setDeletingId(id);
@@ -71,29 +87,33 @@ export default function TimeEntryList() {
           <span style={{ fontSize: 12, color: "var(--t2)" }}>Period</span>
           <PeriodSelect value={period} onChange={setPeriod} />
         </div>
-        <button className="btn-primary" style={{ height: 34 }} onClick={() => setShowAdd(true)}>
+        <button className="btn-primary" style={{ height: 34, flexShrink: 0 }} onClick={() => setShowAdd(true)}>
           <i className="ti ti-clock-plus" style={{ fontSize: 13 }} /> Log time
         </button>
       </div>
 
-      {/* Summary metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        {[
-          { label: "Total hours", value: fmtHours(totalHours), icon: "ti-clock", color: "var(--blue)" },
-          { label: "Billable", value: fmtHours(billableHours), icon: "ti-coin", color: "var(--green)" },
-          { label: "Non-billable", value: fmtHours(totalHours - billableHours), icon: "ti-clock-off", color: "var(--t2)" },
-          { label: "Projects", value: String(projectCount), icon: "ti-briefcase", color: "var(--t1)" },
-        ].map(({ label, value, icon, color }) => (
-          <div key={label} style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <i className={`ti ${icon}`} style={{ fontSize: 15, color }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
-              <div style={{ fontSize: 11, color: "var(--t3)" }}>{label}</div>
-            </div>
-          </div>
-        ))}
+      {/* Summary bar */}
+      <div className="stat-bar" style={{ marginBottom: 20 }}>
+        <div className="stat-bar-item">
+          <div className="stat-bar-label">Total Hours</div>
+          <div className="stat-bar-value" style={{ color: "var(--blue)" }}>{fmtHours(totalHours)}</div>
+          <div className="stat-bar-sub">this period</div>
+        </div>
+        <div className="stat-bar-item">
+          <div className="stat-bar-label">Billable</div>
+          <div className="stat-bar-value" style={{ color: "var(--green)" }}>{fmtHours(billableHours)}</div>
+          <div className="stat-bar-sub">{totalHours > 0 ? `${Math.round((billableHours / totalHours) * 100)}%` : "—"}</div>
+        </div>
+        <div className="stat-bar-item">
+          <div className="stat-bar-label">Non-Billable</div>
+          <div className="stat-bar-value" style={{ color: "var(--t2)" }}>{fmtHours(totalHours - billableHours)}</div>
+          <div className="stat-bar-sub">{totalHours > 0 ? `${Math.round(((totalHours - billableHours) / totalHours) * 100)}%` : "—"}</div>
+        </div>
+        <div className="stat-bar-item">
+          <div className="stat-bar-label">Projects</div>
+          <div className="stat-bar-value" style={{ color: "var(--t1)" }}>{projectCount}</div>
+          <div className="stat-bar-sub">active this period</div>
+        </div>
       </div>
 
       {/* Entry list */}
@@ -125,56 +145,79 @@ export default function TimeEntryList() {
 
                 <div style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", overflow: "hidden" }}>
                   {dayEntries.map((entry, idx) => (
-                    <div
-                      key={entry.id}
-                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: idx < dayEntries.length - 1 ? "0.5px solid var(--b3)" : "none" }}
-                    >
-                      {/* Avatar (admin sees all users) */}
-                      {isAdmin && (
-                        <Avatar name={entry.user.name} size={28} fontSize={11} />
-                      )}
+                    <div key={entry.id} style={{ borderBottom: idx < dayEntries.length - 1 ? "0.5px solid var(--b3)" : "none" }}>
 
-                      {/* Project + description */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)" }}>
-                          {entry.project.client.companyName} — {entry.project.name}
-                        </div>
-                        {entry.description && (
-                          <div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {entry.description}
+                      {/* ── Desktop row ── */}
+                      <div className="ledger-desktop-only" style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px" }}>
+                        {isAdmin && <Avatar name={entry.user.name} size={28} fontSize={11} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)" }}>
+                            {entry.project.client.companyName} — {entry.project.name}
                           </div>
-                        )}
-                        {isAdmin && (
-                          <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{entry.user.name}</div>
-                        )}
+                          {entry.description && (
+                            <div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {entry.description}
+                            </div>
+                          )}
+                          {isAdmin && (
+                            <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{entry.user.name}</div>
+                          )}
+                        </div>
+                        <BillablePill billable={entry.billable} />
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--blue)", minWidth: 36, textAlign: "right" }}>
+                          {fmtHours(entry.hours)}
+                        </span>
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          disabled={deletingId === entry.id}
+                          title="Delete entry"
+                          style={{ width: 26, height: 26, borderRadius: 6, border: "none", background: "none", cursor: "pointer", color: "var(--t3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                        >
+                          <i className={`ti ${deletingId === entry.id ? "ti-loader-2" : "ti-trash"}`} style={{ fontSize: 13 }} />
+                        </button>
                       </div>
 
-                      {/* Billable badge */}
-                      <span style={{
-                        fontSize: 10,
-                        padding: "2px 7px",
-                        borderRadius: 20,
-                        fontWeight: 500,
-                        background: entry.billable ? "var(--green-bg)" : "var(--bg2)",
-                        color: entry.billable ? "var(--green)" : "var(--t3)",
-                      }}>
-                        {entry.billable ? "Billable" : "Non-billable"}
-                      </span>
+                      {/* ── Mobile card ── */}
+                      <div className="ledger-mobile-only" style={{ display: "none", flexDirection: "column", padding: "10px 14px", gap: 6 }}>
+                        {/* Top: project name + hours */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {entry.project.name}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {entry.project.client.companyName}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--blue)", flexShrink: 0 }}>
+                            {fmtHours(entry.hours)}
+                          </span>
+                        </div>
 
-                      {/* Hours */}
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--blue)", minWidth: 36, textAlign: "right" }}>
-                        {fmtHours(entry.hours)}
-                      </span>
+                        {/* Description */}
+                        {entry.description && (
+                          <div style={{ fontSize: 12, color: "var(--t2)", lineHeight: 1.4 }}>{entry.description}</div>
+                        )}
 
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDelete(entry.id)}
-                        disabled={deletingId === entry.id}
-                        title="Delete entry"
-                        style={{ width: 26, height: 26, borderRadius: 6, border: "none", background: "none", cursor: "pointer", color: "var(--t3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                      >
-                        <i className={`ti ${deletingId === entry.id ? "ti-loader-2" : "ti-trash"}`} style={{ fontSize: 13 }} />
-                      </button>
+                        {/* Bottom: billable pill + user (admin) + delete */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <BillablePill billable={entry.billable} />
+                            {isAdmin && (
+                              <span style={{ fontSize: 10, color: "var(--t3)" }}>{entry.user.name}</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleDelete(entry.id)}
+                            disabled={deletingId === entry.id}
+                            title="Delete entry"
+                            style={{ width: 26, height: 26, borderRadius: 6, border: "0.5px solid var(--b3)", background: "var(--bg2)", cursor: "pointer", color: "var(--t3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                          >
+                            <i className={`ti ${deletingId === entry.id ? "ti-loader-2" : "ti-trash"}`} style={{ fontSize: 13 }} />
+                          </button>
+                        </div>
+                      </div>
+
                     </div>
                   ))}
                 </div>

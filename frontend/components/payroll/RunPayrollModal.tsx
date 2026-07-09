@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { runPayrollBatchRequest, payPayrollRequest } from "@frontend/hooks/usePayroll";
-import type { ApiResponse, Employee, PayrollRecord, PayrollRunResult } from "@frontend/types";
+import type { ApiResponse, Employee, EffectiveCompensation, PayrollRecord, PayrollRunResult } from "@frontend/types";
 
 function currentPeriod() {
   const now = new Date();
@@ -158,15 +158,17 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
       const prev = prevPeriod(period);
       const end = monthEnd(period);
 
-      const [empRes, currentRes, prevRes] = await Promise.all([
+      const [empRes, currentRes, prevRes, compRes] = await Promise.all([
         fetch("/api/employees?status=active&pageSize=200"),
         fetch(`/api/payroll?period=${period}&pageSize=200`),
         fetch(`/api/payroll?period=${prev}&pageSize=200`),
+        fetch(`/api/compensation/effective?period=${period}`),
       ]);
 
       const empJson: ApiResponse<{ items: Employee[] }> = await empRes.json();
       const currentJson: ApiResponse<{ items: PayrollRecord[] }> = await currentRes.json();
       const prevJson: ApiResponse<{ items: PayrollRecord[] }> = await prevRes.json();
+      const compJson: ApiResponse<EffectiveCompensation[]> = await compRes.json();
 
       if (!empJson.success) throw new Error("Failed to load employees");
 
@@ -176,6 +178,7 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
       // Maps for quick lookup
       const currentByEmpId = new Map(currentRecords.filter(r => r.employee?.id).map(r => [r.employee!.id, r]));
       const prevByEmpId = new Map(prevRecords.filter(r => r.employee?.id).map(r => [r.employee!.id, r]));
+      const compByEmpId = new Map((compJson.data ?? []).map(c => [c.employeeId, c]));
 
       // Filter by join date — only show employees who had joined by end of this period
       const eligible = (empJson.data?.items ?? []).filter((emp) => {
@@ -196,24 +199,37 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
         let deductStr = "0";
         let sourceHint: RowState["sourceHint"] = "none";
 
-        if (current) {
-          // Show current record values (read-only)
-          grossStr = String(current.grossPkr / 100);
-          taxStr = String(current.taxPkr / 100);
-          deductStr = String(current.deductions / 100);
+        if (alreadyPaid) {
+          // Paid record: always show its stored values, fully locked
+          grossStr = String(current!.grossPkr / 100);
+          taxStr = String(current!.taxPkr / 100);
+          deductStr = String(current!.deductions / 100);
           sourceHint = "last_record";
-        } else if (prev) {
-          // Carry forward from last month
-          grossStr = String(prev.grossPkr / 100);
-          taxStr = String(prev.taxPkr / 100);
-          deductStr = String(prev.deductions / 100);
-          sourceHint = "last_record";
-        } else if (emp.baseSalary && emp.baseSalary > 0) {
-          grossStr = String(emp.baseSalary / 100);
-          if (emp.defaultTaxPkr && emp.defaultTaxPkr > 0) {
-            taxStr = String(emp.defaultTaxPkr / 100);
+        } else {
+          // Not paid (no record yet, or pending) — compensation is highest priority
+          const comp = compByEmpId.get(emp.id);
+          if (comp?.baseSalary) {
+            grossStr = String(comp.baseSalary / 100);
+            taxStr = comp.defaultTaxPkr ? String(comp.defaultTaxPkr / 100) : "0";
+            deductStr = "0";
+            sourceHint = "compensation";
+          } else if (current) {
+            // Pending record, no compensation entry — keep its current values
+            grossStr = String(current.grossPkr / 100);
+            taxStr = String(current.taxPkr / 100);
+            deductStr = String(current.deductions / 100);
+            sourceHint = "last_record";
+          } else if (prev) {
+            // Carry forward from last month
+            grossStr = String(prev.grossPkr / 100);
+            taxStr = String(prev.taxPkr / 100);
+            deductStr = String(prev.deductions / 100);
+            sourceHint = "last_record";
+          } else if (emp.baseSalary && emp.baseSalary > 0) {
+            grossStr = String(emp.baseSalary / 100);
+            taxStr = emp.defaultTaxPkr && emp.defaultTaxPkr > 0 ? String(emp.defaultTaxPkr / 100) : "0";
+            sourceHint = "base_salary";
           }
-          sourceHint = "compensation";
         }
 
         return {
@@ -253,7 +269,7 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
 
   useEffect(() => {
     if (markPaidImmediately) {
-      setRows(prev => prev.map(r => r.hasPendingRecord ? { ...r, checked: true } : r));
+      setRows(prev => prev.map(r => r.alreadyPaid ? r : { ...r, checked: true }));
     } else {
       setRows(prev => prev.map(r => r.hasPendingRecord ? { ...r, checked: false } : r));
     }
@@ -265,18 +281,15 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
 
   function toggleRow(idx: number) {
     setRows((prev) => prev.map((r, i) =>
-      i === idx && !r.alreadyPaid && (markPaidImmediately || !r.hasPendingRecord)
-        ? { ...r, checked: !r.checked } : r
+      i === idx && !r.alreadyPaid ? { ...r, checked: !r.checked } : r
     ));
   }
 
   function toggleAll(val: boolean) {
-    setRows((prev) => prev.map((r) =>
-      (r.alreadyPaid || (!markPaidImmediately && r.hasPendingRecord)) ? r : { ...r, checked: val }
-    ));
+    setRows((prev) => prev.map((r) => r.alreadyPaid ? r : { ...r, checked: val }));
   }
 
-  const editableRows = rows.filter((r) => !r.alreadyPaid && (markPaidImmediately ? true : !r.hasPendingRecord));
+  const editableRows = rows.filter((r) => !r.alreadyPaid);
   const selectedRows = editableRows.filter((r) => r.checked);
   const allChecked = editableRows.length > 0 && editableRows.every((r) => r.checked);
   const totalGross = selectedRows.reduce((s, r) => s + (parseFloat(r.grossStr) || 0) * 100, 0);
@@ -360,8 +373,8 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
                       Payroll {markPaidImmediately ? "Paid" : "Created"} — {periodLabel(period)}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--t2)", marginTop: 2 }}>
-                      {result.created} record{result.created !== 1 ? "s" : ""} {markPaidImmediately ? "paid" : "created as pending"}
-                      {result.skipped > 0 ? ` · ${result.skipped} skipped (already had records)` : ""}
+                      {result.created} record{result.created !== 1 ? "s" : ""} {markPaidImmediately ? "paid" : "created or updated"}
+                      {result.skipped > 0 ? ` · ${result.skipped} skipped (already paid)` : ""}
                       {" · "}Total net: <strong>PKR {fmt(result.records.reduce((s, r) => s + r.netPkr, 0))}</strong>
                     </div>
                   </div>
@@ -508,9 +521,9 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
                   </thead>
                   <tbody>
                     {rows.map((row, idx) => {
-                      const isCheckboxLocked = row.alreadyPaid || (!markPaidImmediately && row.hasPendingRecord);
-                      const isInputLocked = row.alreadyPaid || row.hasPendingRecord;
-                      const isLocked = isCheckboxLocked; // alias for row styling
+                      const isCheckboxLocked = row.alreadyPaid;
+                      const isInputLocked = row.alreadyPaid;
+                      const isLocked = isCheckboxLocked;
                       const missingGross = row.checked && !isInputLocked && !(parseFloat(row.grossStr) > 0);
                       const gross = (parseFloat(row.grossStr) || 0) * 100;
                       const rowTax = (parseFloat(row.taxStr) || 0) * 100;
@@ -604,17 +617,18 @@ export default function RunPayrollModal({ open, onClose, initialPeriod, onComple
                               <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: "var(--green-bg)", color: "var(--green)", fontWeight: 600 }}>
                                 <i className="ti ti-circle-check" style={{ fontSize: 10, marginRight: 3 }} />Paid
                               </span>
-                            ) : row.hasPendingRecord && markPaidImmediately ? (
+                            ) : row.hasPendingRecord && row.checked && markPaidImmediately ? (
                               <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: "var(--green-bg)", color: "var(--green)", fontWeight: 600 }}>
                                 <i className="ti ti-arrow-up" style={{ fontSize: 10, marginRight: 3 }} />Will mark paid
                               </span>
+                            ) : row.hasPendingRecord && row.checked ? (
+                              <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: "var(--blue-bg)", color: "var(--blue)", fontWeight: 600 }}>
+                                <i className="ti ti-refresh" style={{ fontSize: 10, marginRight: 3 }} />Will update
+                              </span>
                             ) : row.hasPendingRecord ? (
-                              <div>
-                                <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: "#FEF3C7", color: "#D97706", fontWeight: 600 }}>
-                                  <i className="ti ti-clock" style={{ fontSize: 10, marginRight: 3 }} />Pending
-                                </span>
-                                <div style={{ fontSize: 9, color: "var(--t3)", marginTop: 3 }}>Manage in payroll list</div>
-                              </div>
+                              <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: "#FEF3C7", color: "#D97706", fontWeight: 600 }}>
+                                <i className="ti ti-clock" style={{ fontSize: 10, marginRight: 3 }} />Pending
+                              </span>
                             ) : row.checked ? (
                               <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: "var(--blue-bg)", color: "var(--blue)", fontWeight: 600 }}>Selected</span>
                             ) : (

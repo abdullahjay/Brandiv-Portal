@@ -264,6 +264,7 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Top bar */}
       <div
+        className="client-detail-header"
         style={{
           display: "flex",
           alignItems: "center",
@@ -274,7 +275,7 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
           <div
             style={{
               width: 30,
@@ -289,10 +290,10 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
           >
             <i className="ti ti-file-invoice" style={{ fontSize: 14, color: "var(--blue)" }} />
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)" }}>{invoice.invoiceNumber}</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{invoice.invoiceNumber}</div>
           <Badge status={invoice.status} />
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="client-detail-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           {actionError && <span style={{ fontSize: 11, color: "var(--red)" }}>{actionError}</span>}
           {confirmCancel ? (
             <>
@@ -359,30 +360,30 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
       {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
         {/* Metrics */}
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${hasDiscount ? 4 : 3}, 1fr)`, gap: 12, marginBottom: 18 }}>
+        <div className="metrics-4" style={{ display: "grid", gridTemplateColumns: `repeat(${hasDiscount ? 4 : 3}, 1fr)`, gap: 12, marginBottom: 18 }}>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Subtotal</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "var(--t1)" }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)" }}>
               {invoice.currency} {fmt(invoice.subtotal / 100)}
             </div>
           </div>
           {hasDiscount && (
             <div className="metric-card">
               <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>{invoice.discountType === "pct" ? `Discount (${invoice.discountValue}%)` : "Discount"}</div>
-              <div style={{ fontSize: 18, fontWeight: 500, color: "var(--red)" }}>
+              <div style={{ fontSize: 15, fontWeight: 500, color: "var(--red)" }}>
                 − {invoice.currency} {fmt((invoice.discountAmount ?? 0) / 100)}
               </div>
             </div>
           )}
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Tax ({taxPct}%)</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "var(--t1)" }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--t1)" }}>
               {invoice.currency} {fmt(invoice.taxAmount / 100)}
             </div>
           </div>
           <div className="metric-card">
             <div style={{ fontSize: 11, color: "var(--t2)", marginBottom: 5 }}>Total</div>
-            <div style={{ fontSize: 20, fontWeight: 600, color: "var(--t1)" }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--t1)" }}>
               {invoice.currency} {fmt(invoice.totalAmount / 100)}
             </div>
           </div>
@@ -390,7 +391,7 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
 
         {/* Invoice details */}
         <Section title="Invoice details">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="f2" style={{ gap: 10 }}>
             <InfoItem label="Client" value={
               <span style={{ color: "var(--blue)" }}>{invoice.client?.companyName ?? "—"}</span>
             } />
@@ -405,41 +406,46 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
 
         {/* Line items */}
         <Section title="Line items">
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 60px 100px 100px",
-              gap: "4px 12px",
-              marginBottom: 4,
-            }}
-          >
-            <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500 }}>Description</div>
-            <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500, textAlign: "right" }}>Qty</div>
-            <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500, textAlign: "right" }}>Rate</div>
-            <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500, textAlign: "right" }}>Amount</div>
-          </div>
-          <div style={{ borderTop: "0.5px solid var(--b3)", paddingTop: 8 }}>
-            {invoice.lineItems?.map((item) => (
+          {/* Scrolls horizontally on mobile to preserve 4-column layout */}
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <div style={{ minWidth: 400 }}>
               <div
-                key={item.id}
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 60px 100px 100px",
                   gap: "4px 12px",
-                  padding: "6px 0",
-                  borderBottom: "0.5px solid var(--b3)",
+                  marginBottom: 4,
                 }}
               >
-                <div style={{ fontSize: 13, color: "var(--t1)" }}>{item.description}</div>
-                <div style={{ fontSize: 12, color: "var(--t2)", textAlign: "right" }}>{item.quantity}</div>
-                <div style={{ fontSize: 12, color: "var(--t2)", textAlign: "right" }}>
-                  {invoice.currency} {fmt(item.rate / 100)}
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", textAlign: "right" }}>
-                  {invoice.currency} {fmt(item.amount / 100)}
-                </div>
+                <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500 }}>Description</div>
+                <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500, textAlign: "right" }}>Qty</div>
+                <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500, textAlign: "right" }}>Rate</div>
+                <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 500, textAlign: "right" }}>Amount</div>
               </div>
-            ))}
+              <div style={{ borderTop: "0.5px solid var(--b3)", paddingTop: 8 }}>
+                {invoice.lineItems?.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 60px 100px 100px",
+                      gap: "4px 12px",
+                      padding: "6px 0",
+                      borderBottom: "0.5px solid var(--b3)",
+                    }}
+                  >
+                    <div style={{ fontSize: 13, color: "var(--t1)" }}>{item.description}</div>
+                    <div style={{ fontSize: 12, color: "var(--t2)", textAlign: "right" }}>{item.quantity}</div>
+                    <div style={{ fontSize: 12, color: "var(--t2)", textAlign: "right" }}>
+                      {invoice.currency} {fmt(item.rate / 100)}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "var(--t1)", textAlign: "right" }}>
+                      {invoice.currency} {fmt(item.amount / 100)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
             <div style={{ width: 240, display: "flex", flexDirection: "column", gap: 5 }}>

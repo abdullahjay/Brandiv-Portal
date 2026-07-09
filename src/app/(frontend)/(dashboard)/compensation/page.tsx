@@ -145,6 +145,103 @@ function SetCompModal({ open, onClose, employee, onSaved }: SetCompModalProps) {
   );
 }
 
+function CompensationMobileCard({ emp, eff, canEdit, canDelete, onSetComp, onDelete, viewPeriod }: {
+  emp: EmployeeWithCompensations;
+  eff: { baseSalary: number; defaultTaxPkr: number; effectiveFrom: string | null } | null;
+  canEdit: boolean;
+  canDelete: boolean;
+  onSetComp: () => void;
+  onDelete: (compId: string) => void;
+  viewPeriod: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const gross = eff?.baseSalary ?? 0;
+  const tax = eff?.defaultTaxPkr ?? 0;
+  const netPkr = Math.max(0, gross - tax) / 100;
+  const initial = emp.name.trim()[0]?.toUpperCase() ?? "?";
+  const futureRecords = emp.compensations.filter((c) => c.effectiveFrom > viewPeriod);
+  const pastRecords = emp.compensations.filter((c) => c.effectiveFrom <= viewPeriod);
+  const allRecords = [...futureRecords, ...pastRecords];
+
+  return (
+    <div style={{ borderBottom: "0.5px solid var(--b3)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
+        <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: "var(--blue-bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "var(--blue)" }}>
+          {initial}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{emp.name}</span>
+            {emp.status === "inactive" && (
+              <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, background: "var(--bg3)", color: "var(--t3)", fontWeight: 700, border: "0.5px solid var(--b3)", flexShrink: 0 }}>Inactive</span>
+            )}
+          </div>
+          {(emp.designation || emp.department) && (
+            <div style={{ fontSize: 11, color: "var(--t3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {[emp.designation, emp.department].filter(Boolean).join(" · ")}
+            </div>
+          )}
+          <div style={{ fontSize: 11, marginTop: 2, color: gross > 0 ? "var(--green)" : "var(--t3)" }}>
+            {gross > 0 ? `Net PKR ${netPkr.toLocaleString("en-PK", { maximumFractionDigits: 0 })}` : "Not set"}
+            {eff?.effectiveFrom ? <span style={{ color: "var(--t3)", marginLeft: 4 }}>· {periodLabel(eff.effectiveFrom)}</span> : null}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+          {canEdit && (
+            <button className="btn-primary" style={{ height: 28, fontSize: 11, padding: "0 10px" }} onClick={onSetComp}>
+              <i className="ti ti-plus" style={{ fontSize: 11 }} /> Set
+            </button>
+          )}
+          {emp.compensations.length > 0 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              style={{ fontSize: 11, color: "var(--t3)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, padding: 0, whiteSpace: "nowrap" }}
+            >
+              <i className={`ti ${expanded ? "ti-chevron-up" : "ti-history"}`} style={{ fontSize: 12 }} />
+              {expanded ? "Hide" : `History (${emp.compensations.length})`}
+            </button>
+          )}
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ padding: "0 14px 12px 62px", background: "var(--bg2)" }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em", paddingTop: 8, marginBottom: 6 }}>Compensation History</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {allRecords.map((c) => {
+              const isFuture = c.effectiveFrom > viewPeriod;
+              const isCurrent = eff?.effectiveFrom === c.effectiveFrom;
+              const cGross = c.baseSalary / 100;
+              const cTax = c.defaultTaxPkr / 100;
+              const cNet = Math.max(0, cGross - cTax);
+              return (
+                <div key={c.id} style={{ padding: "8px 10px", borderRadius: "var(--rm)", background: isCurrent ? "var(--blue-bg)" : isFuture ? "#FFFBEB" : "var(--bg1)", border: `0.5px solid ${isCurrent ? "var(--blue)" : isFuture ? "#FCD34D" : "var(--b3)"}` }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: isFuture ? "#D97706" : isCurrent ? "var(--blue)" : "var(--t2)" }}>
+                      {periodLabel(c.effectiveFrom)}
+                      {isCurrent && <span style={{ fontSize: 10, marginLeft: 4, fontWeight: 400, color: "var(--blue)" }}>(current)</span>}
+                      {isFuture && <span style={{ fontSize: 10, marginLeft: 4, fontWeight: 400, color: "#D97706" }}>(upcoming)</span>}
+                    </span>
+                    {canDelete && (
+                      <button onClick={() => onDelete(c.id)} style={{ width: 24, height: 24, border: "none", background: "none", cursor: "pointer", color: "var(--red)", opacity: 0.7, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <i className="ti ti-trash" style={{ fontSize: 12 }} />
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--t2)", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ whiteSpace: "nowrap" }}>Gross: <strong style={{ color: "var(--t1)" }}>PKR {cGross.toLocaleString("en-PK", { maximumFractionDigits: 0 })}</strong></span>
+                    {cTax > 0 && <span style={{ whiteSpace: "nowrap" }}>Tax: <strong style={{ color: "#D97706" }}>PKR {cTax.toLocaleString("en-PK", { maximumFractionDigits: 0 })}</strong></span>}
+                    <span style={{ whiteSpace: "nowrap" }}>Net: <strong style={{ color: "var(--green)" }}>PKR {cNet.toLocaleString("en-PK", { maximumFractionDigits: 0 })}</strong></span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CompensationPage() {
   const { data: session } = useSession();
   const [employees, setEmployees] = useState<EmployeeWithCompensations[]>([]);
@@ -201,36 +298,26 @@ export default function CompensationPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg2)" }}>
       <Topbar title="Compensation" />
-      <div style={{ flex: 1, overflow: "auto", padding: "20px 24px" }}>
+      <div className="comp-page-content" style={{ flex: 1, overflow: "auto", padding: "20px 24px" }}>
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 12, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", marginBottom: 2 }}>Compensation</h1>
-            <p style={{ fontSize: 12, color: "var(--t3)" }}>
-              Set effective salary & tax per employee. Changes apply from the chosen month — past payrolls are never affected.
-            </p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <span style={{ fontSize: 12, color: "var(--t3)", whiteSpace: "nowrap" }}>Preview:</span>
-            <PeriodSelect value={viewPeriod} onChange={setViewPeriod} />
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <span style={{ fontSize: 11, color: "var(--t3)", whiteSpace: "nowrap" }}>Preview period:</span>
+          <PeriodSelect value={viewPeriod} onChange={setViewPeriod} />
         </div>
 
-        {/* Summary */}
-        <div className="metrics-3">
+        {/* Summary — compact inline bar */}
+        <div className="comp-summary-bar" style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", alignItems: "stretch", marginBottom: 16, overflow: "hidden" }}>
           {[
-            { label: "Total Gross", value: fmtPkr(totalGross), icon: "ti-cash", color: "var(--blue)", bg: "var(--blue-bg)" },
-            { label: "Total Tax", value: fmtPkr(totalTax), icon: "ti-receipt-tax", color: "#D97706", bg: "#FFF7ED" },
-            { label: "Total Net", value: fmtPkr(totalNet), icon: "ti-wallet", color: "var(--green)", bg: "var(--green-bg)" },
-          ].map((c) => (
-            <div key={c.label} style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "var(--shadow-sm)" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <i className={`ti ${c.icon}`} style={{ fontSize: 20, color: c.color }} />
+            { label: "Total Gross", value: fmtPkr(totalGross), color: "var(--blue)" },
+            { label: "Total Tax",   value: fmtPkr(totalTax),   color: "#D97706"     },
+            { label: "Total Net",   value: fmtPkr(totalNet),   color: "var(--green)" },
+          ].map((c, i) => (
+            <div key={c.label} style={{ flex: 1, padding: "12px 18px", borderLeft: i > 0 ? "0.5px solid var(--b3)" : "none" }}>
+              <div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>
+                {c.label}
               </div>
-              <div>
-                <div style={{ fontSize: 11, color: "var(--t3)", marginBottom: 4 }}>{c.label} — {periodLabel(viewPeriod)} <span style={{ opacity: 0.7 }}>(active only)</span></div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)" }}>{c.value}</div>
-              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: c.color, letterSpacing: "-0.01em" }}>{c.value}</div>
+              <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 3 }}>{periodLabel(viewPeriod)} · active only</div>
             </div>
           ))}
         </div>
@@ -267,8 +354,9 @@ export default function CompensationPage() {
           ) : filtered.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--t3)", fontSize: 13 }}>No employees found.</div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <>
+            <div className="ledger-desktop-only" style={{ display: "block", overflowX: "auto" }}>
+            <table style={{ width: "100%", minWidth: 640, borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "0.5px solid var(--b3)" }}>
                   {["Employee", "Effective From", "Base Salary (PKR)", "Tax (PKR)", "Net Payable", ""].map((h) => (
@@ -390,12 +478,38 @@ export default function CompensationPage() {
               </tbody>
             </table>
             </div>
+            <div className="ledger-mobile-only" style={{ display: "none" }}>
+              {filtered.map((emp) => {
+                const eff = getEffective(emp, viewPeriod);
+                return (
+                  <CompensationMobileCard
+                    key={emp.id}
+                    emp={emp}
+                    eff={eff}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onSetComp={() => { setSelectedEmp(emp); setShowSetComp(true); }}
+                    onDelete={handleDelete}
+                    viewPeriod={viewPeriod}
+                  />
+                );
+              })}
+            </div>
+            </>
           )}
         </div>
       </div>
 
       <SetCompModal open={showSetComp} onClose={() => setShowSetComp(false)} employee={selectedEmp} onSaved={load} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 767px) {
+          .comp-page-content { padding: 12px 12px !important; }
+          .comp-summary-bar { flex-wrap: wrap; }
+          .comp-summary-bar > div { flex: 1 1 calc(33% - 1px); min-width: 0; padding: 10px 14px !important; }
+          .comp-summary-bar > div:nth-child(n+2) { border-left: 0.5px solid var(--b3) !important; border-top: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
