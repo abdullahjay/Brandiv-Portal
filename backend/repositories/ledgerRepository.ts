@@ -42,7 +42,7 @@ export async function listLedgerEntries(q: LedgerQuery) {
 
     !q.type || q.type === "expense"
       ? prisma.expense.findMany({
-          where: periodWhere,
+          where: { ...periodWhere, category: { not: "Salaries" } },
           select: { id: true, period: true, category: true, description: true, amountPkr: true, date: true },
           orderBy: { date: "desc" },
           take: cap,
@@ -51,7 +51,7 @@ export async function listLedgerEntries(q: LedgerQuery) {
 
     !q.type || q.type === "payroll"
       ? prisma.payrollRecord.findMany({
-          where: periodWhere,
+          where: { ...periodWhere, status: "paid" },
           select: {
             id: true, period: true, netPkr: true, status: true, paidAt: true, createdAt: true,
             user: { select: { name: true } },
@@ -73,7 +73,7 @@ export async function listLedgerEntries(q: LedgerQuery) {
 
     !q.type || q.type === "commission"
       ? prisma.commission.findMany({
-          where: periodWhere,
+          where: { ...periodWhere, status: { in: ["approved", "paid"] } },
           select: {
             id: true, period: true, commissionType: true, commissionPkr: true, status: true, createdAt: true,
             stakeholderAccount: { select: { name: true } },
