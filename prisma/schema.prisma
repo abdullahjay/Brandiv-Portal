@@ -244,6 +244,7 @@ model Project {
   type            ProjectType
   status          ProjectStatus @default(pending)
   valuePkr        BigInt        @default(0)
+  baseValuePkr    BigInt?                        // locked at creation; null on legacy rows
   currency        String        @default("USD") @db.VarChar(3)
   valueOriginal   BigInt        @default(0)
   progressPct     Int           @default(0)
@@ -266,6 +267,7 @@ model Project {
   timeEntries TimeEntry[]
   expenses    Expense[]
   commissions Commission[]
+  upsells     ProjectUpsell[]
 
   @@index([clientId])
   @@index([managerId])
@@ -440,6 +442,7 @@ model CrmAccount {
   transfersTo            AccountTransfer[]      @relation("TransferTo")
   adjustments            AccountAdjustment[]
   managedProjects        Project[]              @relation("ProjectManagingPartner")
+  upsellsEarned          ProjectUpsell[]        @relation("UpsellEarner")
 
   @@map("crm_accounts")
 }
@@ -467,6 +470,8 @@ model Commission {
   incomeRecord       IncomeRecord? @relation(fields: [incomeRecordId], references: [id])
   paidInDistributionId String?
   paidInDistribution Distribution? @relation(fields: [paidInDistributionId], references: [id])
+  upsellId             String?
+  upsell               ProjectUpsell? @relation(fields: [upsellId], references: [id])
 
   @@index([stakeholderAccountId])
   @@index([clientId])
@@ -474,6 +479,7 @@ model Commission {
   @@index([invoiceId])
   @@index([incomeRecordId])
   @@index([paidInDistributionId])
+  @@index([upsellId])
   @@index([period])
   @@index([period, status])
   @@map("commissions")
@@ -714,6 +720,44 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+// ─── UPSELL ───────────────────────────────────────────────────────────────────
+
+enum UpsellSource {
+  addon
+  value_increase
+}
+
+enum UpsellStatus {
+  pending
+  approved
+  paid
+}
+
+model ProjectUpsell {
+  id              String       @id @default(uuid())
+  source          UpsellSource
+  incrementPkr    BigInt                        // upsell amount (PKR × 100)
+  ratePct         Decimal      @db.Decimal(5, 2) // e.g. 5.00 = 5%
+  period          String       @db.VarChar(10)  // YYYY-MM
+  status          UpsellStatus @default(pending)
+  description     String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  projectId       String
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  earnerAccountId String
+  earnerAccount   CrmAccount   @relation("UpsellEarner", fields: [earnerAccountId], references: [id])
+
+  commissions     Commission[]
+
+  @@index([projectId])
+  @@index([earnerAccountId])
+  @@index([period])
+  @@index([status])
+  @@map("project_upsells")
 }
 
 // ─── LOOKUP (Reference Data) ──────────────────────────────────────────────────
