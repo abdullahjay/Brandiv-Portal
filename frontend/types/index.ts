@@ -196,31 +196,6 @@ export interface CreateProjectInput {
   managingPartnerId?: string | null;
 }
 
-// ─── Project Upsells ──────────────────────────────────────────────────────────
-export interface ProjectUpsell {
-  id: string;
-  source: "addon" | "value_increase";
-  incrementPkr: number;
-  ratePct: number;
-  period: string;
-  status: "pending" | "approved" | "paid";
-  description: string | null;
-  createdAt: string;
-  projectId: string;
-  earnerAccountId: string;
-  earnerAccount: { id: string; name: string; type: string };
-  commissions: { id: string; status: string; commissionPkr: number }[];
-}
-
-export interface CreateUpsellInput {
-  source: "addon" | "value_increase";
-  incrementPkr: number;
-  ratePct: number;
-  period: string;
-  earnerAccountId: string;
-  description?: string;
-}
-
 // ─── Invoices ─────────────────────────────────────────────────────────────────
 export interface Invoice {
   id: string;

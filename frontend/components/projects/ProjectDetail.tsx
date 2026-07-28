@@ -5,7 +5,6 @@ import { useProject, archiveProjectRequest } from "@frontend/hooks/useProjects";
 import Badge from "@frontend/components/ui/Badge";
 import ProgressBar from "@frontend/components/ui/ProgressBar";
 import Avatar from "@frontend/components/ui/Avatar";
-import UpsellSection from "./UpsellSection";
 import type { ProjectMilestone, ProjectTimeEntry } from "@frontend/types";
 
 interface ProjectDetailProps {
@@ -377,9 +376,6 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
             </p>
           )}
         </Section>
-
-        {/* Upsells */}
-        <UpsellSection projectId={project.id} />
 
         {/* Time entries */}
         <Section
