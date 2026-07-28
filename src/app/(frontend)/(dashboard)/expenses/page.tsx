@@ -68,6 +68,7 @@ export default function ExpensesPage() {
   const [category, setCategory] = useState("");
   const [period, setPeriod] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -100,6 +101,12 @@ export default function ExpensesPage() {
   function handleCreated(expense: Expense) {
     refetch();
     setSelectedId(expense.id);
+  }
+
+  function handleUpdated(expense: Expense) {
+    refetch();
+    setSelectedId(expense.id);
+    setEditingExpense(null);
   }
 
   function handleDeleted() {
@@ -198,12 +205,24 @@ export default function ExpensesPage() {
                 <i className="ti ti-x" style={{ fontSize: 14 }} />
               </button>
             </div>
-            <ExpenseDetail expense={selectedExpense} loading={false} onDeleted={handleDeleted} />
+            <ExpenseDetail
+              expense={selectedExpense}
+              loading={false}
+              onEdit={setEditingExpense}
+              onDeleted={handleDeleted}
+            />
           </div>
         </>
       )}
 
       <AddExpenseModal open={showAdd} onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+      <AddExpenseModal
+        open={!!editingExpense}
+        onClose={() => setEditingExpense(null)}
+        onCreated={handleCreated}
+        expense={editingExpense}
+        onUpdated={handleUpdated}
+      />
     </>
   );
 }

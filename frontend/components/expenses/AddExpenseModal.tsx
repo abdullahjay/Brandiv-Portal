@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Modal from "@frontend/components/ui/Modal";
-import { createExpenseRequest } from "@frontend/hooks/useExpenses";
+import { createExpenseRequest, updateExpenseRequest } from "@frontend/hooks/useExpenses";
 import { DEFAULT_FX_RATES } from "@frontend/constants";
 import type { Expense, ApiResponse, LookupItem } from "@frontend/types";
 
@@ -10,6 +10,8 @@ interface AddExpenseModalProps {
   open: boolean;
   onClose: () => void;
   onCreated: (expense: Expense) => void;
+  expense?: Expense | null;
+  onUpdated?: (expense: Expense) => void;
 }
 
 interface ProjectOption {
@@ -61,7 +63,27 @@ const EMPTY: ExpenseForm = {
 
 const CURRENCIES = ["USD", "GBP", "EUR", "AED", "PKR"];
 
-export default function AddExpenseModal({ open, onClose, onCreated }: AddExpenseModalProps) {
+function formFromExpense(expense: Expense | null | undefined): ExpenseForm {
+  if (!expense) return { ...EMPTY };
+  const hasFx = expense.originalAmount != null && expense.originalCurrency != null;
+
+  return {
+    description: expense.description,
+    category: expense.category,
+    amountPkr: String(expense.amountPkr / 100),
+    useFx: hasFx,
+    originalAmount: hasFx ? String((expense.originalAmount ?? 0) / 100) : "",
+    originalCurrency: expense.originalCurrency ?? "USD",
+    exchangeRate: expense.exchangeRate != null ? String(Number(expense.exchangeRate)) : String(DEFAULT_FX_RATES["USD"] ?? 278.5),
+    date: expense.date.slice(0, 10),
+    projectId: expense.project?.id ?? "",
+    notes: expense.notes ?? "",
+    receiptUrl: expense.receiptUrl ?? "",
+  };
+}
+
+export default function AddExpenseModal({ open, onClose, onCreated, expense, onUpdated }: AddExpenseModalProps) {
+  const isEditing = !!expense;
   const [form, setForm] = useState<ExpenseForm>({ ...EMPTY });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,8 +94,17 @@ export default function AddExpenseModal({ open, onClose, onCreated }: AddExpense
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) { setForm({ ...EMPTY }); setError(null); setReceiptName(null); }
-  }, [open]);
+    if (!open) {
+      setForm({ ...EMPTY });
+      setError(null);
+      setReceiptName(null);
+      return;
+    }
+
+    setForm(formFromExpense(expense));
+    setError(null);
+    setReceiptName(expense?.receiptUrl ? "Receipt attached" : null);
+  }, [open, expense]);
 
   // Fetch expense categories from lookup API
   useEffect(() => {
@@ -147,22 +178,27 @@ export default function AddExpenseModal({ open, onClose, onCreated }: AddExpense
     setSaving(true);
     setError(null);
     try {
-      const expense = await createExpenseRequest({
+      const payload = {
         description: form.description,
         category: form.category,
         amountPkr: parseFloat(form.amountPkr),
-        originalAmount: form.useFx && form.originalAmount ? parseFloat(form.originalAmount) : undefined,
-        originalCurrency: form.useFx ? form.originalCurrency : undefined,
-        exchangeRate: form.useFx && form.exchangeRate ? parseFloat(form.exchangeRate) : undefined,
+        originalAmount: form.useFx && form.originalAmount ? parseFloat(form.originalAmount) : null,
+        originalCurrency: form.useFx ? form.originalCurrency : null,
+        exchangeRate: form.useFx && form.exchangeRate ? parseFloat(form.exchangeRate) : null,
         date: form.date,
-        projectId: form.projectId || undefined,
-        notes: form.notes || undefined,
-        receiptUrl: form.receiptUrl || undefined,
-      });
-      onCreated(expense);
+        projectId: form.projectId || null,
+        notes: form.notes || null,
+        receiptUrl: form.receiptUrl || null,
+      };
+      const saved = isEditing
+        ? await updateExpenseRequest(expense!.id, payload)
+        : await createExpenseRequest(payload);
+
+      if (isEditing) onUpdated?.(saved);
+      else onCreated(saved);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add expense");
+      setError(err instanceof Error ? err.message : isEditing ? "Failed to update expense" : "Failed to add expense");
     } finally {
       setSaving(false);
     }
@@ -186,15 +222,15 @@ export default function AddExpenseModal({ open, onClose, onCreated }: AddExpense
         style={{ opacity: canSubmit ? 1 : 0.5 }}
       >
         {saving
-          ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> Adding…</>
-          : <><i className="ti ti-check" style={{ fontSize: 12 }} /> Add expense</>
+          ? <><i className="ti ti-loader-2" style={{ fontSize: 12 }} /> {isEditing ? "Saving..." : "Adding..."}</>
+          : <><i className="ti ti-check" style={{ fontSize: 12 }} /> {isEditing ? "Save changes" : "Add expense"}</>
         }
       </button>
     </>
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Add expense" footer={footer}>
+    <Modal open={open} onClose={onClose} title={isEditing ? "Edit expense" : "Add expense"} footer={footer}>
       {error && (
         <div style={{ background: "var(--red-bg)", color: "var(--red)", borderRadius: "var(--rm)", padding: "10px 12px", fontSize: 12, marginBottom: 16 }}>
           {error}

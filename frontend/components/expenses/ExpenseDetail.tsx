@@ -8,6 +8,7 @@ import type { Expense } from "@frontend/types";
 interface ExpenseDetailProps {
   expense: Expense | null;
   loading: boolean;
+  onEdit: (expense: Expense) => void;
   onDeleted: () => void;
 }
 
@@ -37,12 +38,13 @@ function fmtDate(s: string) {
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function ExpenseDetail({ expense, loading, onDeleted }: ExpenseDetailProps) {
+export default function ExpenseDetail({ expense, loading, onEdit, onDeleted }: ExpenseDetailProps) {
   const { data: session } = useSession();
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const canManage = ["super_admin", "admin", "finance", "manager"].includes(session?.user?.role ?? "");
   const canDelete = ["super_admin", "admin", "finance"].includes(session?.user?.role ?? "");
 
   async function handleDelete() {
@@ -107,6 +109,12 @@ export default function ExpenseDetail({ expense, loading, onDeleted }: ExpenseDe
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {actionError && <span style={{ fontSize: 11, color: "var(--red)" }}>{actionError}</span>}
+          {canManage && !confirmDelete && (
+            <button className="btn-outline" onClick={() => onEdit(expense)}>
+              <i className="ti ti-edit" style={{ fontSize: 12 }} />
+              Edit
+            </button>
+          )}
           {canDelete && (
             confirmDelete ? (
               <>
