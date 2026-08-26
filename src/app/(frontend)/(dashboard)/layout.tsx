@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@backend/lib/auth";
-import { getAllSettings } from "@backend/services/settingService";
+import { getCachedSettings } from "@backend/services/settingService";
+import { getRequestUser } from "@backend/lib/requestAuth";
+import DashboardProviders from "@frontend/components/layout/DashboardProviders";
 import Sidebar from "@frontend/components/layout/Sidebar";
 
-// Never statically prerender — auth state and DB data are request-time only
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({
@@ -11,22 +10,20 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
+  const user = await getRequestUser();
 
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const settings = await getAllSettings().catch(() => ({} as Record<string, unknown>));
+  const settings = await getCachedSettings().catch(() => ({} as Record<string, unknown>));
   const logoUrl = (settings.logo_url as string | null | undefined) ?? null;
   const companyName = (settings.company_name as string | null | undefined) ?? null;
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-      <Sidebar user={session.user} logoUrl={logoUrl} companyName={companyName} />
-      <div className="main-content">
-        {children}
+    <DashboardProviders logoUrl={logoUrl} companyName={companyName}>
+      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+        <Sidebar user={user} />
+        <div className="main-content">
+          {children}
+        </div>
       </div>
-    </div>
+    </DashboardProviders>
   );
 }

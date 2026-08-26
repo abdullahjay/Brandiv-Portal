@@ -2,18 +2,18 @@
 
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@frontend/context/ThemeContext";
-import { NotificationsProvider } from "@frontend/context/NotificationsContext";
+import QueryProvider from "@frontend/providers/QueryProvider";
 import NavProgress from "@frontend/components/layout/NavProgress";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ThemeProvider>
-        <NotificationsProvider>
+      <QueryProvider>
+        <ThemeProvider>
           <NavProgress />
           {children}
-        </NotificationsProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </QueryProvider>
     </SessionProvider>
   );
 }

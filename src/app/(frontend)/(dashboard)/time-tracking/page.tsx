@@ -1,15 +1,7 @@
-"use client";
+import { prefetchPage } from "@frontend/lib/prefetchPage";
+import { prefetchTimeTrackingPage } from "@frontend/lib/queries/listQueries";
+import TimeTrackingPageClient from "./TimeTrackingPageClient";
 
-import Topbar from "@frontend/components/layout/Topbar";
-import TimeEntryList from "@frontend/components/time-tracking/TimeEntryList";
-
-export default function TimeTrackingPage() {
-  return (
-    <>
-      <Topbar title="Time Tracking" />
-      <div className="page-content">
-        <TimeEntryList />
-      </div>
-    </>
-  );
+export default async function TimeTrackingPage() {
+  return prefetchPage((qc) => prefetchTimeTrackingPage(qc), <TimeTrackingPageClient />);
 }

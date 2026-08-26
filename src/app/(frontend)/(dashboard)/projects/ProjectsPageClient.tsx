@@ -1,0 +1,92 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Topbar from "@frontend/components/layout/Topbar";
+import ProjectList from "@frontend/components/projects/ProjectList";
+import ProjectDetail from "@frontend/components/projects/ProjectDetail";
+import AddProjectModal from "@frontend/components/projects/AddProjectModal";
+import EditProjectModal from "@frontend/components/projects/EditProjectModal";
+import { useProjects } from "@frontend/hooks/useProjects";
+import type { Project } from "@frontend/types";
+
+type FilterStatus = "all" | "active" | "pending" | "done" | "cancelled";
+
+export default function ProjectsPageClient() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
+  const [filter, setFilter] = useState<FilterStatus>("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, loading } = useProjects({
+    status: filter,
+    search: debouncedSearch,
+  });
+
+  const projects = data?.items ?? [];
+
+  useEffect(() => {
+    if (!loading && !selectedId && projects.length > 0) {
+      setSelectedId(projects[0].id);
+    }
+  }, [loading, projects, selectedId]);
+
+  function handleCreated(project: Project) {
+    setSelectedId(project.id);
+  }
+
+  function handleUpdated() {
+    setDetailRefreshKey((k) => k + 1);
+    setShowEdit(false);
+  }
+
+  return (
+    <>
+      <Topbar title="Projects" />
+      <div className={`two-panel${mobileView === "detail" ? " show-detail" : ""}`} style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <ProjectList
+          projects={projects}
+          selectedId={selectedId}
+          filter={filter}
+          search={search}
+          loading={loading}
+          onSelect={(id) => { setSelectedId(id); setMobileView("detail"); }}
+          onFilterChange={setFilter}
+          onSearchChange={setSearch}
+          onAddClick={() => setShowAdd(true)}
+        />
+        <div className="detail-panel-wrap">
+          <button className="mobile-back-btn" onClick={() => setMobileView("list")}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Back to projects
+          </button>
+          <ProjectDetail
+            projectId={selectedId}
+            onEditClick={() => setShowEdit(true)}
+            refreshKey={detailRefreshKey}
+          />
+        </div>
+      </div>
+
+      <AddProjectModal
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
+        onCreated={handleCreated}
+      />
+
+      <EditProjectModal
+        open={showEdit}
+        projectId={selectedId}
+        onClose={() => setShowEdit(false)}
+        onUpdated={handleUpdated}
+      />
+    </>
+  );
+}

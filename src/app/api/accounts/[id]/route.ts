@@ -1,14 +1,13 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, notFound, serverError } from "@backend/lib/apiResponse";
 import { getAccount, editAccount, removeAccount } from "@backend/services/accountService";
 import { updateAccountSchema } from "@backend/validators/accountValidator";
 
 // GET /api/accounts/:id
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { id } = await params;
     const account = await getAccount(id);
@@ -20,12 +19,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 // DELETE /api/accounts/:id
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    if (!["super_admin", "admin"].includes(session.user.role)) {
+    if (!["super_admin", "admin"].includes(user.role)) {
       return unauthorized("Insufficient permissions");
     }
 
@@ -44,10 +43,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 // PUT /api/accounts/:id
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    if (!["super_admin", "admin", "finance"].includes(session.user.role)) {
+    if (!["super_admin", "admin", "finance"].includes(user.role)) {
       return unauthorized("Insufficient permissions");
     }
 

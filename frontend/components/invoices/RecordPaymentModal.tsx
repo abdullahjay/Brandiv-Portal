@@ -181,12 +181,32 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
   const gstPkr = grossPkr * gstPct / 100;
   const netPkr = grossPkr - whtPkr - gstPkr - bankCharges;
 
+  // Base vs upsell split preview — mirrors the proportional split the backend
+  // applies in commissionService.triggerCommission (ratio is currency-invariant).
+  const lineItems = invoice.lineItems ?? [];
+  const totalLineAmount = lineItems.reduce((s, li) => s + li.amount, 0);
+  const upsellGroupsPreview = (() => {
+    const groups = new Map<string, { upsell: NonNullable<typeof lineItems[number]["upsell"]>; lineAmount: number }>();
+    for (const li of lineItems) {
+      if (li.upsellId && li.upsell) {
+        const g = groups.get(li.upsellId) ?? { upsell: li.upsell, lineAmount: 0 };
+        g.lineAmount += li.amount;
+        groups.set(li.upsellId, g);
+      }
+    }
+    return [...groups.values()];
+  })();
+  const upsellNetPkrTotal = totalLineAmount > 0
+    ? upsellGroupsPreview.reduce((s, g) => s + (netPkr * g.lineAmount / totalLineAmount), 0)
+    : 0;
+  const baseNetPkr = netPkr - upsellNetPkrTotal;
+
   // Commission preview
   const hasCommission = clientData?.commissionRule !== "none" && !!clientData?.partner;
   const commissionRate = invoice.paymentNumber === 1 ? firstRatePct : recurringRatePct;
-  const estimatedCommissionPkr = hasCommission ? netPkr * commissionRate / 100 : 0;
+  const estimatedCommissionPkr = hasCommission ? baseNetPkr * commissionRate / 100 : 0;
   const hasManagingCommission = hasCommission && !!managingPartner;
-  const managingCommissionPkr = hasManagingCommission ? netPkr * managingRatePct / 100 : 0;
+  const managingCommissionPkr = hasManagingCommission ? baseNetPkr * managingRatePct / 100 : 0;
 
   async function handleSubmit() {
     if (!invoice.client?.id || !operatingAccount) return;
@@ -418,6 +438,37 @@ export default function RecordPaymentModal({ open, onClose, onRecorded, invoice 
                     <span style={{ fontWeight: 600 }}>PKR {fmt(managingCommissionPkr)}</span>
                   </div>
                 )}
+                {hasCommission && upsellGroupsPreview.map((g) => {
+                  const netShare = totalLineAmount > 0 ? netPkr * g.lineAmount / totalLineAmount : 0;
+                  const upsellCommPkr = netShare * g.upsell.commissionRatePct / 100;
+                  const upsellManagingCommPkr = g.upsell.managingPartnerId && g.upsell.managingCommissionRatePct > 0
+                    ? netShare * g.upsell.managingCommissionRatePct / 100
+                    : 0;
+                  return (
+                    <div key={g.upsell.id}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
+                        <span>
+                          {g.upsell.earnerAccount?.name ?? "Unknown"}
+                          <span style={{ opacity: 0.7, fontSize: 11, marginLeft: 5 }}>
+                            {g.upsell.commissionRatePct}% · upsell: {g.upsell.title}
+                          </span>
+                        </span>
+                        <span style={{ fontWeight: 600 }}>PKR {fmt(upsellCommPkr)}</span>
+                      </div>
+                      {upsellManagingCommPkr > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
+                          <span>
+                            {g.upsell.managingPartner?.name ?? "Unknown"}
+                            <span style={{ opacity: 0.7, fontSize: 11, marginLeft: 5 }}>
+                              {g.upsell.managingCommissionRatePct}% · upsell managing
+                            </span>
+                          </span>
+                          <span style={{ fontWeight: 600 }}>PKR {fmt(upsellManagingCommPkr)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

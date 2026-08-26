@@ -1,13 +1,5 @@
-"use client";
-
-import ComingSoon from "@frontend/components/ui/ComingSoon";
+import PipelinePageClient from "./PipelinePageClient";
 
 export default function PipelinePage() {
-  return (
-    <ComingSoon
-      title="Pipeline"
-      description="Kanban board for managing deals across Lead, Proposal, Negotiation, and Closed stages."
-      icon="ti-filter"
-    />
-  );
+  return <PipelinePageClient />;
 }

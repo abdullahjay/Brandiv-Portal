@@ -9,7 +9,7 @@ import type { Commission } from "@frontend/types";
 interface CommissionDetailProps {
   commission: Commission | null;
   loading: boolean;
-  onApproved: () => void;
+  onApproved?: () => void;
 }
 
 function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
@@ -56,7 +56,7 @@ export default function CommissionDetail({ commission, loading, onApproved }: Co
     setActionError(null);
     try {
       await approveCommissionRequest(commission.id);
-      onApproved();
+      onApproved?.();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Approve failed");
     } finally {
@@ -88,6 +88,8 @@ export default function CommissionDetail({ commission, loading, onApproved }: Co
   const baseAmt = commission.baseAmountPkr / 100;
   const commAmt = commission.commissionPkr / 100;
   const isFirst = commission.paymentNumber === 1;
+  const isUpsellType = commission.commissionType === "upsell" || commission.commissionType === "upsell_managing";
+  const typeLabel = commission.commissionType.replace(/_/g, " ");
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -131,8 +133,14 @@ export default function CommissionDetail({ commission, loading, onApproved }: Co
             </div>
             <div style={{ fontSize: 11, color: "var(--t2)" }}>
               {commission.client.companyName} · {commission.period}
+              {isUpsellType && commission.upsell && <> · {commission.upsell.title}</>}
             </div>
           </div>
+          {isUpsellType && (
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--blue)", border: "0.5px solid var(--blue)", borderRadius: 4, padding: "2px 7px", textTransform: "capitalize" }}>
+              {typeLabel}
+            </span>
+          )}
           <Badge status={commission.status} />
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -174,8 +182,8 @@ export default function CommissionDetail({ commission, loading, onApproved }: Co
             <div style={{ fontSize: 16, fontWeight: 500, color: "var(--t1)" }}>
               #{commission.paymentNumber}
             </div>
-            <div style={{ fontSize: 11, color: isFirst ? "var(--orange)" : "var(--t2)", marginTop: 2 }}>
-              {isFirst ? "First payment (15%)" : "Recurring (5%)"}
+            <div style={{ fontSize: 11, color: isFirst ? "var(--orange)" : "var(--t2)", marginTop: 2, textTransform: "capitalize" }}>
+              {isUpsellType ? typeLabel : (isFirst ? `First payment (${ratePct}%)` : `Recurring (${ratePct}%)`)}
             </div>
           </div>
         </div>
@@ -188,6 +196,8 @@ export default function CommissionDetail({ commission, loading, onApproved }: Co
             <InfoItem label="Client" value={commission.client.companyName} />
             <InfoItem label="Project" value={commission.project?.name ?? "—"} />
             <InfoItem label="Invoice" value={commission.invoice?.invoiceNumber ?? "—"} />
+            <InfoItem label="Type" value={<span style={{ textTransform: "capitalize" }}>{typeLabel}</span>} />
+            {isUpsellType && <InfoItem label="Upsell" value={commission.upsell?.title ?? "—"} />}
             <InfoItem label="Period" value={commission.period} />
             <InfoItem label="Rate" value={`${ratePct}%`} />
             <InfoItem label="Payment #" value={`#${commission.paymentNumber}`} />
@@ -213,11 +223,11 @@ export default function CommissionDetail({ commission, loading, onApproved }: Co
         <Section title="Calculation">
           <div style={{ fontSize: 12, color: "var(--t2)", lineHeight: 2 }}>
             <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingBottom: 5 }}>
-              <span>Net PKR (base)</span>
+              <span>{isUpsellType ? "Net PKR (upsell portion)" : "Net PKR (base)"}</span>
               <span style={{ color: "var(--t1)" }}>PKR {fmt(baseAmt)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--b3)", paddingTop: 5, paddingBottom: 5 }}>
-              <span>Rate ({isFirst ? "first payment" : "recurring"})</span>
+              <span>Rate {isUpsellType ? `(${typeLabel})` : `(${isFirst ? "first payment" : "recurring"})`}</span>
               <span style={{ color: "var(--t1)" }}>{ratePct}%</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8 }}>

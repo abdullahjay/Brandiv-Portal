@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
+import { serializeForClient } from "@backend/lib/serialize";
 
-// BigInt fields (valueOriginal, valuePkr, totalAmount, etc.) can't be
-// serialized by JSON.stringify natively. Convert them to numbers here.
-// All our BigInt values are stored as (actual × 100) and are well within
-// Number.MAX_SAFE_INTEGER for realistic amounts.
 function serialize<T>(data: T): T {
-  return JSON.parse(
-    JSON.stringify(data, (_key, value) =>
-      typeof value === "bigint" ? Number(value) : value
-    )
-  );
+  return serializeForClient(data);
 }
 
 function extractMessage(err: unknown): string {

@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, unauthorized, notFound, serverError } from "@backend/lib/apiResponse";
 import { deleteCompensation } from "@backend/services/compensationService";
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
-    if (!["super_admin", "admin"].includes(session.user.role)) {
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
+    if (!["super_admin", "admin"].includes(user.role)) {
       return unauthorized("Insufficient permissions");
     }
     const { id } = await params;

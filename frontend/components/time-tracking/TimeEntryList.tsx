@@ -58,7 +58,7 @@ export default function TimeEntryList() {
 
   const isAdmin = ["super_admin", "admin", "manager"].includes(session?.user?.role ?? "");
 
-  const { data, loading, error, refetch } = useTimeEntries({ period, pageSize: 100 });
+  const { data, loading, error } = useTimeEntries({ period: period || undefined, pageSize: 100 });
 
   const entries = data?.items ?? [];
   const grouped = groupByDate(entries);
@@ -71,7 +71,6 @@ export default function TimeEntryList() {
     setDeletingId(id);
     try {
       await deleteTimeEntryRequest(id);
-      refetch();
     } catch {
       // silently fail — entry stays
     } finally {
@@ -85,7 +84,7 @@ export default function TimeEntryList() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: "var(--t2)" }}>Period</span>
-          <PeriodSelect value={period} onChange={setPeriod} />
+          <PeriodSelect value={period} onChange={setPeriod} includeAll allLabel="All periods" />
         </div>
         <button className="btn-primary" style={{ height: 34, flexShrink: 0 }} onClick={() => setShowAdd(true)}>
           <i className="ti ti-clock-plus" style={{ fontSize: 13 }} /> Log time
@@ -230,7 +229,7 @@ export default function TimeEntryList() {
       <AddTimeEntryModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        onCreated={() => { setShowAdd(false); refetch(); }}
+        onCreated={() => { setShowAdd(false); }}
       />
     </>
   );

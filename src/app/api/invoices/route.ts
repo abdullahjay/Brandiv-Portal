@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, created, badRequest, unauthorized, serverError } from "@backend/lib/apiResponse";
 import { listInvoices, addInvoice } from "@backend/services/invoiceService";
 import { listInvoicesSchema, createInvoiceSchema } from "@backend/validators/invoiceValidator";
@@ -7,8 +6,8 @@ import { listInvoicesSchema, createInvoiceSchema } from "@backend/validators/inv
 // GET /api/invoices
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { searchParams } = new URL(req.url);
     const parsed = listInvoicesSchema.safeParse(Object.fromEntries(searchParams));
@@ -24,8 +23,8 @@ export async function GET(req: Request) {
 // POST /api/invoices
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const body = await req.json();
     const parsed = createInvoiceSchema.safeParse(body);

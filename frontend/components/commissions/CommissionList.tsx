@@ -167,6 +167,9 @@ export default function CommissionList({
                 </div>
                 <div style={{ fontSize: 11, color: "var(--t2)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {c.client.companyName} · {c.period}
+                  {(c.commissionType === "upsell" || c.commissionType === "upsell_managing") && (
+                    <> · <span style={{ color: "var(--blue)" }}>{c.upsell?.title ?? c.commissionType.replace(/_/g, " ")}</span></>
+                  )}
                 </div>
               </div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>

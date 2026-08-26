@@ -1,15 +1,11 @@
-"use client";
+import { prefetchPage } from "@frontend/lib/prefetchPage";
+import { currentPeriod, prefetchLedger } from "@frontend/lib/queries/listQueries";
+import TransactionsPageClient from "./TransactionsPageClient";
 
-import Topbar from "@frontend/components/layout/Topbar";
-import LedgerList from "@frontend/components/ledger/LedgerList";
-
-export default function TransactionsPage() {
-  return (
-    <>
-      <Topbar title="Financial Ledger" />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "16px 20px 20px" }}>
-        <LedgerList />
-      </div>
-    </>
+export default async function TransactionsPage() {
+  const period = currentPeriod();
+  return prefetchPage(
+    (qc) => prefetchLedger(qc, { period, page: 1, pageSize: 100 }),
+    <TransactionsPageClient />
   );
 }

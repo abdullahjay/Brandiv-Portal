@@ -115,8 +115,8 @@ function InvoiceRow({ inv }: { inv: ClientInvoice }) {
   );
 }
 
-export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, onUpdated }: ClientDetailProps) {
-  const { data: client, loading, refetch } = useClient(clientId);
+export default function ClientDetail({ clientId, onEditClick, onCreateInvoice }: ClientDetailProps) {
+  const { data: client, loading } = useClient(clientId);
   const [deactivating, setDeactivating] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -128,8 +128,6 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
     try {
       await updateClientRequest(client.id, { status: "inactive" });
       setConfirmDeactivate(false);
-      await refetch();
-      onUpdated?.();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to deactivate client");
     } finally {
@@ -143,8 +141,6 @@ export default function ClientDetail({ clientId, onEditClick, onCreateInvoice, o
     setActionError(null);
     try {
       await updateClientRequest(client.id, { status: "active" });
-      await refetch();
-      onUpdated?.();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to reactivate client");
     } finally {

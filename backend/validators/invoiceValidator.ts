@@ -4,6 +4,7 @@ const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
   quantity: z.coerce.number().int().min(1).default(1),
   rate: z.coerce.number().min(0),
+  upsellId: z.string().uuid().optional().nullable(),
 });
 
 export const createInvoiceSchema = z.object({

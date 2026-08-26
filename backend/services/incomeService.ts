@@ -94,7 +94,8 @@ export async function addIncome(input: CreateIncomeInput, createdById: string) {
     }
   }
 
-  // Auto-trigger commission
+  // Auto-trigger commission — non-fatal since the income record (and account
+  // credit) is already committed, but the failure must not be swallowed silently.
   try {
     await triggerCommission({
       incomeRecordId: income.id,
@@ -105,8 +106,8 @@ export async function addIncome(input: CreateIncomeInput, createdById: string) {
       paymentNumber,
       period: calc.period,
     });
-  } catch {
-    // Commission failure is non-fatal — income is already saved
+  } catch (err) {
+    console.error(`[Commission Error] Failed to create commission for income ${income.id}:`, err);
   }
 
   return incomeWithRelations;

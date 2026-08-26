@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, created, badRequest, unauthorized, serverError } from "@backend/lib/apiResponse";
 import { listAccounts, addAccount } from "@backend/services/accountService";
 import { listAccountsSchema, createAccountSchema } from "@backend/validators/accountValidator";
@@ -7,8 +6,8 @@ import { listAccountsSchema, createAccountSchema } from "@backend/validators/acc
 // GET /api/accounts
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { searchParams } = new URL(req.url);
     const parsed = listAccountsSchema.safeParse(Object.fromEntries(searchParams));
@@ -24,10 +23,10 @@ export async function GET(req: Request) {
 // POST /api/accounts
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    if (!["super_admin", "admin", "finance"].includes(session.user.role)) {
+    if (!["super_admin", "admin", "finance"].includes(user.role)) {
       return unauthorized("Insufficient permissions");
     }
 

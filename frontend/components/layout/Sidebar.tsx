@@ -8,6 +8,7 @@ import type { NavSection, SessionUser } from "@frontend/types";
 import { hasModuleAccess } from "@/lib/permissions";
 import { useTheme } from "@frontend/context/ThemeContext";
 import { useNotificationsContext } from "@frontend/context/NotificationsContext";
+import { useBranding } from "@frontend/context/BrandingContext";
 import NotificationPanel from "./NotificationPanel";
 
 const NAV: NavSection[] = [
@@ -68,11 +69,10 @@ function initials(name: string) {
 
 interface SidebarProps {
   user: SessionUser;
-  logoUrl?: string | null;
-  companyName?: string | null;
 }
 
-export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
+export default function Sidebar({ user }: SidebarProps) {
+  const { logoSrc, companyName } = useBranding();
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -171,9 +171,9 @@ export default function Sidebar({ user, logoUrl, companyName }: SidebarProps) {
           minHeight: 62,
         }}
       >
-        {logoUrl ? (
+        {logoSrc ? (
           <img
-            src={logoUrl}
+            src={logoSrc}
             alt={brandName}
             style={{ maxWidth: 140, maxHeight: 32, objectFit: "contain", objectPosition: "left center" }}
           />

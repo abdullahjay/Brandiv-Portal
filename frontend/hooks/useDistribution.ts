@@ -1,56 +1,43 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { DistributionPreview, DistributionRecord, ApiResponse } from "@frontend/types";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import {
+  distributionPreviewQueryKey,
+  distributionsQueryKey,
+  fetchDistributionPreview,
+  fetchDistributions,
+} from "@frontend/lib/queries/listQueries";
+import { invalidateDistribution, refreshAfter } from "@frontend/lib/invalidateQueries";
+import type { DistributionRecord } from "@frontend/types";
 
 export function useDistributionPreview() {
-  const [data, setData] = useState<DistributionPreview | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: distributionPreviewQueryKey(),
+    queryFn: fetchDistributionPreview,
+    placeholderData: keepPreviousData,
+  });
 
-  const fetch_ = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/distribution/preview");
-      const json: ApiResponse<DistributionPreview> = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to load preview");
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetch_(); }, [fetch_]);
-
-  return { data, loading, error, refetch: fetch_ };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export function useDistributions() {
-  const [data, setData] = useState<DistributionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: distributionsQueryKey(),
+    queryFn: fetchDistributions,
+    placeholderData: keepPreviousData,
+  });
 
-  const fetch_ = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/distribution");
-      const json: ApiResponse<DistributionRecord[]> = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to load distributions");
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetch_(); }, [fetch_]);
-
-  return { data, loading, error, refetch: fetch_ };
+  return {
+    data: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export async function runDistributionRequest(label?: string, notes?: string): Promise<DistributionRecord> {
@@ -59,7 +46,8 @@ export async function runDistributionRequest(label?: string, notes?: string): Pr
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ label: label || null, notes: notes || null }),
   });
-  const json: ApiResponse<DistributionRecord> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to run distribution");
+  refreshAfter(invalidateDistribution());
   return json.data!;
 }

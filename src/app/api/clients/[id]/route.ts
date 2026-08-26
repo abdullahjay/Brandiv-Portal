@@ -1,18 +1,17 @@
 import { type NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, notFound, serverError } from "@backend/lib/apiResponse";
 import { getClient, updateClient, archiveClient } from "@backend/services/clientService";
 import { updateClientSchema } from "@backend/validators/clientValidator";
 
 // GET /api/clients/:id
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { id } = await params;
     const client = await getClient(id);
@@ -31,8 +30,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const body = await req.json();
     const parsed = updateClientSchema.safeParse(body);
@@ -51,15 +50,15 @@ export async function PUT(
 
 // DELETE /api/clients/:id  — soft delete (marks inactive)
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     // Only admin+ can archive clients
-    const role = session.user.role;
+    const role = user.role;
     if (!["super_admin", "admin", "manager"].includes(role)) {
       return unauthorized("Insufficient permissions");
     }

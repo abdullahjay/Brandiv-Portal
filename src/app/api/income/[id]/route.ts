@@ -1,14 +1,13 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, notFound, serverError } from "@backend/lib/apiResponse";
 import { getIncome, editIncome, markCleared } from "@backend/services/incomeService";
 import { updateIncomeSchema } from "@backend/validators/incomeValidator";
 
 // GET /api/income/:id
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { id } = await params;
     const income = await getIncome(id);
@@ -22,8 +21,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // PUT /api/income/:id
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const body = await req.json();
     const parsed = updateIncomeSchema.safeParse(body);
@@ -40,10 +39,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 // POST /api/income/:id/clear handled via separate route below as a convenience
 // PATCH /api/income/:id — mark cleared
-export async function PATCH(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { id } = await params;
     const income = await markCleared(id);

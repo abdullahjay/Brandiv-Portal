@@ -17,6 +17,8 @@ const commissionSelect = {
   project: { select: { id: true, name: true } },
   invoice: { select: { id: true, invoiceNumber: true } },
   incomeRecord: { select: { id: true, originalAmount: true, originalCurrency: true, receivedAt: true } },
+  upsellId: true,
+  upsell: { select: { id: true, title: true } },
 } satisfies Prisma.CommissionSelect;
 
 export async function findManyCommissions(input: ListCommissionsInput) {

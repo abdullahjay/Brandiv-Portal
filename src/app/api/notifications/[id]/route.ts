@@ -1,26 +1,25 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, unauthorized, serverError } from "@backend/lib/apiResponse";
 import { markNotificationRead, dismissNotification } from "@backend/services/notificationService";
 
-export async function PUT(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
     const { id } = await params;
-    await markNotificationRead(id, session.user.id);
+    await markNotificationRead(id, user.id);
     return ok({ read: true });
   } catch (err) {
     return serverError(err);
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
     const { id } = await params;
-    await dismissNotification(id, session.user.id);
+    await dismissNotification(id, user.id);
     return ok({ dismissed: true });
   } catch (err) {
     return serverError(err);

@@ -1,48 +1,29 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { TimeEntry, ApiResponse, PaginatedResponse } from "@frontend/types";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import {
+  fetchTimeEntries,
+  timeEntriesQueryKey,
+  type TimeEntriesQueryParams,
+} from "@frontend/lib/queries/listQueries";
+import { invalidateTimeEntries, refreshAfter } from "@frontend/lib/invalidateQueries";
+import type { TimeEntry } from "@frontend/types";
 
-export interface TimeEntryFilters {
-  period?: string;
-  projectId?: string;
-  userId?: string;
-  billable?: boolean;
-  page?: number;
-  pageSize?: number;
-}
+export type TimeEntryFilters = TimeEntriesQueryParams;
 
 export function useTimeEntries(filters: TimeEntryFilters) {
-  const [data, setData] = useState<PaginatedResponse<TimeEntry> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: timeEntriesQueryKey(filters),
+    queryFn: () => fetchTimeEntries(filters),
+    placeholderData: keepPreviousData,
+  });
 
-  const fetch_ = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (filters.period) params.set("period", filters.period);
-      if (filters.projectId) params.set("projectId", filters.projectId);
-      if (filters.userId) params.set("userId", filters.userId);
-      if (filters.billable !== undefined) params.set("billable", String(filters.billable));
-      if (filters.page) params.set("page", String(filters.page));
-      if (filters.pageSize) params.set("pageSize", String(filters.pageSize));
-
-      const res = await fetch(`/api/time-entries?${params.toString()}`);
-      const json: ApiResponse<PaginatedResponse<TimeEntry>> = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to load time entries");
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters.period, filters.projectId, filters.userId, filters.billable, filters.page, filters.pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { fetch_(); }, [fetch_]);
-
-  return { data, loading, error, refetch: fetch_ };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export async function createTimeEntryRequest(data: {
@@ -57,13 +38,15 @@ export async function createTimeEntryRequest(data: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json: ApiResponse<TimeEntry> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to log time");
+  refreshAfter(invalidateTimeEntries());
   return json.data!;
 }
 
 export async function deleteTimeEntryRequest(id: string): Promise<void> {
   const res = await fetch(`/api/time-entries/${id}`, { method: "DELETE" });
-  const json: ApiResponse<unknown> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to delete time entry");
+  refreshAfter(invalidateTimeEntries());
 }

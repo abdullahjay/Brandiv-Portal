@@ -1,19 +1,18 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, unauthorized, notFound, badRequest, serverError } from "@backend/lib/apiResponse";
 import { reverseTransfer } from "@backend/services/transferService";
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
-    if (!["super_admin", "admin"].includes(session.user.role)) return unauthorized("Only admins can reverse transfers");
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
+    if (!["super_admin", "admin"].includes(user.role)) return unauthorized("Only admins can reverse transfers");
 
     const { id } = await params;
-    const reversal = await reverseTransfer(id, session.user.id);
+    const reversal = await reverseTransfer(id, user.id);
     return ok(reversal);
   } catch (err) {
     if (err instanceof Error) {

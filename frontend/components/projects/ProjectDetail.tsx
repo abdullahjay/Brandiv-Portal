@@ -5,6 +5,8 @@ import { useProject, archiveProjectRequest } from "@frontend/hooks/useProjects";
 import Badge from "@frontend/components/ui/Badge";
 import ProgressBar from "@frontend/components/ui/ProgressBar";
 import Avatar from "@frontend/components/ui/Avatar";
+import UpsellsSection from "@frontend/components/projects/UpsellsSection";
+import ValueHistorySection from "@frontend/components/projects/ValueHistorySection";
 import type { ProjectMilestone, ProjectTimeEntry } from "@frontend/types";
 
 interface ProjectDetailProps {
@@ -121,8 +123,8 @@ function TimeEntryRow({ t }: { t: ProjectTimeEntry }) {
   );
 }
 
-export default function ProjectDetail({ projectId, onEditClick, onUpdated, refreshKey }: ProjectDetailProps) {
-  const { data: project, loading, refetch } = useProject(projectId, refreshKey);
+export default function ProjectDetail({ projectId, onEditClick, refreshKey }: ProjectDetailProps) {
+  const { data: project, loading } = useProject(projectId, refreshKey);
   const [archiving, setArchiving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -134,8 +136,6 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
     try {
       await archiveProjectRequest(project.id);
       setConfirmArchive(false);
-      await refetch();
-      onUpdated?.();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to archive project");
     } finally {
@@ -376,6 +376,17 @@ export default function ProjectDetail({ projectId, onEditClick, onUpdated, refre
             </p>
           )}
         </Section>
+
+        {/* Upsells */}
+        <UpsellsSection
+          projectId={project.id}
+          currency={project.currency}
+          upsells={project.upsells ?? []}
+          onChanged={() => {}}
+        />
+
+        {/* Value history */}
+        <ValueHistorySection valueChanges={project.valueChanges ?? []} currency={project.currency} />
 
         {/* Time entries */}
         <Section

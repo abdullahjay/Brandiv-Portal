@@ -47,8 +47,8 @@ function PkrRow({ label, value, highlight }: { label: string; value: number; hig
   );
 }
 
-export default function IncomeDetail({ recordId, onUpdated }: IncomeDetailProps) {
-  const { data: record, loading, refetch } = useIncomeRecord(recordId);
+export default function IncomeDetail({ recordId }: IncomeDetailProps) {
+  const { data: record, loading } = useIncomeRecord(recordId);
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -58,8 +58,6 @@ export default function IncomeDetail({ recordId, onUpdated }: IncomeDetailProps)
     setActionError(null);
     try {
       await clearIncomeRequest(record.id);
-      await refetch();
-      onUpdated?.();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Action failed");
     } finally {

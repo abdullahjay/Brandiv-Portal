@@ -160,6 +160,78 @@ export interface Project {
   milestones?: ProjectMilestone[];
   invoices?: ClientInvoice[];
   timeEntries?: ProjectTimeEntry[];
+  upsells?: ProjectUpsell[];
+  valueChanges?: ProjectValueChange[];
+}
+
+// ─── Upsells ──────────────────────────────────────────────────────────────────
+export type UpsellBillingMode = "one_time" | "recurring";
+export type UpsellStatus = "pending" | "approved" | "active" | "completed" | "cancelled";
+
+export interface ProjectUpsellCommission {
+  id: string;
+  commissionType: string;
+  commissionPkr: number;
+  status: "pending" | "approved" | "paid";
+  ratePct?: number;
+  baseAmountPkr?: number;
+  createdAt?: string;
+}
+
+export interface ProjectUpsell {
+  id: string;
+  title: string;
+  description: string | null;
+  billingMode: UpsellBillingMode;
+  status: UpsellStatus;
+  amountPkr: number;
+  commissionRatePct: number;
+  managingCommissionRatePct: number;
+  createdAt: string;
+  approvedAt: string | null;
+  completedAt: string | null;
+  projectId?: string;
+  earnerAccountId: string;
+  earnerAccount?: { id: string; name: string } | null;
+  managingPartnerId: string | null;
+  managingPartner?: { id: string; name: string } | null;
+  commissions?: ProjectUpsellCommission[];
+}
+
+export interface CreateUpsellInput {
+  title: string;
+  description?: string | null;
+  billingMode: UpsellBillingMode;
+  amountPkr: number;
+  earnerAccountId: string;
+  commissionRatePct: number;
+  managingPartnerId?: string | null;
+  managingCommissionRatePct?: number;
+}
+
+// ─── Project Value History ─────────────────────────────────────────────────────
+export type ProjectValueChangeType =
+  | "initial_value"
+  | "value_correction"
+  | "upsell_added"
+  | "upsell_cancelled"
+  | "manual_adjustment";
+
+export interface ProjectValueChange {
+  id: string;
+  changeType: ProjectValueChangeType;
+  oldValuePkr: number;
+  newValuePkr: number;
+  deltaPkr: number;
+  oldValueOriginal: number | null;
+  newValueOriginal: number | null;
+  currency: string;
+  reason: string | null;
+  notes: string | null;
+  createdAt: string;
+  relatedUpsellId: string | null;
+  relatedUpsell?: { id: string; title: string } | null;
+  createdBy?: { id: string; name: string } | null;
 }
 
 export interface ProjectMilestone {
@@ -220,6 +292,18 @@ export interface Invoice {
   lineItems?: InvoiceLineItem[];
 }
 
+export interface InvoiceLineItemUpsell {
+  id: string;
+  title: string;
+  billingMode: UpsellBillingMode;
+  status: UpsellStatus;
+  commissionRatePct: number;
+  earnerAccount?: { id: string; name: string } | null;
+  managingPartnerId: string | null;
+  managingCommissionRatePct: number;
+  managingPartner?: { id: string; name: string } | null;
+}
+
 export interface InvoiceLineItem {
   id: string;
   description: string;
@@ -227,6 +311,8 @@ export interface InvoiceLineItem {
   rate: number;
   amount: number;
   sortOrder: number;
+  upsellId?: string | null;
+  upsell?: InvoiceLineItemUpsell | null;
 }
 
 export interface CreateInvoiceInput {
@@ -241,7 +327,7 @@ export interface CreateInvoiceInput {
   taxPct?: number;
   paymentNumber?: number;
   notes?: string | null;
-  lineItems: { description: string; quantity: number; rate: number }[];
+  lineItems: { description: string; quantity: number; rate: number; upsellId?: string | null }[];
 }
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
@@ -354,6 +440,8 @@ export interface Commission {
   project?: { id: string; name: string } | null;
   invoice?: { id: string; invoiceNumber: string } | null;
   incomeRecord?: { id: string; originalAmount: number; originalCurrency: string; receivedAt: string } | null;
+  upsellId?: string | null;
+  upsell?: { id: string; title: string } | null;
 }
 
 // ─── Expenses ─────────────────────────────────────────────────────────────────

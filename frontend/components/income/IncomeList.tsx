@@ -120,7 +120,13 @@ export default function IncomeList({
             </button>
           ))}
         </div>
-        <PeriodSelect value={period} onChange={onPeriodChange} style={{ height: 28, fontSize: 11 }} />
+        <PeriodSelect
+          value={period}
+          onChange={onPeriodChange}
+          includeAll
+          allLabel="All periods"
+          style={{ height: 28, fontSize: 11 }}
+        />
       </div>
 
       {/* List */}

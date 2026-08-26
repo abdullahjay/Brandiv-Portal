@@ -1,39 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
-import type { TeamUser, ApiResponse, PaginatedResponse } from "@frontend/types";
+"use client";
+
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { fetchUsers, usersQueryKey } from "@frontend/lib/queries/listQueries";
+import { invalidateUsers, refreshAfter } from "@frontend/lib/invalidateQueries";
+import type { TeamUser } from "@frontend/types";
 
 export function useUsers(page = 1, pageSize = 50, search = "", role = "", status = "") {
-  const [users, setUsers] = useState<TeamUser[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: usersQueryKey({ page, pageSize, search, role, status }),
+    queryFn: () => fetchUsers({ page, pageSize, search, role, status }),
+    placeholderData: keepPreviousData,
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-      if (search) params.set("search", search);
-      if (role) params.set("role", role);
-      if (status) params.set("status", status);
-
-      const res = await fetch(`/api/users?${params}`);
-      const json: ApiResponse<PaginatedResponse<TeamUser>> = await res.json();
-      if (json.success && json.data) {
-        setUsers(json.data.items);
-        setTotal(json.data.total);
-      } else {
-        setError(json.message ?? "Failed to load users");
-      }
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, search, role, status]);
-
-  useEffect(() => { load(); }, [load]);
-
-  return { users, total, loading, error, refresh: load };
+  return {
+    users: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refresh: () => void query.refetch(),
+  };
 }
 
 export async function createUserRequest(data: {
@@ -47,8 +32,9 @@ export async function createUserRequest(data: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json: ApiResponse<TeamUser> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to create user");
+  refreshAfter(invalidateUsers());
   return json.data!;
 }
 
@@ -61,25 +47,29 @@ export async function updateUserRequest(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json: ApiResponse<TeamUser> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to update user");
+  refreshAfter(invalidateUsers());
   return json.data!;
 }
 
 export async function deactivateUserRequest(id: string): Promise<void> {
   const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-  const json: ApiResponse<unknown> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to deactivate user");
+  refreshAfter(invalidateUsers());
 }
 
 export async function reactivateUserRequest(id: string): Promise<void> {
   const res = await fetch(`/api/users/${id}?reactivate=1`, { method: "DELETE" });
-  const json: ApiResponse<unknown> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to reactivate user");
+  refreshAfter(invalidateUsers());
 }
 
 export async function deleteUserRequest(id: string): Promise<void> {
   const res = await fetch(`/api/users/${id}?permanent=1`, { method: "DELETE" });
-  const json: ApiResponse<unknown> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to delete user");
+  refreshAfter(invalidateUsers());
 }

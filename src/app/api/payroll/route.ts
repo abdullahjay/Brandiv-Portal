@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, created, badRequest, unauthorized, serverError } from "@backend/lib/apiResponse";
 import { listPayroll, addPayrollRecord } from "@backend/services/payrollService";
 import { listPayrollSchema, createPayrollSchema } from "@backend/validators/payrollValidator";
@@ -7,10 +6,10 @@ import { listPayrollSchema, createPayrollSchema } from "@backend/validators/payr
 // GET /api/payroll
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    if (!["super_admin", "admin", "finance"].includes(session.user.role)) {
+    if (!["super_admin", "admin", "finance"].includes(user.role)) {
       return unauthorized("Insufficient permissions");
     }
 
@@ -28,10 +27,10 @@ export async function GET(req: Request) {
 // POST /api/payroll
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    if (!["super_admin", "admin", "finance"].includes(session.user.role)) {
+    if (!["super_admin", "admin", "finance"].includes(user.role)) {
       return unauthorized("Insufficient permissions");
     }
 

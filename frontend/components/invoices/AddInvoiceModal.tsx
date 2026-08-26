@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import { createInvoiceRequest, updateInvoiceRequest } from "@frontend/hooks/useInvoices";
 import { useAllLookups, lookupOptions } from "@frontend/hooks/useLookups";
-import type { Invoice, ApiResponse } from "@frontend/types";
+import type { Invoice, ApiResponse, ProjectUpsell, PaginatedResponse } from "@frontend/types";
 
 interface AddInvoiceModalProps {
   open: boolean;
@@ -20,6 +20,7 @@ interface LineItemDraft {
   description: string;
   quantity: string;
   rate: string;
+  upsellId: string | null;
 }
 
 interface FormData {
@@ -78,7 +79,7 @@ const PAYMENT_TERMS_OPTIONS = [
   "50% upfront, 50% on delivery",
 ];
 
-const EMPTY_LINE: LineItemDraft = { description: "", quantity: "1", rate: "" };
+const EMPTY_LINE: LineItemDraft = { description: "", quantity: "1", rate: "", upsellId: null };
 
 const EMPTY_FORM: FormData = {
   clientId: "",
@@ -104,6 +105,7 @@ export default function AddInvoiceModal({
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [customPaymentTerms, setCustomPaymentTerms] = useState(false);
+  const [selectableUpsells, setSelectableUpsells] = useState<ProjectUpsell[]>([]);
 
   const { data: lookupMap, loading: lookupsLoading } = useAllLookups();
 
@@ -135,6 +137,7 @@ export default function AddInvoiceModal({
               description: li.description,
               quantity: String(li.quantity),
               rate: String(li.rate / 100),
+              upsellId: li.upsellId ?? null,
             }))
           : [{ ...EMPTY_LINE }],
       });
@@ -168,6 +171,19 @@ export default function AddInvoiceModal({
       .catch(() => {});
   }, [form.clientId]);
 
+  // Upsells selectable for line items — approved/active only, scoped to the invoice's project
+  useEffect(() => {
+    if (!open || !form.projectId) { setSelectableUpsells([]); return; }
+    fetch(`/api/projects/${form.projectId}/upsells?status=all&pageSize=100`)
+      .then((r) => r.json())
+      .then((json: ApiResponse<PaginatedResponse<ProjectUpsell>>) => {
+        if (json.success) {
+          setSelectableUpsells((json.data!.items).filter((u) => u.status === "approved" || u.status === "active"));
+        }
+      })
+      .catch(() => {});
+  }, [open, form.projectId]);
+
   // Auto-fill currency when client changes
   useEffect(() => {
     if (!form.clientId) return;
@@ -183,6 +199,34 @@ export default function AddInvoiceModal({
     setForm((prev) => {
       const items = [...prev.lineItems];
       items[idx] = { ...items[idx], [field]: value };
+      return { ...prev, lineItems: items };
+    });
+  }
+
+  function setLineUpsell(idx: number, upsellId: string) {
+    setForm((prev) => {
+      const items = [...prev.lineItems];
+      if (!upsellId) {
+        items[idx] = { ...items[idx], upsellId: null };
+      } else {
+        const upsell = selectableUpsells.find((u) => u.id === upsellId);
+        items[idx] = {
+          ...items[idx],
+          upsellId,
+          description: upsell ? upsell.title : items[idx].description,
+          rate: upsell ? String(upsell.amountPkr / 100) : items[idx].rate,
+        };
+      }
+      return { ...prev, lineItems: items };
+    });
+  }
+
+  function setLineType(idx: number, type: "normal" | "upsell") {
+    setForm((prev) => {
+      const items = [...prev.lineItems];
+      items[idx] = type === "normal"
+        ? { ...items[idx], upsellId: null }
+        : { ...items[idx], upsellId: "" };
       return { ...prev, lineItems: items };
     });
   }
@@ -228,6 +272,7 @@ export default function AddInvoiceModal({
             description: i.description.trim(),
             quantity: parseInt(i.quantity, 10) || 1,
             rate: parseFloat(i.rate) || 0,
+            upsellId: i.upsellId || undefined,
           })),
       };
       if (invoice) {
@@ -362,51 +407,79 @@ export default function AddInvoiceModal({
       <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
         {form.lineItems.map((item, idx) => {
           const total = lineTotal(item);
+          const isUpsell = item.upsellId !== null;
           return (
             <div
               key={idx}
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 56px 96px 80px 28px",
-                gap: "0 8px",
-                alignItems: "center",
                 background: idx % 2 === 0 ? "var(--bg2)" : "transparent",
                 borderRadius: "var(--rm)",
                 padding: "4px 2px",
               }}
             >
-              <input
-                value={item.description}
-                onChange={(e) => setLine(idx, "description", e.target.value)}
-                placeholder={`Line item ${idx + 1}`}
-                style={{ height: 30, fontSize: 12 }}
-              />
-              <input
-                type="number"
-                min="1"
-                value={item.quantity}
-                onChange={(e) => setLine(idx, "quantity", e.target.value)}
-                style={{ height: 30, fontSize: 12, textAlign: "center" }}
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={item.rate}
-                onChange={(e) => setLine(idx, "rate", e.target.value)}
-                placeholder="0.00"
-                style={{ height: 30, fontSize: 12 }}
-              />
-              <div style={{ fontSize: 12, fontWeight: 500, color: total > 0 ? "var(--t1)" : "var(--t3)", textAlign: "right", paddingRight: 4 }}>
-                {total > 0 ? total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
+                <div style={{ display: "flex", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", overflow: "hidden", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => setLineType(idx, "normal")}
+                    style={{ padding: "2px 8px", fontSize: 10, background: !isUpsell ? "var(--blue)" : "transparent", color: !isUpsell ? "white" : "var(--t2)", border: "none", cursor: "pointer", fontWeight: 500 }}
+                  >Normal</button>
+                  <button
+                    type="button"
+                    onClick={() => setLineType(idx, "upsell")}
+                    disabled={!form.projectId}
+                    style={{ padding: "2px 8px", fontSize: 10, background: isUpsell ? "var(--blue)" : "transparent", color: isUpsell ? "white" : "var(--t2)", border: "none", cursor: form.projectId ? "pointer" : "not-allowed", fontWeight: 500 }}
+                  >Upsell</button>
+                </div>
+                {isUpsell && (
+                  <select
+                    value={item.upsellId ?? ""}
+                    onChange={(e) => setLineUpsell(idx, e.target.value)}
+                    style={{ height: 24, fontSize: 11, flex: 1 }}
+                  >
+                    <option value="">Select upsell…</option>
+                    {selectableUpsells.map((u) => (
+                      <option key={u.id} value={u.id}>{u.title} · PKR {(u.amountPkr / 100).toLocaleString()} ({u.billingMode === "recurring" ? "recurring" : "one-time"})</option>
+                    ))}
+                  </select>
+                )}
               </div>
-              <button
-                onClick={() => removeLine(idx)}
-                disabled={form.lineItems.length === 1}
-                style={{ height: 28, width: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: form.lineItems.length === 1 ? "not-allowed" : "pointer", color: form.lineItems.length === 1 ? "var(--t3)" : "var(--red)", padding: 0, borderRadius: "var(--rm)" }}
-              >
-                <i className="ti ti-trash" style={{ fontSize: 12 }} />
-              </button>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 56px 96px 80px 28px", gap: "0 8px", alignItems: "center" }}>
+                <input
+                  value={item.description}
+                  onChange={(e) => setLine(idx, "description", e.target.value)}
+                  placeholder={`Line item ${idx + 1}`}
+                  readOnly={isUpsell}
+                  style={{ height: 30, fontSize: 12, opacity: isUpsell ? 0.75 : 1 }}
+                />
+                <input
+                  type="number"
+                  min="1"
+                  value={item.quantity}
+                  onChange={(e) => setLine(idx, "quantity", e.target.value)}
+                  style={{ height: 30, fontSize: 12, textAlign: "center" }}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={item.rate}
+                  onChange={(e) => setLine(idx, "rate", e.target.value)}
+                  placeholder="0.00"
+                  style={{ height: 30, fontSize: 12 }}
+                />
+                <div style={{ fontSize: 12, fontWeight: 500, color: total > 0 ? "var(--t1)" : "var(--t3)", textAlign: "right", paddingRight: 4 }}>
+                  {total > 0 ? total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+                </div>
+                <button
+                  onClick={() => removeLine(idx)}
+                  disabled={form.lineItems.length === 1}
+                  style={{ height: 28, width: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: form.lineItems.length === 1 ? "not-allowed" : "pointer", color: form.lineItems.length === 1 ? "var(--t3)" : "var(--red)", padding: 0, borderRadius: "var(--rm)" }}
+                >
+                  <i className="ti ti-trash" style={{ fontSize: 12 }} />
+                </button>
+              </div>
             </div>
           );
         })}

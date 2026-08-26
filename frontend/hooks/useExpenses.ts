@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { Expense, ApiResponse, PaginatedResponse, CreateExpenseInput } from "@frontend/types";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { expensesQueryKey, fetchExpenses } from "@frontend/lib/queries/listQueries";
+import { invalidateExpenses, invalidateFinancialData, refreshAfter } from "@frontend/lib/invalidateQueries";
+import { apiFetch } from "@frontend/lib/apiFetch";
+import type { Expense, CreateExpenseInput } from "@frontend/types";
 
 interface UseExpensesOptions {
   category?: string;
@@ -14,34 +17,18 @@ interface UseExpensesOptions {
 export function useExpenses(options: UseExpensesOptions = {}) {
   const { category, projectId, period, search, page = 1 } = options;
 
-  const [data, setData] = useState<PaginatedResponse<Expense> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: expensesQueryKey({ category, projectId, period, search, page }),
+    queryFn: () => fetchExpenses({ category, projectId, period, search, page }),
+    placeholderData: keepPreviousData,
+  });
 
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ page: String(page) });
-      if (category) params.set("category", category);
-      if (projectId) params.set("projectId", projectId);
-      if (period) params.set("period", period);
-      if (search) params.set("search", search);
-
-      const res = await fetch(`/api/expenses?${params}`);
-      const json: ApiResponse<PaginatedResponse<Expense>> = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to fetch expenses");
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [category, projectId, period, search, page]);
-
-  useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
-
-  return { data, loading, error, refetch: fetchExpenses };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export async function createExpenseRequest(input: CreateExpenseInput): Promise<Expense> {
@@ -50,8 +37,9 @@ export async function createExpenseRequest(input: CreateExpenseInput): Promise<E
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const json: ApiResponse<Expense> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to create expense");
+  refreshAfter(invalidateExpenses(), invalidateFinancialData());
   return json.data!;
 }
 
@@ -61,8 +49,9 @@ export async function updateExpenseRequest(id: string, input: Partial<CreateExpe
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const json: ApiResponse<Expense> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to update expense");
+  refreshAfter(invalidateExpenses(), invalidateFinancialData());
   return json.data!;
 }
 
@@ -71,4 +60,5 @@ export async function deleteExpenseRequest(id: string): Promise<void> {
   if (res.status === 204) return;
   const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to delete expense");
+  refreshAfter(invalidateExpenses(), invalidateFinancialData());
 }

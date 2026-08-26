@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, forbidden, serverError } from "@backend/lib/apiResponse";
 import { fxRatesSchema } from "@backend/validators/settingsValidator";
 import { getFxRates, updateFxRates } from "@backend/services/settingService";
 
-export async function GET(_req: Request) {
+export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     return ok(await getFxRates());
   } catch (err) {
@@ -17,10 +16,10 @@ export async function GET(_req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    const role = session.user.role as string;
+    const role = user.role as string;
     if (!["super_admin", "admin", "finance"].includes(role)) return forbidden();
 
     const body = await req.json();

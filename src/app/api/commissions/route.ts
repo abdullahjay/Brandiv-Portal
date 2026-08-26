@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, serverError } from "@backend/lib/apiResponse";
 import { listCommissions, getCommissionStats } from "@backend/services/commissionService";
 import { listCommissionsSchema } from "@backend/validators/commissionValidator";
@@ -7,8 +6,8 @@ import { listCommissionsSchema } from "@backend/validators/commissionValidator";
 // GET /api/commissions
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { searchParams } = new URL(req.url);
 

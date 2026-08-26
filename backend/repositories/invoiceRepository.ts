@@ -28,7 +28,28 @@ const detailSelect = {
   ...listSelect,
   notes: true,
   lineItems: {
-    select: { id: true, description: true, quantity: true, rate: true, amount: true, sortOrder: true },
+    select: {
+      id: true,
+      description: true,
+      quantity: true,
+      rate: true,
+      amount: true,
+      sortOrder: true,
+      upsellId: true,
+      upsell: {
+        select: {
+          id: true,
+          title: true,
+          billingMode: true,
+          status: true,
+          commissionRatePct: true,
+          earnerAccount: { select: { id: true, name: true } },
+          managingPartnerId: true,
+          managingCommissionRatePct: true,
+          managingPartner: { select: { id: true, name: true } },
+        },
+      },
+    },
     orderBy: { sortOrder: "asc" as const },
   },
 } satisfies Prisma.InvoiceSelect;
@@ -133,6 +154,7 @@ export async function createInvoice(input: CreateInvoiceInput, invoiceNumber: st
           rate: BigInt(Math.round(item.rate * AMOUNT_MULTIPLIER)),
           amount: BigInt(Math.round(item.rate * AMOUNT_MULTIPLIER)) * BigInt(item.quantity),
           sortOrder: idx,
+          upsellId: item.upsellId ?? null,
         })),
       },
     },
@@ -181,6 +203,7 @@ export async function updateInvoice(id: string, input: UpdateInvoiceInput) {
         rate: BigInt(Math.round(item.rate * AMOUNT_MULTIPLIER)),
         amount: BigInt(Math.round(item.rate * AMOUNT_MULTIPLIER)) * BigInt(item.quantity),
         sortOrder: idx,
+        upsellId: item.upsellId ?? null,
       })),
     };
   } else if (discountType !== undefined || discountValue !== undefined || taxPct !== undefined) {

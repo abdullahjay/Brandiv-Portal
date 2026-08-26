@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, serverError } from "@backend/lib/apiResponse";
 import { getLookupsByType, getAllLookups, addLookup } from "@backend/services/lookupService";
 import { z } from "zod";
@@ -35,10 +34,10 @@ export async function GET(req: Request) {
 // POST /api/lookups — admin only
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    const role = session.user.role;
+    const role = user.role;
     if (!["super_admin", "admin"].includes(role)) return unauthorized("Insufficient permissions");
 
     const body = await req.json();

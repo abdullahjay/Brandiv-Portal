@@ -114,6 +114,27 @@ enum EmployeeStatus {
   inactive
 }
 
+enum UpsellBillingMode {
+  one_time
+  recurring
+}
+
+enum UpsellStatus {
+  pending
+  approved
+  active
+  completed
+  cancelled
+}
+
+enum ProjectValueChangeType {
+  initial_value
+  value_correction
+  upsell_added
+  upsell_cancelled
+  manual_adjustment
+}
+
 // ─── NEXTAUTH TABLES ──────────────────────────────────────────────────────────
 
 model Account {
@@ -174,61 +195,64 @@ model User {
   sessions Session[]
 
   // CRM relations
-  managedClients       Client[]               @relation("AccountManager")
-  referredClients      Client[]               @relation("ReferredBy")
-  createdClients       Client[]               @relation("ClientCreatedBy")
-  managedProjects      Project[]
-  payrollRecords       PayrollRecord[]
-  timeEntries          TimeEntry[]
-  ownedAccount         CrmAccount?
-  createdIncome        IncomeRecord[]
-  createdInvoices      Invoice[]
-  distributionRuns     Distribution[]
-  createdTransactions  FinancialTransaction[]
-  createdTransfers     AccountTransfer[]      @relation("TransferCreatedBy")
-  notifications        Notification[]
+  managedClients      Client[]               @relation("AccountManager")
+  referredClients     Client[]               @relation("ReferredBy")
+  createdClients      Client[]               @relation("ClientCreatedBy")
+  managedProjects     Project[]
+  payrollRecords      PayrollRecord[]
+  timeEntries         TimeEntry[]
+  ownedAccount        CrmAccount?
+  createdIncome       IncomeRecord[]
+  createdInvoices     Invoice[]
+  distributionRuns    Distribution[]
+  createdTransactions FinancialTransaction[]
+  createdTransfers    AccountTransfer[]      @relation("TransferCreatedBy")
+  notifications       Notification[]
+  createdUpsells      ProjectUpsell[]        @relation("UpsellCreatedBy")
+  approvedUpsells     ProjectUpsell[]        @relation("UpsellApprovedBy")
+  createdValueChanges ProjectValueChange[]   @relation("ValueChangeCreatedBy")
 
   @@map("users")
 }
 
 model Client {
-  id               String         @id @default(uuid())
-  companyName      String         @db.VarChar(200)
-  industry         String?        @db.VarChar(100)
-  website          String?        @db.Text
-  contactName      String         @db.VarChar(100)
-  contactTitle     String?        @db.VarChar(100)
-  email            String         @db.VarChar(255)
-  phone            String?        @db.VarChar(50)
-  country          String?        @db.VarChar(100)
-  city             String?        @db.VarChar(100)
-  timezone         String?        @db.VarChar(50)
-  currency         String         @default("USD") @db.VarChar(3)
-  billingAddress   String?        @db.Text
-  taxNumber        String?        @db.VarChar(100)
-  paymentTerms     String?        @db.VarChar(50)
-  contractStatus   ContractStatus @default(not_sent)
-  ndaRequired      Boolean        @default(false)
-  status           ClientStatus   @default(pending)
-  source           String?        @db.VarChar(100)
+  id                      String         @id @default(uuid())
+  companyName             String         @db.VarChar(200)
+  industry                String?        @db.VarChar(100)
+  website                 String?        @db.Text
+  contactName             String         @db.VarChar(100)
+  contactTitle            String?        @db.VarChar(100)
+  email                   String         @db.VarChar(255)
+  phone                   String?        @db.VarChar(50)
+  country                 String?        @db.VarChar(100)
+  city                    String?        @db.VarChar(100)
+  timezone                String?        @db.VarChar(50)
+  currency                String         @default("USD") @db.VarChar(3)
+  billingAddress          String?        @db.Text
+  taxNumber               String?        @db.VarChar(100)
+  paymentTerms            String?        @db.VarChar(50)
+  contractStatus          ContractStatus @default(not_sent)
+  ndaRequired             Boolean        @default(false)
+  status                  ClientStatus   @default(pending)
+  source                  String?        @db.VarChar(100)
   commissionRule          CommissionRule @default(standard)
-  commissionPriorPayments Int           @default(0)
-  notes                   String?       @db.Text
-  createdAt        DateTime       @default(now())
+  commissionPriorPayments Int            @default(0)
+  notes                   String?        @db.Text
+  createdAt               DateTime       @default(now())
 
-  accountManagerId  String?
-  accountManager    User?       @relation("AccountManager", fields: [accountManagerId], references: [id])
-  referredByUserId  String?
-  referredBy        User?       @relation("ReferredBy", fields: [referredByUserId], references: [id])
-  createdById       String?
-  createdBy         User?       @relation("ClientCreatedBy", fields: [createdById], references: [id])
-  partnerId         String?
-  partner           CrmAccount? @relation("ClientPartner", fields: [partnerId], references: [id])
+  accountManagerId String?
+  accountManager   User?       @relation("AccountManager", fields: [accountManagerId], references: [id])
+  referredByUserId String?
+  referredBy       User?       @relation("ReferredBy", fields: [referredByUserId], references: [id])
+  createdById      String?
+  createdBy        User?       @relation("ClientCreatedBy", fields: [createdById], references: [id])
+  partnerId        String?
+  partner          CrmAccount? @relation("ClientPartner", fields: [partnerId], references: [id])
 
-  projects     Project[]
-  invoices     Invoice[]
+  projects      Project[]
+  invoices      Invoice[]
   incomeRecords IncomeRecord[]
-  commissions  Commission[]
+  commissions   Commission[]
   pipelineDeals PipelineDeal[]
 
   @@index([accountManagerId])
@@ -240,20 +264,20 @@ model Client {
 }
 
 model Project {
-  id              String        @id @default(uuid())
-  name            String        @db.VarChar(200)
-  type            ProjectType
-  status          ProjectStatus @default(pending)
-  valuePkr        BigInt        @default(0)
-  currency        String        @default("USD") @db.VarChar(3)
-  valueOriginal   BigInt        @default(0)
-  progressPct     Int           @default(0)
-  startDate       DateTime?     @db.Date
-  deadline        DateTime?     @db.Date
-  description     String?       @db.Text
-  commissionExempt Boolean      @default(false)
-  billingCycleDay Int?
-  createdAt       DateTime      @default(now())
+  id               String        @id @default(uuid())
+  name             String        @db.VarChar(200)
+  type             ProjectType
+  status           ProjectStatus @default(pending)
+  valuePkr         BigInt        @default(0)
+  currency         String        @default("USD") @db.VarChar(3)
+  valueOriginal    BigInt        @default(0)
+  progressPct      Int           @default(0)
+  startDate        DateTime?     @db.Date
+  deadline         DateTime?     @db.Date
+  description      String?       @db.Text
+  commissionExempt Boolean       @default(false)
+  billingCycleDay  Int?
+  createdAt        DateTime      @default(now())
 
   clientId          String
   client            Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -262,11 +286,13 @@ model Project {
   managingPartnerId String?
   managingPartner   CrmAccount? @relation("ProjectManagingPartner", fields: [managingPartnerId], references: [id])
 
-  invoices    Invoice[]
-  milestones  Milestone[]
-  timeEntries TimeEntry[]
-  expenses    Expense[]
-  commissions Commission[]
+  invoices     Invoice[]
+  milestones   Milestone[]
+  timeEntries  TimeEntry[]
+  expenses     Expense[]
+  commissions  Commission[]
+  upsells      ProjectUpsell[]
+  valueChanges ProjectValueChange[]
 
   @@index([clientId])
   @@index([managerId])
@@ -310,12 +336,12 @@ model Invoice {
   paymentNumber  Int           @default(1)
   createdAt      DateTime      @default(now())
 
-  clientId  String
-  client    Client  @relation(fields: [clientId], references: [id])
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id])
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
   createdById String?
-  createdBy   User?  @relation(fields: [createdById], references: [id])
+  createdBy   User?    @relation(fields: [createdById], references: [id])
 
   lineItems     InvoiceLineItem[]
   incomeRecords IncomeRecord[]
@@ -330,17 +356,20 @@ model Invoice {
 }
 
 model InvoiceLineItem {
-  id          String  @id @default(uuid())
-  description String  @db.Text
-  quantity    Int     @default(1)
-  rate        BigInt  @default(0)
-  amount      BigInt  @default(0)
-  sortOrder   Int     @default(0)
+  id          String @id @default(uuid())
+  description String @db.Text
+  quantity    Int    @default(1)
+  rate        BigInt @default(0)
+  amount      BigInt @default(0)
+  sortOrder   Int    @default(0)
 
   invoiceId String
-  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice   Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  upsellId  String?
+  upsell    ProjectUpsell? @relation(fields: [upsellId], references: [id])
 
   @@index([invoiceId])
+  @@index([upsellId])
   @@map("invoice_line_items")
 }
 
@@ -366,14 +395,14 @@ model IncomeRecord {
   notes            String?      @db.Text
   createdAt        DateTime     @default(now())
 
-  invoiceId           String?
-  invoice             Invoice?    @relation(fields: [invoiceId], references: [id])
-  clientId            String
-  client              Client      @relation(fields: [clientId], references: [id])
+  invoiceId            String?
+  invoice              Invoice?    @relation(fields: [invoiceId], references: [id])
+  clientId             String
+  client               Client      @relation(fields: [clientId], references: [id])
   destinationAccountId String?
-  destinationAccount  CrmAccount? @relation(fields: [destinationAccountId], references: [id])
-  createdById         String?
-  createdBy           User?       @relation(fields: [createdById], references: [id])
+  destinationAccount   CrmAccount? @relation(fields: [destinationAccountId], references: [id])
+  createdById          String?
+  createdBy            User?       @relation(fields: [createdById], references: [id])
 
   commissions Commission[]
 
@@ -418,56 +447,60 @@ model FinancialTransaction {
 }
 
 model CrmAccount {
-  id                   String      @id @default(uuid())
-  name                 String      @db.VarChar(100)
-  type                 AccountType
-  sharePct             Decimal     @default(0) @db.Decimal(5, 2)
-  currentBalancePkr    BigInt      @default(0)
-  lifetimeDistPkr      BigInt      @default(0)
-  lifetimeCommPkr      BigInt      @default(0)
-  isDefaultOperating   Boolean     @default(false)
-  createdAt            DateTime    @default(now())
+  id                 String      @id @default(uuid())
+  name               String      @db.VarChar(100)
+  type               AccountType
+  sharePct           Decimal     @default(0) @db.Decimal(5, 2)
+  currentBalancePkr  BigInt      @default(0)
+  lifetimeDistPkr    BigInt      @default(0)
+  lifetimeCommPkr    BigInt      @default(0)
+  isDefaultOperating Boolean     @default(false)
+  createdAt          DateTime    @default(now())
 
   ownerUserId String? @unique
   ownerUser   User?   @relation(fields: [ownerUserId], references: [id])
 
-  incomeRecords          IncomeRecord[]
-  transactionsFrom       FinancialTransaction[] @relation("FromAccount")
-  transactionsTo         FinancialTransaction[] @relation("ToAccount")
-  distributionItems      DistributionItem[]
-  commissions            Commission[]           @relation("CommissionAccount")
-  clientsAsPartner       Client[]               @relation("ClientPartner")
-  transfersFrom          AccountTransfer[]      @relation("TransferFrom")
-  transfersTo            AccountTransfer[]      @relation("TransferTo")
-  adjustments            AccountAdjustment[]
-  managedProjects        Project[]              @relation("ProjectManagingPartner")
+  incomeRecords     IncomeRecord[]
+  transactionsFrom  FinancialTransaction[] @relation("FromAccount")
+  transactionsTo    FinancialTransaction[] @relation("ToAccount")
+  distributionItems DistributionItem[]
+  commissions       Commission[]           @relation("CommissionAccount")
+  clientsAsPartner  Client[]               @relation("ClientPartner")
+  transfersFrom     AccountTransfer[]      @relation("TransferFrom")
+  transfersTo       AccountTransfer[]      @relation("TransferTo")
+  adjustments       AccountAdjustment[]
+  managedProjects   Project[]              @relation("ProjectManagingPartner")
+  upsellsEarned     ProjectUpsell[]        @relation("UpsellEarner")
+  upsellsManaged    ProjectUpsell[]        @relation("UpsellManagingPartner")
 
   @@map("crm_accounts")
 }
 
 model Commission {
-  id                 String           @id @default(uuid())
-  period             String           @db.VarChar(10)
-  commissionType     String           @default("partner") @db.VarChar(20)
-  paymentNumber      Int
-  ratePct            Decimal          @db.Decimal(5, 2)
-  baseAmountPkr      BigInt
-  commissionPkr      BigInt
-  status             CommissionStatus @default(pending)
-  createdAt          DateTime         @default(now())
+  id             String           @id @default(uuid())
+  period         String           @db.VarChar(10)
+  commissionType String           @default("partner") @db.VarChar(20)
+  paymentNumber  Int
+  ratePct        Decimal          @db.Decimal(5, 2)
+  baseAmountPkr  BigInt
+  commissionPkr  BigInt
+  status         CommissionStatus @default(pending)
+  createdAt      DateTime         @default(now())
 
   stakeholderAccountId String
-  stakeholderAccount   CrmAccount   @relation("CommissionAccount", fields: [stakeholderAccountId], references: [id])
+  stakeholderAccount   CrmAccount     @relation("CommissionAccount", fields: [stakeholderAccountId], references: [id])
   clientId             String
-  client             Client       @relation(fields: [clientId], references: [id])
-  projectId          String?
-  project            Project?     @relation(fields: [projectId], references: [id])
-  invoiceId          String?
-  invoice            Invoice?     @relation(fields: [invoiceId], references: [id])
-  incomeRecordId     String?
-  incomeRecord       IncomeRecord? @relation(fields: [incomeRecordId], references: [id])
+  client               Client         @relation(fields: [clientId], references: [id])
+  projectId            String?
+  project              Project?       @relation(fields: [projectId], references: [id])
+  invoiceId            String?
+  invoice              Invoice?       @relation(fields: [invoiceId], references: [id])
+  incomeRecordId       String?
+  incomeRecord         IncomeRecord?  @relation(fields: [incomeRecordId], references: [id])
   paidInDistributionId String?
-  paidInDistribution Distribution? @relation(fields: [paidInDistributionId], references: [id])
+  paidInDistribution   Distribution?  @relation(fields: [paidInDistributionId], references: [id])
+  upsellId             String?
+  upsell               ProjectUpsell? @relation(fields: [upsellId], references: [id])
 
   @@index([stakeholderAccountId])
   @@index([clientId])
@@ -475,16 +508,78 @@ model Commission {
   @@index([invoiceId])
   @@index([incomeRecordId])
   @@index([paidInDistributionId])
+  @@index([upsellId])
   @@index([period])
   @@index([period, status])
   @@map("commissions")
 }
 
+model ProjectUpsell {
+  id                        String            @id @default(uuid())
+  title                     String            @db.VarChar(200)
+  description               String?           @db.Text
+  billingMode               UpsellBillingMode
+  status                    UpsellStatus      @default(pending)
+  amountPkr                 BigInt
+  commissionRatePct         Decimal           @db.Decimal(5, 2)
+  managingCommissionRatePct Decimal           @default(0) @db.Decimal(5, 2)
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  approvedAt                DateTime?
+  completedAt               DateTime?
+
+  projectId         String
+  project           Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  earnerAccountId   String
+  earnerAccount     CrmAccount  @relation("UpsellEarner", fields: [earnerAccountId], references: [id])
+  managingPartnerId String?
+  managingPartner   CrmAccount? @relation("UpsellManagingPartner", fields: [managingPartnerId], references: [id])
+  createdById       String?
+  createdBy         User?       @relation("UpsellCreatedBy", fields: [createdById], references: [id])
+  approvedById      String?
+  approvedBy        User?       @relation("UpsellApprovedBy", fields: [approvedById], references: [id])
+
+  lineItems    InvoiceLineItem[]
+  commissions  Commission[]
+  valueChanges ProjectValueChange[]
+
+  @@index([projectId])
+  @@index([earnerAccountId])
+  @@index([managingPartnerId])
+  @@index([status])
+  @@map("project_upsells")
+}
+
+model ProjectValueChange {
+  id               String                 @id @default(uuid())
+  changeType       ProjectValueChangeType
+  oldValuePkr      BigInt
+  newValuePkr      BigInt
+  deltaPkr         BigInt
+  oldValueOriginal BigInt?
+  newValueOriginal BigInt?
+  currency         String                 @db.VarChar(3)
+  reason           String?                @db.Text
+  notes            String?                @db.Text
+  createdAt        DateTime               @default(now())
+
+  projectId       String
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  relatedUpsellId String?
+  relatedUpsell   ProjectUpsell? @relation(fields: [relatedUpsellId], references: [id])
+  createdById     String?
+  createdBy       User?          @relation("ValueChangeCreatedBy", fields: [createdById], references: [id])
+
+  @@index([projectId])
+  @@index([relatedUpsellId])
+  @@map("project_value_changes")
+}
+
 model Distribution {
   id                    String   @id @default(uuid())
-  period                String   @db.VarChar(10)    // YYYY-MM label for grouping, no longer unique
-  label                 String?  @db.VarChar(255)   // optional custom name
-  operatingBalancePkr   BigInt                      // operating account balance at time of run
+  period                String   @db.VarChar(10) // YYYY-MM label for grouping, no longer unique
+  label                 String?  @db.VarChar(255) // optional custom name
+  operatingBalancePkr   BigInt // operating account balance at time of run
   totalCommissionPkr    BigInt   @default(0)
   totalDistributedPkr   BigInt
   operatingBalanceAfter BigInt   @default(0)
@@ -492,7 +587,7 @@ model Distribution {
   notes                 String?  @db.Text
 
   runById String?
-  runBy   User?  @relation(fields: [runById], references: [id])
+  runBy   User?   @relation(fields: [runById], references: [id])
 
   items       DistributionItem[]
   commissions Commission[]
@@ -519,9 +614,9 @@ model AccountTransfer {
   createdById   String?
   createdBy     User?      @relation("TransferCreatedBy", fields: [createdById], references: [id])
 
-  reversalOfId  String?
-  reversalOf    AccountTransfer?  @relation("TransferReversal", fields: [reversalOfId], references: [id])
-  reversals     AccountTransfer[] @relation("TransferReversal")
+  reversalOfId String?
+  reversalOf   AccountTransfer?  @relation("TransferReversal", fields: [reversalOfId], references: [id])
+  reversals    AccountTransfer[] @relation("TransferReversal")
 
   @@index([fromAccountId])
   @@index([toAccountId])
@@ -532,14 +627,14 @@ model AccountTransfer {
 }
 
 model AccountAdjustment {
-  id         String     @id @default(uuid())
+  id         String   @id @default(uuid())
   amountPkr  BigInt
-  note       String?    @db.VarChar(200)
-  period     String     @db.VarChar(10)
-  adjustedAt DateTime   @default(now())
+  note       String?  @db.VarChar(200)
+  period     String   @db.VarChar(10)
+  adjustedAt DateTime @default(now())
 
-  accountId  String
-  account    CrmAccount @relation(fields: [accountId], references: [id])
+  accountId String
+  account   CrmAccount @relation(fields: [accountId], references: [id])
 
   @@index([accountId])
   @@index([period])
@@ -564,18 +659,18 @@ model DistributionItem {
 }
 
 model Expense {
-  id          String   @id @default(uuid())
-  description String   @db.Text
-  category    String   @db.VarChar(100)
-  amountPkr   BigInt
-  originalAmount BigInt?
-  originalCurrency String? @db.VarChar(3)
-  exchangeRate Decimal? @db.Decimal(12, 4)
-  period      String   @db.VarChar(10)
-  date        DateTime @db.Date
-  receiptUrl  String?  @db.Text
-  notes       String?  @db.Text
-  createdAt   DateTime @default(now())
+  id               String   @id @default(uuid())
+  description      String   @db.Text
+  category         String   @db.VarChar(100)
+  amountPkr        BigInt
+  originalAmount   BigInt?
+  originalCurrency String?  @db.VarChar(3)
+  exchangeRate     Decimal? @db.Decimal(12, 4)
+  period           String   @db.VarChar(10)
+  date             DateTime @db.Date
+  receiptUrl       String?  @db.Text
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now())
 
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id])
@@ -586,16 +681,16 @@ model Expense {
 }
 
 model PayrollRecord {
-  id          String        @id @default(uuid())
-  period      String        @db.VarChar(10)
-  grossPkr    BigInt
-  taxPkr      BigInt        @default(0)
-  deductions  BigInt        @default(0)
-  netPkr      BigInt
-  status      PayrollStatus @default(pending)
-  paidAt      DateTime?
-  notes       String?       @db.Text
-  createdAt   DateTime      @default(now())
+  id         String        @id @default(uuid())
+  period     String        @db.VarChar(10)
+  grossPkr   BigInt
+  taxPkr     BigInt        @default(0)
+  deductions BigInt        @default(0)
+  netPkr     BigInt
+  status     PayrollStatus @default(pending)
+  paidAt     DateTime?
+  notes      String?       @db.Text
+  createdAt  DateTime      @default(now())
 
   userId     String?
   employeeId String?
@@ -608,20 +703,20 @@ model PayrollRecord {
 }
 
 model Employee {
-  id          String         @id @default(uuid())
-  name        String         @db.VarChar(100)
-  designation String?        @db.VarChar(100)
-  department  String?        @db.VarChar(100)
-  email       String?        @db.VarChar(255)
-  phone       String?        @db.VarChar(50)
-  cnic        String?        @db.VarChar(20)
+  id            String         @id @default(uuid())
+  name          String         @db.VarChar(100)
+  designation   String?        @db.VarChar(100)
+  department    String?        @db.VarChar(100)
+  email         String?        @db.VarChar(255)
+  phone         String?        @db.VarChar(50)
+  cnic          String?        @db.VarChar(20)
   joinDate      DateTime?
   baseSalary    BigInt?
   defaultTaxPkr BigInt?
   status        EmployeeStatus @default(active)
-  notes       String?        @db.Text
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  notes         String?        @db.Text
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   payrollRecords PayrollRecord[]
   compensations  EmployeeCompensation[]
@@ -726,8 +821,8 @@ model Lookup {
   type      String   @db.VarChar(50)
   value     String   @db.VarChar(200)
   label     String   @db.VarChar(200)
-  code      String?  @db.VarChar(20)  // e.g. country ISO code, currency code
-  meta      Json?                      // extra data: symbol, dial_code, etc.
+  code      String?  @db.VarChar(20) // e.g. country ISO code, currency code
+  meta      Json? // extra data: symbol, dial_code, etc.
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())

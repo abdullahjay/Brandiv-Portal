@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, forbidden, notFound, serverError } from "@backend/lib/apiResponse";
 import { updateEmployeeSchema } from "@backend/validators/employeeValidator";
 import { getEmployee, editEmployee, deactivateEmployee, reactivateEmployee, removeEmployee } from "@backend/services/employeeService";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { id } = await params;
     const emp = await getEmployee(id);
@@ -20,10 +19,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    const role = session.user.role as string;
+    const role = user.role as string;
     if (!["super_admin", "admin", "manager"].includes(role)) return forbidden();
 
     const body = await req.json();
@@ -41,10 +40,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    const role = session.user.role as string;
+    const role = user.role as string;
     if (!["super_admin", "admin", "manager"].includes(role)) return forbidden();
 
     const { searchParams } = new URL(req.url);

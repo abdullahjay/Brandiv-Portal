@@ -1,7 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { Invoice, ApiResponse, PaginatedResponse, CreateInvoiceInput } from "@frontend/types";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { invoicesQueryKey, fetchInvoices } from "@frontend/lib/queries/listQueries";
+import {
+  invalidateCommissions,
+  invalidateDashboard,
+  invalidateFinancialData,
+  invalidateIncome,
+  invalidateInvoices,
+  refreshAfter,
+} from "@frontend/lib/invalidateQueries";
+import { apiFetch } from "@frontend/lib/apiFetch";
+import type { Invoice, CreateInvoiceInput } from "@frontend/types";
 
 interface UseInvoicesOptions {
   status?: "all" | "draft" | "sent" | "paid" | "overdue" | "cancelled";
@@ -14,61 +24,33 @@ interface UseInvoicesOptions {
 export function useInvoices(options: UseInvoicesOptions = {}) {
   const { status = "all", clientId, projectId, search = "", page = 1 } = options;
 
-  const [data, setData] = useState<PaginatedResponse<Invoice> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: invoicesQueryKey({ status, clientId, projectId, search, page }),
+    queryFn: () => fetchInvoices({ status, clientId, projectId, search, page }),
+    placeholderData: keepPreviousData,
+  });
 
-  const fetchInvoices = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({
-        status,
-        page: String(page),
-        ...(search && { search }),
-        ...(clientId && { clientId }),
-        ...(projectId && { projectId }),
-      });
-      const res = await fetch(`/api/invoices?${params}`);
-      const json: ApiResponse<PaginatedResponse<Invoice>> = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to fetch invoices");
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [status, clientId, projectId, search, page]);
-
-  useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
-
-  return { data, loading, error, refetch: fetchInvoices };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export function useInvoice(id: string | null) {
-  const [data, setData] = useState<Invoice | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ["invoices", id],
+    queryFn: () => apiFetch<Invoice>(`/api/invoices/${id}`),
+    enabled: !!id,
+  });
 
-  const fetchInvoice = useCallback(async () => {
-    if (!id) { setData(null); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/invoices/${id}`);
-      const json: ApiResponse<Invoice> = await res.json();
-      if (!json.success) throw new Error(json.message);
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => { fetchInvoice(); }, [fetchInvoice]);
-
-  return { data, loading, error, refetch: fetchInvoice };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export async function createInvoiceRequest(body: CreateInvoiceInput): Promise<Invoice> {
@@ -77,8 +59,9 @@ export async function createInvoiceRequest(body: CreateInvoiceInput): Promise<In
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const json: ApiResponse<Invoice> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to create invoice");
+  refreshAfter(invalidateInvoices(), invalidateDashboard());
   return json.data!;
 }
 
@@ -88,27 +71,31 @@ export async function updateInvoiceRequest(id: string, body: Partial<CreateInvoi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const json: ApiResponse<Invoice> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to update invoice");
+  refreshAfter(invalidateInvoices(id));
   return json.data!;
 }
 
 export async function sendInvoiceRequest(id: string): Promise<Invoice> {
   const res = await fetch(`/api/invoices/${id}/send`, { method: "POST" });
-  const json: ApiResponse<Invoice> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to send invoice");
+  refreshAfter(invalidateInvoices(id));
   return json.data!;
 }
 
 export async function payInvoiceRequest(id: string): Promise<Invoice> {
   const res = await fetch(`/api/invoices/${id}/pay`, { method: "POST" });
-  const json: ApiResponse<Invoice> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to mark invoice as paid");
+  refreshAfter(invalidateInvoices(id), invalidateIncome(), invalidateFinancialData(), invalidateCommissions());
   return json.data!;
 }
 
 export async function cancelInvoiceRequest(id: string): Promise<void> {
   const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
-  const json: ApiResponse<unknown> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to cancel invoice");
+  refreshAfter(invalidateInvoices(id));
 }

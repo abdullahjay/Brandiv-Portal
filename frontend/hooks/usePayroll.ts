@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { PayrollRecord, ApiResponse, PaginatedResponse, CreatePayrollInput, PayrollRunEntry, PayrollRunResult } from "@frontend/types";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { fetchPayroll, payrollQueryKey } from "@frontend/lib/queries/listQueries";
+import { invalidateFinancialData, invalidatePayroll, refreshAfter } from "@frontend/lib/invalidateQueries";
+import type { CreatePayrollInput, PayrollRecord, PayrollRunEntry, PayrollRunResult } from "@frontend/types";
 
 interface UsePayrollOptions {
   status?: "all" | "pending" | "paid";
@@ -13,32 +15,18 @@ interface UsePayrollOptions {
 export function usePayroll(options: UsePayrollOptions = {}) {
   const { status = "all", userId, period, page = 1 } = options;
 
-  const [data, setData] = useState<PaginatedResponse<PayrollRecord> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: payrollQueryKey({ status, userId, period, page }),
+    queryFn: () => fetchPayroll({ status, userId, period, page }),
+    placeholderData: keepPreviousData,
+  });
 
-  const fetchPayroll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ status, page: String(page) });
-      if (userId) params.set("userId", userId);
-      if (period) params.set("period", period);
-
-      const res = await fetch(`/api/payroll?${params}`);
-      const json: ApiResponse<PaginatedResponse<PayrollRecord>> = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to fetch payroll");
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [status, userId, period, page]);
-
-  useEffect(() => { fetchPayroll(); }, [fetchPayroll]);
-
-  return { data, loading, error, refetch: fetchPayroll };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export async function createPayrollRequest(input: CreatePayrollInput): Promise<PayrollRecord> {
@@ -47,22 +35,25 @@ export async function createPayrollRequest(input: CreatePayrollInput): Promise<P
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const json: ApiResponse<PayrollRecord> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to create payroll record");
+  refreshAfter(invalidatePayroll(), invalidateFinancialData());
   return json.data!;
 }
 
 export async function payPayrollRequest(id: string): Promise<PayrollRecord> {
   const res = await fetch(`/api/payroll/${id}/pay`, { method: "POST" });
-  const json: ApiResponse<PayrollRecord> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to mark payroll as paid");
+  refreshAfter(invalidatePayroll(), invalidateFinancialData());
   return json.data!;
 }
 
 export async function revertPayrollRequest(id: string): Promise<PayrollRecord> {
   const res = await fetch(`/api/payroll/${id}/unpay`, { method: "POST" });
-  const json: ApiResponse<PayrollRecord> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to revert payroll record");
+  refreshAfter(invalidatePayroll(), invalidateFinancialData());
   return json.data!;
 }
 
@@ -77,8 +68,9 @@ export async function updatePayrollRequest(id: string, data: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json: ApiResponse<PayrollRecord> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to update payroll record");
+  refreshAfter(invalidatePayroll());
   return json.data!;
 }
 
@@ -92,7 +84,8 @@ export async function runPayrollBatchRequest(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ period, entries, markAsPaid }),
   });
-  const json: ApiResponse<PayrollRunResult> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to run payroll");
+  refreshAfter(invalidatePayroll(), invalidateFinancialData());
   return json.data!;
 }

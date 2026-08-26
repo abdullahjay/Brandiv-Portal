@@ -1,3 +1,4 @@
+import { cache } from "react";
 import {
   getAllSettings as repoGetAllSettings,
   getSetting,
@@ -14,6 +15,9 @@ import type { UpsertSettingsInput, FxRatesInput, CreateLookupInput, UpdateLookup
 export async function getAllSettings() {
   return repoGetAllSettings();
 }
+
+/** Deduped per server request — used by dashboard layout on every navigation. */
+export const getCachedSettings = cache(getAllSettings);
 
 export async function upsertSettings(data: UpsertSettingsInput) {
   await upsertManySettings(data as Record<string, unknown>);

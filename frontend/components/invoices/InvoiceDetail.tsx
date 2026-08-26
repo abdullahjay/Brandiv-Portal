@@ -206,8 +206,8 @@ table.items td.amount{text-align:right;font-size:13px;font-weight:700;color:#1a1
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailProps) {
-  const { data: invoice, loading, refetch } = useInvoice(invoiceId);
+export default function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
+  const { data: invoice, loading } = useInvoice(invoiceId);
   const { settings } = useSettings();
   const [acting, setActing] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -220,8 +220,6 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
     setActionError(null);
     try {
       await fn();
-      await refetch();
-      onUpdated?.();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Action failed");
     } finally {
@@ -434,7 +432,14 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
                       borderBottom: "0.5px solid var(--b3)",
                     }}
                   >
-                    <div style={{ fontSize: 13, color: "var(--t1)" }}>{item.description}</div>
+                    <div style={{ fontSize: 13, color: "var(--t1)" }}>
+                      {item.description}
+                      {item.upsellId && (
+                        <span style={{ marginLeft: 6, fontSize: 10, color: "var(--blue)", border: "0.5px solid var(--blue)", borderRadius: 4, padding: "1px 5px" }}>
+                          Upsell
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: "var(--t2)", textAlign: "right" }}>{item.quantity}</div>
                     <div style={{ fontSize: 12, color: "var(--t2)", textAlign: "right" }}>
                       {invoice.currency} {fmt(item.rate / 100)}
@@ -487,10 +492,8 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
           open={showEditModal}
           invoice={invoice}
           onClose={() => setShowEditModal(false)}
-          onSaved={async () => {
+          onSaved={() => {
             setShowEditModal(false);
-            await refetch();
-            onUpdated?.();
           }}
         />
       )}
@@ -500,9 +503,8 @@ export default function InvoiceDetail({ invoiceId, onUpdated }: InvoiceDetailPro
         <RecordPaymentModal
           open={showPayModal}
           onClose={() => setShowPayModal(false)}
-          onRecorded={async () => {
-            await refetch();
-            onUpdated?.();
+          onRecorded={() => {
+            setShowPayModal(false);
           }}
           invoice={invoice}
         />

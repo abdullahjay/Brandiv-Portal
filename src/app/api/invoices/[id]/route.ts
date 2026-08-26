@@ -1,14 +1,13 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, notFound, serverError } from "@backend/lib/apiResponse";
 import { getInvoice, editInvoice, voidInvoice } from "@backend/services/invoiceService";
 import { updateInvoiceSchema } from "@backend/validators/invoiceValidator";
 
 // GET /api/invoices/:id
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { id } = await params;
     const invoice = await getInvoice(id);
@@ -22,8 +21,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // PUT /api/invoices/:id
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const body = await req.json();
     const parsed = updateInvoiceSchema.safeParse(body);
@@ -39,12 +38,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 // DELETE /api/invoices/:id — cancels (soft)
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    const role = session.user.role;
+    const role = user.role;
     if (!["super_admin", "admin", "manager", "finance"].includes(role)) {
       return unauthorized("Insufficient permissions");
     }

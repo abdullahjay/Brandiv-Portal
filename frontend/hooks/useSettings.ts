@@ -1,5 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
-import type { ApiResponse, LookupItem } from "@frontend/types";
+import { useQuery } from "@tanstack/react-query";
+import {
+  fetchFxRates,
+  fetchSettings,
+  fetchSettingsLookups,
+  fxRatesQueryKey,
+  settingsLookupsQueryKey,
+  settingsQueryKey,
+} from "@frontend/lib/queries/listQueries";
+import { invalidateLookups, invalidateSettings, refreshAfter } from "@frontend/lib/invalidateQueries";
+import type { LookupItem } from "@frontend/types";
 
 export interface AppSettings {
   invoice_prefix?: string;
@@ -16,28 +25,18 @@ export interface AppSettings {
 }
 
 export function useSettings() {
-  const [settings, setSettings] = useState<AppSettings>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: settingsQueryKey(),
+    queryFn: fetchSettings,
+    staleTime: 60_000,
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings");
-      const json: ApiResponse<AppSettings> = await res.json();
-      if (json.success && json.data) setSettings(json.data);
-      else setError(json.message ?? "Failed to load settings");
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  return { settings, loading, error, refresh: load };
+  return {
+    settings: query.data ?? {},
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refresh: () => void query.refetch(),
+  };
 }
 
 export async function saveSettings(data: AppSettings): Promise<AppSettings> {
@@ -46,34 +45,25 @@ export async function saveSettings(data: AppSettings): Promise<AppSettings> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json: ApiResponse<AppSettings> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to save settings");
+  refreshAfter(invalidateSettings());
   return json.data!;
 }
 
 export function useFxRates() {
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: fxRatesQueryKey(),
+    queryFn: fetchFxRates,
+    staleTime: 60_000,
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings/fx-rates");
-      const json: ApiResponse<Record<string, number>> = await res.json();
-      if (json.success && json.data) setRates(json.data);
-      else setError(json.message ?? "Failed to load rates");
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  return { rates, loading, error, refresh: load };
+  return {
+    rates: query.data ?? {},
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refresh: () => void query.refetch(),
+  };
 }
 
 export async function saveFxRates(rates: Record<string, number>): Promise<Record<string, number>> {
@@ -82,34 +72,25 @@ export async function saveFxRates(rates: Record<string, number>): Promise<Record
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rates),
   });
-  const json: ApiResponse<Record<string, number>> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to save rates");
+  refreshAfter(invalidateSettings());
   return json.data!;
 }
 
 export function useLookups() {
-  const [lookups, setLookups] = useState<Record<string, LookupItem[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: settingsLookupsQueryKey(),
+    queryFn: fetchSettingsLookups,
+    staleTime: 60_000,
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings/lookups");
-      const json: ApiResponse<Record<string, LookupItem[]>> = await res.json();
-      if (json.success && json.data) setLookups(json.data);
-      else setError(json.message ?? "Failed to load lookups");
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  return { lookups, loading, error, refresh: load };
+  return {
+    lookups: query.data ?? {},
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refresh: () => void query.refetch(),
+  };
 }
 
 export async function createLookupRequest(data: {
@@ -124,8 +105,9 @@ export async function createLookupRequest(data: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json: ApiResponse<LookupItem> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to create lookup");
+  refreshAfter(invalidateLookups());
   return json.data!;
 }
 
@@ -135,13 +117,15 @@ export async function updateLookupRequest(id: string, data: { label?: string; va
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json: ApiResponse<LookupItem> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to update lookup");
+  refreshAfter(invalidateLookups());
   return json.data!;
 }
 
 export async function deleteLookupRequest(id: string): Promise<void> {
   const res = await fetch(`/api/settings/lookups/${id}`, { method: "DELETE" });
-  const json: ApiResponse<unknown> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to delete lookup");
+  refreshAfter(invalidateLookups());
 }

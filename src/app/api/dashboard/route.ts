@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, serverError } from "@backend/lib/apiResponse";
 import { getDashboardData } from "@backend/repositories/dashboardRepository";
 
@@ -11,8 +10,8 @@ function currentPeriod() {
 // GET /api/dashboard?period=YYYY-MM
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
     const { searchParams } = new URL(req.url);
     const period = searchParams.get("period") ?? currentPeriod();

@@ -1,7 +1,6 @@
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@backend/lib/auth";
+import { requireApiUser } from "@backend/lib/requestAuth";
 import { ok, badRequest, unauthorized, forbidden, serverError } from "@backend/lib/apiResponse";
 import { upsertManySettings } from "@backend/repositories/settingRepository";
 
@@ -16,10 +15,10 @@ const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return unauthorized();
+    const user = requireApiUser(req);
+    if (!user) return unauthorized();
 
-    const role = (session.user as { role?: string }).role ?? "";
+    const role = user.role ?? "";
     if (!["super_admin", "admin"].includes(role)) return forbidden();
 
     const formData = await req.formData();

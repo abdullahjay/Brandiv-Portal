@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { Project, ApiResponse, PaginatedResponse, CreateProjectInput } from "@frontend/types";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { projectsQueryKey, fetchProjects } from "@frontend/lib/queries/listQueries";
+import { invalidateProjects, refreshAfter } from "@frontend/lib/invalidateQueries";
+import { apiFetch } from "@frontend/lib/apiFetch";
+import type { Project, CreateProjectInput } from "@frontend/types";
 
 interface UseProjectsOptions {
   status?: "active" | "pending" | "done" | "cancelled" | "all";
@@ -14,61 +17,33 @@ interface UseProjectsOptions {
 export function useProjects(options: UseProjectsOptions = {}) {
   const { status = "all", type = "all", clientId, search = "", page = 1 } = options;
 
-  const [data, setData] = useState<PaginatedResponse<Project> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: projectsQueryKey({ status, type, clientId, search, page }),
+    queryFn: () => fetchProjects({ status, type, clientId, search, page }),
+    placeholderData: keepPreviousData,
+  });
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({
-        status,
-        type,
-        page: String(page),
-        ...(search && { search }),
-        ...(clientId && { clientId }),
-      });
-      const res = await fetch(`/api/projects?${params}`);
-      const json: ApiResponse<PaginatedResponse<Project>> = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to fetch projects");
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [status, type, clientId, search, page]);
-
-  useEffect(() => { fetchProjects(); }, [fetchProjects]);
-
-  return { data, loading, error, refetch: fetchProjects };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export function useProject(id: string | null, refreshKey = 0) {
-  const [data, setData] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ["projects", id, refreshKey],
+    queryFn: () => apiFetch<Project>(`/api/projects/${id}`),
+    enabled: !!id,
+  });
 
-  const fetchProject = useCallback(async () => {
-    if (!id) { setData(null); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/projects/${id}`);
-      const json: ApiResponse<Project> = await res.json();
-      if (!json.success) throw new Error(json.message);
-      setData(json.data!);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, refreshKey]);
-
-  useEffect(() => { fetchProject(); }, [fetchProject]);
-
-  return { data, loading, error, refetch: fetchProject };
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: () => void query.refetch(),
+  };
 }
 
 export async function createProjectRequest(body: CreateProjectInput): Promise<Project> {
@@ -77,8 +52,9 @@ export async function createProjectRequest(body: CreateProjectInput): Promise<Pr
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const json: ApiResponse<Project> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to create project");
+  refreshAfter(invalidateProjects());
   return json.data!;
 }
 
@@ -88,13 +64,15 @@ export async function updateProjectRequest(id: string, body: Partial<CreateProje
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const json: ApiResponse<Project> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to update project");
+  refreshAfter(invalidateProjects(id));
   return json.data!;
 }
 
 export async function archiveProjectRequest(id: string): Promise<void> {
   const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-  const json: ApiResponse<unknown> = await res.json();
+  const json = await res.json();
   if (!json.success) throw new Error(json.message ?? "Failed to archive project");
+  refreshAfter(invalidateProjects(id));
 }

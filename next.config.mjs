@@ -22,7 +22,7 @@ const withPWA = withPWAInit({
 
 // Ensure NEXTAUTH_URL is never an empty string — next-auth calls new URL() on
 // it at module load time and throws "Invalid URL" when the value is "".
-// At build time (CI / Hostinger postinstall) we only need a syntactically valid
+// At build time (CI / Hostinger postinstall via scripts/postinstall.mjs) we only need
 // placeholder; the real value must be set in the platform's env-var UI.
 if (!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL === "") {
   process.env.NEXTAUTH_URL = "http://localhost:3000";
@@ -90,6 +90,15 @@ const nextConfig = {
     config.resolve.alias["@frontend"] = path.resolve(__dirname, "frontend");
     config.resolve.alias["@backend"] = path.resolve(__dirname, "backend");
     return config;
+  },
+
+  // Same aliases for `next dev --turbopack` (webpack() is ignored by Turbopack)
+  turbopack: {
+    resolveAlias: {
+      "@": path.resolve(__dirname, "src"),
+      "@frontend": path.resolve(__dirname, "frontend"),
+      "@backend": path.resolve(__dirname, "backend"),
+    },
   },
 };
 
