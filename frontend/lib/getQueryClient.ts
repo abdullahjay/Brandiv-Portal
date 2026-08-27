@@ -10,8 +10,11 @@ function makeQueryClient() {
         retry: 1,
       },
       dehydrate: {
-        shouldDehydrateQuery: (query) =>
-          defaultShouldDehydrateQuery(query) || query.state.status === "pending",
+        // Skip errored queries — Prisma/API errors may not serialize for hydration.
+        shouldDehydrateQuery: (query) => {
+          if (query.state.status === "error") return false;
+          return defaultShouldDehydrateQuery(query) || query.state.status === "pending";
+        },
       },
     },
   });

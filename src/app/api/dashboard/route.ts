@@ -7,7 +7,7 @@ function currentPeriod() {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// GET /api/dashboard?period=YYYY-MM
+// GET /api/dashboard?period=YYYY-MM|all
 export async function GET(req: Request) {
   try {
     const user = requireApiUser(req);
@@ -16,8 +16,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const period = searchParams.get("period") ?? currentPeriod();
 
-    if (!/^\d{4}-\d{2}$/.test(period)) {
-      return badRequest("Invalid period format — use YYYY-MM");
+    if (period !== "all" && !/^\d{4}-\d{2}$/.test(period)) {
+      return badRequest("Invalid period format — use YYYY-MM or all");
     }
 
     const data = await getDashboardData(period);

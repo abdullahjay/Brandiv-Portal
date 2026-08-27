@@ -19,6 +19,7 @@ import { getAllSettings, getFxRates, listLookups } from "@backend/services/setti
 import { getAllEmployeesWithCompensationHistory } from "@backend/services/compensationService";
 import { getDashboardData } from "@backend/repositories/dashboardRepository";
 import { apiFetch } from "@frontend/lib/apiFetch";
+import { currentPeriod } from "@frontend/lib/period";
 import type {
   Client,
   Commission,
@@ -296,25 +297,24 @@ export async function prefetchCommissions(qc: QueryClient, params: CommissionsQu
 
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 
-export function currentPeriod() {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
-}
+export { currentPeriod };
 
 export function dashboardQueryKey(period?: string) {
-  return ["dashboard", period ?? currentPeriod()] as const;
+  const p = period === "" ? "all" : (period ?? currentPeriod());
+  return ["dashboard", p] as const;
 }
 
 export async function fetchDashboard(period?: string) {
-  const p = period ?? currentPeriod();
-  return apiFetch<Awaited<ReturnType<typeof getDashboardData>>>(`/api/dashboard?period=${p}`);
+  const p = period === "" ? "all" : (period ?? currentPeriod());
+  return apiFetch<Awaited<ReturnType<typeof getDashboardData>>>(`/api/dashboard?period=${encodeURIComponent(p)}`);
 }
 
 export async function prefetchDashboard(qc: QueryClient, period?: string) {
   const p = period ?? currentPeriod();
+  const apiPeriod = p === "" ? "all" : p;
   await qc.prefetchQuery({
     queryKey: dashboardQueryKey(p),
-    queryFn: () => serverQuery(() => getDashboardData(p)),
+    queryFn: () => serverQuery(() => getDashboardData(apiPeriod)),
   });
 }
 
@@ -619,18 +619,20 @@ export function cashFlowQueryKey(period: string) {
 }
 
 export async function fetchPnLStatement(period: string) {
-  return apiFetch<PnLStatement>(`/api/statements/pl?period=${period}`);
+  const qs = period ? `period=${encodeURIComponent(period)}` : "period=all";
+  return apiFetch<PnLStatement>(`/api/statements/pl?${qs}`);
 }
 
 export async function fetchCashFlowStatement(period: string) {
-  return apiFetch<CashFlowStatement>(`/api/statements/cashflow?period=${period}`);
+  const qs = period ? `period=${encodeURIComponent(period)}` : "period=all";
+  return apiFetch<CashFlowStatement>(`/api/statements/cashflow?${qs}`);
 }
 
 export async function prefetchPnL(qc: QueryClient, period?: string) {
   const p = period ?? currentPeriod();
   await qc.prefetchQuery({
     queryKey: pnLQueryKey(p),
-    queryFn: () => serverQuery(() => fetchPnL(p)),
+    queryFn: () => serverQuery(() => fetchPnL(p || undefined)),
   });
 }
 
@@ -638,18 +640,13 @@ export async function prefetchCashFlow(qc: QueryClient, period?: string) {
   const p = period ?? currentPeriod();
   await qc.prefetchQuery({
     queryKey: cashFlowQueryKey(p),
-    queryFn: () => serverQuery(() => fetchCashFlow(p)),
+    queryFn: () => serverQuery(() => fetchCashFlow(p || undefined)),
   });
 }
 
+/** Server prefetch for Reports — default tab is P&L only; other tabs load on demand. */
 export async function prefetchReportsPage(qc: QueryClient) {
-  const period = currentPeriod();
-  await Promise.all([
-    prefetchPnL(qc, period),
-    prefetchCashFlow(qc, period),
-    prefetchAccounts(qc),
-    prefetchDistributions(qc),
-  ]);
+  await prefetchPnL(qc, currentPeriod());
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

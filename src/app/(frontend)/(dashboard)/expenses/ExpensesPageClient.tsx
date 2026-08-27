@@ -6,12 +6,8 @@ import ExpenseList from "@frontend/components/expenses/ExpenseList";
 import ExpenseDetail from "@frontend/components/expenses/ExpenseDetail";
 import AddExpenseModal from "@frontend/components/expenses/AddExpenseModal";
 import { useExpenses } from "@frontend/hooks/useExpenses";
+import { currentPeriod } from "@frontend/lib/period";
 import type { Expense } from "@frontend/types";
-
-function currentPeriod() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
 
 function fmtCompact(pkrPaise: number) {
   const pkr = pkrPaise / 100;
@@ -66,7 +62,7 @@ export default function ExpensesPageClient() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("");
-  const [period, setPeriod] = useState("");
+  const [period, setPeriod] = useState(currentPeriod());
   const [showAdd, setShowAdd] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 

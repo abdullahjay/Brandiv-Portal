@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@backend/lib/prisma";
+import { ledgerExcludePayrollExpensesSql } from "@backend/lib/financialFilters";
 
 export interface LedgerRow {
   id: string;
@@ -75,7 +76,7 @@ function buildLedgerUnion(type?: LedgerQuery["type"], period?: string): Prisma.S
         (-e."amountPkr")::float8 AS pkr_amount,
         'completed'::text AS status
       FROM expenses e
-      WHERE e.category <> 'Salaries' ${periodFilter("e", period)}
+      WHERE 1=1 ${ledgerExcludePayrollExpensesSql()} ${periodFilter("e", period)}
     `);
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtPkr } from "@frontend/lib/currency";
+import { periodLabel } from "@frontend/lib/period";
 import { useCashFlow } from "@frontend/hooks/useStatements";
 import type { CashFlowOutflow } from "@frontend/types";
 
@@ -40,7 +41,7 @@ export default function CashFlowStatement({ period }: Props) {
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", marginBottom: 16, fontSize: 11, color: "var(--t2)" }}>
         <i className="ti ti-info-circle" style={{ fontSize: 14, color: "var(--blue)" }} />
-        Cash basis — paid payroll and actual cash movements only. Net profit (accrual) is on the P&L tab.
+        Cash basis — {periodLabel(period)}. Paid payroll only; salary auto-expenses excluded (shown under Payroll). Net profit (accrual) is on the P&L tab.
       </div>
 
       {/* Summary metrics */}
@@ -78,7 +79,7 @@ export default function CashFlowStatement({ period }: Props) {
           </div>
 
           {data.inflows.length === 0 ? (
-            <div style={{ padding: 24, textAlign: "center", color: "var(--t3)", fontSize: 13 }}>No inflows for {period}</div>
+            <div style={{ padding: 24, textAlign: "center", color: "var(--t3)", fontSize: 13 }}>No inflows for {periodLabel(period)}</div>
           ) : (
             data.inflows.map((r, idx) => (
               <div
@@ -114,7 +115,7 @@ export default function CashFlowStatement({ period }: Props) {
           </div>
 
           {data.outflows.length === 0 ? (
-            <div style={{ padding: 24, textAlign: "center", color: "var(--t3)", fontSize: 13 }}>No outflows for {period}</div>
+            <div style={{ padding: 24, textAlign: "center", color: "var(--t3)", fontSize: 13 }}>No outflows for {periodLabel(period)}</div>
           ) : (
             data.outflows.map((r, idx) => {
               const cfg = OUTFLOW_CONFIG[r.type];
@@ -145,7 +146,7 @@ export default function CashFlowStatement({ period }: Props) {
 
       {/* Net summary bar */}
       <div style={{ marginTop: 16, padding: "14px 20px", background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>Net cash flow for {period}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>Net cash flow for {periodLabel(period)}</span>
         <span style={{ fontSize: 18, fontWeight: 800, color: data.netCashFlowPkr >= 0 ? "var(--blue)" : "var(--red)" }}>
           {fmtPkr(data.netCashFlowPkr)}
         </span>

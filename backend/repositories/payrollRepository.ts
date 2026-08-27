@@ -1,5 +1,5 @@
 import { prisma } from "@backend/lib/prisma";
-import { AMOUNT_MULTIPLIER } from "@backend/lib/constants";
+import { AMOUNT_MULTIPLIER, PAYROLL_AUTO_EXPENSE_PREFIX } from "@backend/lib/constants";
 import type { CreatePayrollInput, UpdatePayrollInput, ListPayrollInput, RunPayrollInput } from "@backend/validators/payrollValidator";
 import type { Prisma } from "@prisma/client";
 
@@ -116,14 +116,6 @@ export async function markPayrollPaid(id: string) {
   if (!record) return null;
 
   const paidAt = new Date();
-  const period = record.period;
-  const recipientName = record.employee?.name ?? record.user?.name ?? "Employee";
-  const expensePeriod = period;
-  const expenseNotes = [
-    `Tax: PKR ${(Number(record.taxPkr) / 100).toLocaleString()}`,
-    `Deductions: PKR ${(Number(record.deductions) / 100).toLocaleString()}`,
-    `Net paid: PKR ${(Number(record.netPkr) / 100).toLocaleString()}`,
-  ].join(" · ");
 
   const operatingAccount = await prisma.crmAccount.findFirst({
     where: { type: "operating", isDefaultOperating: true },
@@ -143,18 +135,6 @@ export async function markPayrollPaid(id: string) {
         data: { currentBalancePkr: { decrement: record.netPkr } },
       });
     }
-
-    // Auto-create expense entry for this salary payment
-    await tx.expense.create({
-      data: {
-        description: `Salary — ${recipientName} (${period})`,
-        category: "Salaries",
-        amountPkr: record.grossPkr,
-        period: expensePeriod,
-        date: paidAt,
-        notes: expenseNotes,
-      },
-    });
 
     return updated;
   });
@@ -187,7 +167,7 @@ export async function revertPayrollToPending(id: string) {
   if (!record) return null;
 
   const recipientName = record.employee?.name ?? record.user?.name ?? "Employee";
-  const expenseDescription = `Salary — ${recipientName} (${record.period})`;
+  const expenseDescription = `${PAYROLL_AUTO_EXPENSE_PREFIX} ${recipientName} (${record.period})`;
 
   const operatingAccount = await prisma.crmAccount.findFirst({
     where: { type: "operating", isDefaultOperating: true },
@@ -228,7 +208,6 @@ export async function getPayrollSummaryByPeriod(period: string) {
 export async function runPayrollBatch(input: RunPayrollInput) {
   const { period, entries, markAsPaid = false } = input;
   const paidAt = markAsPaid ? new Date() : null;
-  const expensePeriod = markAsPaid ? period : "";
 
   return prisma.$transaction(async (tx) => {
     const employeeIds = entries.map((e) => e.employeeId).filter(Boolean) as string[];
@@ -301,27 +280,10 @@ export async function runPayrollBatch(input: RunPayrollInput) {
         const netPkr     = grossPkr - taxPkr - deductions;
 
         if (markAsPaid && paidAt) {
-          const expenseNotes = [
-            `Tax: PKR ${(Number(taxPkr) / 100).toLocaleString()}`,
-            `Deductions: PKR ${(Number(deductions) / 100).toLocaleString()}`,
-            `Net paid: PKR ${(Number(netPkr) / 100).toLocaleString()}`,
-          ].join(" · ");
-
           const updatedRecord = await tx.payrollRecord.update({
             where: { id: existing.id },
             data: { grossPkr, taxPkr, deductions, netPkr, status: "paid", paidAt },
             select: payrollSelect,
-          });
-
-          await tx.expense.create({
-            data: {
-              description: `Salary — ${existing.name} (${period})`,
-              category: "Salaries",
-              amountPkr: grossPkr,
-              period: expensePeriod,
-              date: paidAt,
-              notes: expenseNotes,
-            },
           });
 
           totalNet += netPkr;
@@ -343,10 +305,6 @@ export async function runPayrollBatch(input: RunPayrollInput) {
       const deductions = BigInt(Math.round((entry.deductions ?? 0) * AMOUNT_MULTIPLIER));
       const netPkr     = grossPkr - taxPkr - deductions;
 
-      const recipientName = entry.employeeId
-        ? (employeeNameMap.get(entry.employeeId) ?? "Employee")
-        : (userNameMap.get(entry.userId!)        ?? "Employee");
-
       const record = await tx.payrollRecord.create({
         data: {
           period,
@@ -364,23 +322,6 @@ export async function runPayrollBatch(input: RunPayrollInput) {
       });
 
       if (markAsPaid && paidAt) {
-        const expenseNotes = [
-          `Tax: PKR ${(Number(taxPkr) / 100).toLocaleString()}`,
-          `Deductions: PKR ${(Number(deductions) / 100).toLocaleString()}`,
-          `Net paid: PKR ${(Number(netPkr) / 100).toLocaleString()}`,
-        ].join(" · ");
-
-        await tx.expense.create({
-          data: {
-            description: `Salary — ${recipientName} (${period})`,
-            category: "Salaries",
-            amountPkr: grossPkr,
-            period: expensePeriod,
-            date: paidAt,
-            notes: expenseNotes,
-          },
-        });
-
         totalNet += netPkr;
       }
 

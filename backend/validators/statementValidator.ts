@@ -1,8 +1,15 @@
 import { z } from "zod";
 
-const periodSchema = z.object({
-  period: z.string().regex(/^\d{4}-\d{2}$/, "Period must be YYYY-MM"),
+const periodValueSchema = z.union([
+  z.string().regex(/^\d{4}-\d{2}$/, "Period must be YYYY-MM"),
+  z.literal("all"),
+  z.literal(""),
+]);
+
+export const getPnLSchema = z.object({
+  period: periodValueSchema.optional(),
 });
 
-export const getPnLSchema = periodSchema;
-export const getCashFlowSchema = periodSchema;
+export const getCashFlowSchema = z.object({
+  period: periodValueSchema.optional(),
+});

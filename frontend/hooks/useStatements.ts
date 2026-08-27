@@ -14,7 +14,6 @@ export function usePnL(period: string) {
   const query = useQuery({
     queryKey: pnLQueryKey(period),
     queryFn: () => fetchPnLStatement(period),
-    enabled: !!period,
     placeholderData: keepPreviousData,
   });
 
@@ -30,7 +29,6 @@ export function useCashFlow(period: string) {
   const query = useQuery({
     queryKey: cashFlowQueryKey(period),
     queryFn: () => fetchCashFlowStatement(period),
-    enabled: !!period,
     placeholderData: keepPreviousData,
   });
 

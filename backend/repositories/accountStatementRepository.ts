@@ -1,4 +1,5 @@
 import { prisma } from "@backend/lib/prisma";
+import { excludePayrollExpenses } from "@backend/lib/financialFilters";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -57,7 +58,9 @@ async function fetchOperatingEntries(): Promise<Omit<StatementEntry, "balance">[
       },
     }),
 
-    prisma.expense.findMany(),
+    prisma.expense.findMany({
+      where: excludePayrollExpenses(),
+    }),
 
     // Cash out — only paid payroll actually left the operating account
     prisma.payrollRecord.findMany({

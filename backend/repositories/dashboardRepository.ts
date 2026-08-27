@@ -1,7 +1,12 @@
 import { prisma } from "@backend/lib/prisma";
 import { AMOUNT_MULTIPLIER } from "@backend/lib/constants";
+import { excludePayrollExpenses } from "@backend/lib/financialFilters";
 
 const M = AMOUNT_MULTIPLIER; // 100 — all DB monetary values are actual × 100
+
+function periodWhere(period: string) {
+  return period && period !== "all" ? { period } : {};
+}
 
 function getLast6Periods(): string[] {
   const periods: string[] = [];
@@ -30,11 +35,14 @@ export async function getDashboardData(period: string) {
     recentIncome,
     topClientsRaw,
   ] = await Promise.all([
-    prisma.incomeRecord.aggregate({ where: { period }, _sum: { netPkr: true } }),
-    prisma.expense.aggregate({ where: { period }, _sum: { amountPkr: true } }),
-    prisma.payrollRecord.aggregate({ where: { period }, _sum: { netPkr: true } }),
+    prisma.incomeRecord.aggregate({ where: periodWhere(period), _sum: { netPkr: true } }),
+    prisma.expense.aggregate({
+      where: excludePayrollExpenses(periodWhere(period)),
+      _sum: { amountPkr: true },
+    }),
+    prisma.payrollRecord.aggregate({ where: periodWhere(period), _sum: { netPkr: true } }),
     prisma.commission.aggregate({
-      where: { period, status: { in: ["approved", "paid"] } },
+      where: { ...periodWhere(period), status: { in: ["approved", "paid"] } },
       _sum: { commissionPkr: true },
     }),
     prisma.crmAccount.findFirst({

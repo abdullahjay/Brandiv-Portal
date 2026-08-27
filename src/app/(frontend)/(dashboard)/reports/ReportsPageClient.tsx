@@ -7,11 +7,7 @@ import CashFlowStatement from "@frontend/components/statements/CashFlowStatement
 import AccountStatement from "@frontend/components/statements/AccountStatement";
 import DistributionStatement from "@frontend/components/statements/DistributionStatement";
 import PeriodSelect from "@frontend/components/ui/PeriodSelect";
-
-function currentPeriod() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
+import { currentPeriod } from "@frontend/lib/period";
 
 type Tab = "pl" | "account" | "distribution" | "cashflow";
 
@@ -44,7 +40,7 @@ export default function ReportsPageClient() {
   const setActivePeriod = tab === "pl" ? setPlPeriod : setCfPeriod;
 
   return (
-    <>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Topbar title="Statements" />
       <style>{`@media (max-width: 767px) { .reports-content { padding: 12px 12px 20px !important; } }`}</style>
       <div className="reports-content" style={{ flex: 1, overflowY: "auto", padding: "20px 24px 24px" }}>
@@ -117,7 +113,7 @@ export default function ReportsPageClient() {
             {showPeriod && (
               <>
                 <span style={{ fontSize: 12, color: "var(--t2)" }}>Period</span>
-                <PeriodSelect value={activePeriod} onChange={setActivePeriod} />
+                <PeriodSelect value={activePeriod} onChange={setActivePeriod} includeAll allLabel="All periods" />
               </>
             )}
             {showExport && (
@@ -139,6 +135,6 @@ export default function ReportsPageClient() {
         {tab === "distribution" && <DistributionStatement onExportReady={(h) => { exportRef.current = h; }} />}
         {tab === "cashflow"     && <CashFlowStatement period={cfPeriod} />}
       </div>
-    </>
+    </div>
   );
 }

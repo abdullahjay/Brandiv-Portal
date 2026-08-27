@@ -1,22 +1,29 @@
 import { prisma } from "@backend/lib/prisma";
+import { excludePayrollExpenses } from "@backend/lib/financialFilters";
+
+function periodWhere(period?: string) {
+  return period ? { period } : {};
+}
 
 // ─── P&L Statement ────────────────────────────────────────────────────────────
 
-export async function getPnLStatement(period: string) {
+export async function getPnLStatement(period?: string) {
+  const pf = periodWhere(period);
+
   const [incomes, expenses, payrolls, commissions, distribution] = await Promise.all([
     prisma.incomeRecord.findMany({
-      where: { period },
+      where: pf,
       include: { client: { select: { id: true, companyName: true } } },
       orderBy: { netPkr: "desc" },
     }),
 
     prisma.expense.findMany({
-      where: { period },
+      where: excludePayrollExpenses(pf),
       orderBy: { amountPkr: "desc" },
     }),
 
     prisma.payrollRecord.findMany({
-      where: { period },
+      where: pf,
       include: {
         user: { select: { id: true, name: true } },
         employee: { select: { id: true, name: true } },
@@ -25,7 +32,7 @@ export async function getPnLStatement(period: string) {
     }),
 
     prisma.commission.findMany({
-      where: { period },
+      where: pf,
       include: {
         stakeholderAccount: { select: { id: true, name: true } },
         client: { select: { companyName: true } },
@@ -33,14 +40,15 @@ export async function getPnLStatement(period: string) {
       orderBy: { commissionPkr: "desc" },
     }),
 
-    prisma.distribution.findFirst({ where: { period } }),
+    period
+      ? prisma.distribution.findFirst({ where: { period } })
+      : Promise.resolve(null),
   ]);
 
   const totalIncomePkr = incomes.reduce((s, r) => s + Number(r.netPkr), 0);
   const totalExpensesPkr = expenses.reduce((s, r) => s + Number(r.amountPkr), 0);
   const totalPayrollPkr = payrolls.reduce((s, r) => s + Number(r.netPkr), 0);
 
-  // Only include approved/paid commissions in P&L (pending are not yet confirmed)
   const billableCommissions = commissions.filter((c) => c.status !== "pending");
   const totalCommissionPkr = billableCommissions.reduce((s, c) => s + Number(c.commissionPkr), 0);
 
@@ -52,7 +60,6 @@ export async function getPnLStatement(period: string) {
   const netProfitPkr = totalIncomePkr - totalExpensesPkr - totalPayrollPkr - totalCommissionPkr;
   const grossMarginPct = totalIncomePkr > 0 ? (netProfitPkr / totalIncomePkr) * 100 : 0;
 
-  // Income by client (aggregated)
   const incomeByClientMap = new Map<string, { clientName: string; amountPkr: number }>();
   for (const r of incomes) {
     const key = r.client.id;
@@ -65,7 +72,6 @@ export async function getPnLStatement(period: string) {
   }
   const incomeByClient = Array.from(incomeByClientMap.values()).sort((a, b) => b.amountPkr - a.amountPkr);
 
-  // Expenses by category (aggregated)
   const expByCatMap = new Map<string, number>();
   for (const e of expenses) {
     expByCatMap.set(e.category, (expByCatMap.get(e.category) ?? 0) + Number(e.amountPkr));
@@ -74,7 +80,6 @@ export async function getPnLStatement(period: string) {
     .map(([category, amountPkr]) => ({ category, amountPkr }))
     .sort((a, b) => b.amountPkr - a.amountPkr);
 
-  // Payroll by employee
   const payrollByEmployee = payrolls.map((r) => ({
     name: r.user?.name ?? r.employee?.name ?? "Employee",
     grossPkr: Number(r.grossPkr),
@@ -83,7 +88,6 @@ export async function getPnLStatement(period: string) {
     status: r.status,
   }));
 
-  // Commissions by stakeholder (approved/paid only — matches net profit calculation)
   const commByAccountMap = new Map<string, { name: string; amountPkr: number; statuses: Set<string> }>();
   for (const c of billableCommissions) {
     const key = c.stakeholderAccount.id;
@@ -107,12 +111,11 @@ export async function getPnLStatement(period: string) {
     }))
     .sort((a, b) => b.amountPkr - a.amountPkr);
 
-  // Gross WHT deducted (informational)
   const totalWhtPkr = incomes.reduce((s, r) => s + Number(r.whtAmountPkr), 0);
   const totalGrossPkr = incomes.reduce((s, r) => s + Number(r.grossPkr), 0);
 
   return {
-    period,
+    period: period ?? "all",
     totalGrossPkr,
     totalWhtPkr,
     totalIncomePkr,
@@ -137,21 +140,23 @@ export async function getPnLStatement(period: string) {
 
 // ─── Cash Flow Statement ──────────────────────────────────────────────────────
 
-export async function getCashFlowStatement(period: string) {
-  const [incomes, expenses, payrolls, distribution, operatingAccount] = await Promise.all([
+export async function getCashFlowStatement(period?: string) {
+  const pf = periodWhere(period);
+
+  const [incomes, expenses, payrolls, distributions, operatingAccount] = await Promise.all([
     prisma.incomeRecord.findMany({
-      where: { period },
+      where: pf,
       include: { client: { select: { companyName: true } }, invoice: { select: { invoiceNumber: true } } },
       orderBy: { receivedAt: "asc" },
     }),
 
     prisma.expense.findMany({
-      where: { period },
+      where: excludePayrollExpenses(pf),
       orderBy: { date: "asc" },
     }),
 
     prisma.payrollRecord.findMany({
-      where: { period, status: "paid" },
+      where: { ...pf, status: "paid" },
       include: {
         user: { select: { name: true } },
         employee: { select: { name: true } },
@@ -159,7 +164,10 @@ export async function getCashFlowStatement(period: string) {
       orderBy: { paidAt: "asc" },
     }),
 
-    prisma.distribution.findFirst({ where: { period } }),
+    prisma.distribution.findMany({
+      where: pf,
+      orderBy: { runAt: "asc" },
+    }),
 
     prisma.crmAccount.findFirst({
       where: { isDefaultOperating: true },
@@ -200,19 +208,19 @@ export async function getCashFlowStatement(period: string) {
     outflows.push({
       date: (p.paidAt ?? p.createdAt).toISOString(),
       description: "Salary",
-      party: p.user?.name ?? "Employee",
+      party: p.user?.name ?? p.employee?.name ?? "Employee",
       reference: null,
       amountPkr: Number(p.netPkr),
       type: "payroll",
     });
   }
 
-  if (distribution) {
+  for (const distribution of distributions) {
     outflows.push({
       date: distribution.runAt.toISOString(),
       description: "Profit distribution",
       party: null,
-      reference: period,
+      reference: distribution.period,
       amountPkr: Number(distribution.operatingBalancePkr),
       type: "distribution",
     });
@@ -225,7 +233,7 @@ export async function getCashFlowStatement(period: string) {
   const netCashFlowPkr = totalInflowPkr - totalOutflowPkr;
 
   return {
-    period,
+    period: period ?? "all",
     inflows,
     outflows,
     totalInflowPkr,

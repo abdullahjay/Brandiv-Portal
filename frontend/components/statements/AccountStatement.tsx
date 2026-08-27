@@ -5,6 +5,7 @@ import { fmtPkr, pkrColor } from "@frontend/lib/currency";
 import { useAccountStatement } from "@frontend/hooks/useStatements";
 import { useAccounts } from "@frontend/hooks/useAccounts";
 import PeriodSelect from "@frontend/components/ui/PeriodSelect";
+import { currentPeriod } from "@frontend/lib/period";
 import type { StatementEntry, AccountStatement as AccountStatementType } from "@frontend/types";
 
 function fmt(n: number) {
@@ -153,7 +154,7 @@ function StatementMobileEntry({ entry }: { entry: StatementEntry }) {
 export default function AccountStatement({ onExportReady }: AccountStatementProps) {
   const { data: accounts, loading: accLoading } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [period, setPeriod] = useState("");
+  const [period, setPeriod] = useState(currentPeriod());
 
   const accountId = selectedAccountId ?? (accounts.length > 0 ? accounts[0].id : null);
   const { data: stmt, loading, error } = useAccountStatement(accountId, period);

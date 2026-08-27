@@ -35,6 +35,12 @@ export const EXPENSE_CATEGORIES = [
   "Other",
 ] as const;
 
+/** Auto-created when payroll is marked paid — excluded from statements to avoid double-counting with payroll_records. */
+export const PAYROLL_EXPENSE_CATEGORIES = ["Salaries", "Payroll"] as const;
+
+/** Description prefix for expense rows auto-created by markPayrollPaid / runPayrollBatch. */
+export const PAYROLL_AUTO_EXPENSE_PREFIX = "Salary —";
+
 // User roles and their allowed modules
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: ["*"],

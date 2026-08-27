@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtPkr } from "@frontend/lib/currency";
+import { periodLabel } from "@frontend/lib/period";
 import { usePnL } from "@frontend/hooks/useStatements";
 
 function fmt(n: number) {
@@ -76,7 +77,7 @@ export default function PLStatement({ period }: Props) {
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", marginBottom: 16, fontSize: 11, color: "var(--t2)" }}>
         <i className="ti ti-info-circle" style={{ fontSize: 14, color: "var(--blue)" }} />
-        Accrual basis — includes all payroll and approved/paid commissions for this period. Cash movement is on the Cash Flow tab.
+        Accrual basis — {periodLabel(period)}. Includes all payroll and approved/paid commissions. Salary expenses are counted once under Payroll (not Expenses). Cash movement is on the Cash Flow tab.
       </div>
 
       {/* Summary metrics */}
