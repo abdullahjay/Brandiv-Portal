@@ -38,24 +38,31 @@ export default function CashFlowStatement({ period }: Props) {
 
   return (
     <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", marginBottom: 16, fontSize: 11, color: "var(--t2)" }}>
+        <i className="ti ti-info-circle" style={{ fontSize: 14, color: "var(--blue)" }} />
+        Cash basis — paid payroll and actual cash movements only. Net profit (accrual) is on the P&L tab.
+      </div>
+
       {/* Summary metrics */}
       <div className="metrics-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
         {[
           { label: "Cash inflows", value: data.totalInflowPkr, color: "var(--green)" },
           { label: "Cash outflows", value: data.totalOutflowPkr, color: "var(--red)" },
           { label: "Net cash flow", value: data.netCashFlowPkr, color: data.netCashFlowPkr >= 0 ? "var(--blue)" : "var(--red)" },
-          { label: data.operatingAccountName ?? "Operating balance", value: data.operatingBalancePkr ?? 0, color: "var(--t1)" },
-        ].map(({ label, value, color }) => (
+          { label: "Current operating balance", value: data.operatingBalancePkr ?? 0, color: "var(--t1)", note: "as of today" },
+        ].map(({ label, value, color, note }) => (
           <div key={label} style={{ background: "var(--bg1)", border: "0.5px solid var(--b3)", borderRadius: "var(--rl)", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "var(--t2)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
             <div style={{ fontSize: 20, fontWeight: 700, color }}>
               {fmtPkr(value)}
             </div>
-            {label !== "Net cash flow" && label !== (data.operatingAccountName ?? "Operating balance") && (
+            {note ? (
+              <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 3 }}>{note}</div>
+            ) : label !== "Net cash flow" ? (
               <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 3 }}>
                 {label === "Cash inflows" ? `${data.inflows.length} payment${data.inflows.length !== 1 ? "s" : ""}` : `${data.outflows.length} transaction${data.outflows.length !== 1 ? "s" : ""}`}
               </div>
-            )}
+            ) : null}
           </div>
         ))}
       </div>

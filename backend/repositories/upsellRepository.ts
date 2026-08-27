@@ -9,6 +9,8 @@ const upsellSelect = {
   description: true,
   billingMode: true,
   status: true,
+  currency: true,
+  amountOriginal: true,
   amountPkr: true,
   commissionRatePct: true,
   managingCommissionRatePct: true,
@@ -77,13 +79,16 @@ export async function findSelectableUpsellsByProject(projectId: string) {
 }
 
 export async function createUpsell(projectId: string, data: CreateUpsellInput, createdById: string | null) {
+  const amountOriginalBigInt = BigInt(Math.round(data.amountOriginal * AMOUNT_MULTIPLIER));
   return prisma.projectUpsell.create({
     data: {
       projectId,
       title: data.title,
       description: data.description ?? null,
       billingMode: data.billingMode,
-      amountPkr: BigInt(Math.round(data.amountPkr * AMOUNT_MULTIPLIER)),
+      currency: data.currency,
+      amountOriginal: amountOriginalBigInt,
+      amountPkr: amountOriginalBigInt,
       earnerAccountId: data.earnerAccountId,
       commissionRatePct: data.commissionRatePct,
       managingPartnerId: data.managingPartnerId ?? null,
@@ -101,7 +106,12 @@ export async function updateUpsell(id: string, data: UpdateUpsellInput) {
   if (data.title !== undefined) updates.title = data.title;
   if (data.description !== undefined) updates.description = data.description;
   if (data.billingMode !== undefined) updates.billingMode = data.billingMode;
-  if (data.amountPkr !== undefined) updates.amountPkr = BigInt(Math.round(data.amountPkr * AMOUNT_MULTIPLIER));
+  if (data.currency !== undefined) updates.currency = data.currency;
+  if (data.amountOriginal !== undefined) {
+    const amountOriginalBigInt = BigInt(Math.round(data.amountOriginal * AMOUNT_MULTIPLIER));
+    updates.amountOriginal = amountOriginalBigInt;
+    updates.amountPkr = amountOriginalBigInt;
+  }
   if (data.commissionRatePct !== undefined) updates.commissionRatePct = data.commissionRatePct;
   if (data.managingCommissionRatePct !== undefined) updates.managingCommissionRatePct = data.managingCommissionRatePct;
   if (data.earnerAccountId !== undefined) updates.earnerAccount = { connect: { id: data.earnerAccountId } };

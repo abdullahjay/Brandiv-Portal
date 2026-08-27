@@ -32,7 +32,7 @@ export async function getDashboardData(period: string) {
   ] = await Promise.all([
     prisma.incomeRecord.aggregate({ where: { period }, _sum: { netPkr: true } }),
     prisma.expense.aggregate({ where: { period }, _sum: { amountPkr: true } }),
-    prisma.payrollRecord.aggregate({ where: { period, status: "paid" }, _sum: { netPkr: true } }),
+    prisma.payrollRecord.aggregate({ where: { period }, _sum: { netPkr: true } }),
     prisma.commission.aggregate({
       where: { period, status: { in: ["approved", "paid"] } },
       _sum: { commissionPkr: true },

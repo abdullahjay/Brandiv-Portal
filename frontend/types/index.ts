@@ -184,6 +184,8 @@ export interface ProjectUpsell {
   description: string | null;
   billingMode: UpsellBillingMode;
   status: UpsellStatus;
+  currency: string;
+  amountOriginal: number;
   amountPkr: number;
   commissionRatePct: number;
   managingCommissionRatePct: number;
@@ -202,7 +204,8 @@ export interface CreateUpsellInput {
   title: string;
   description?: string | null;
   billingMode: UpsellBillingMode;
-  amountPkr: number;
+  currency: string;
+  amountOriginal: number;
   earnerAccountId: string;
   commissionRatePct: number;
   managingPartnerId?: string | null;
@@ -673,6 +676,8 @@ export interface PnLStatement {
   distributionRunAt: string | null;
   allCommissionsCount: number;
   pendingCommissionsCount: number;
+  pendingPayrollCount: number;
+  pendingPayrollPkr: number;
 }
 
 export interface CashFlowInflow {

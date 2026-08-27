@@ -520,6 +520,8 @@ model ProjectUpsell {
   description               String?           @db.Text
   billingMode               UpsellBillingMode
   status                    UpsellStatus      @default(pending)
+  currency                  String            @default("USD") @db.VarChar(3)
+  amountOriginal            BigInt            @default(0)
   amountPkr                 BigInt
   commissionRatePct         Decimal           @db.Decimal(5, 2)
   managingCommissionRatePct Decimal           @default(0) @db.Decimal(5, 2)

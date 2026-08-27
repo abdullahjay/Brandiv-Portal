@@ -4,6 +4,7 @@ import { prisma } from "@backend/lib/prisma";
 
 export interface StatementEntry {
   id: string;
+  period: string;      // YYYY-MM — matches P&L / cash flow period field
   date: string;        // ISO datetime string — used for sorting
   description: string;
   type: "income" | "expense" | "payroll" | "distribution";
@@ -41,6 +42,10 @@ function computeRunningBalances(
   });
 }
 
+function closingBalanceFrom(entries: StatementEntry[]): number {
+  return entries.length > 0 ? entries[entries.length - 1].balance : 0;
+}
+
 // ─── Operating account entries ────────────────────────────────────────────────
 
 async function fetchOperatingEntries(): Promise<Omit<StatementEntry, "balance">[]> {
@@ -54,7 +59,9 @@ async function fetchOperatingEntries(): Promise<Omit<StatementEntry, "balance">[
 
     prisma.expense.findMany(),
 
+    // Cash out — only paid payroll actually left the operating account
     prisma.payrollRecord.findMany({
+      where: { status: "paid" },
       include: {
         user: { select: { name: true } },
         employee: { select: { name: true } },
@@ -71,6 +78,7 @@ async function fetchOperatingEntries(): Promise<Omit<StatementEntry, "balance">[
     const ref = r.invoice?.invoiceNumber ?? (r.incomeType ?? "Income");
     entries.push({
       id: r.id,
+      period: r.period,
       date: r.receivedAt.toISOString(),
       description: `${clientName} — ${ref}`,
       type: "income",
@@ -82,6 +90,7 @@ async function fetchOperatingEntries(): Promise<Omit<StatementEntry, "balance">[
   for (const e of expenses) {
     entries.push({
       id: e.id,
+      period: e.period,
       date: e.date.toISOString(),
       description: `${e.category} — ${e.description}`,
       type: "expense",
@@ -92,12 +101,10 @@ async function fetchOperatingEntries(): Promise<Omit<StatementEntry, "balance">[
 
   for (const p of payrolls) {
     const name = p.user?.name ?? p.employee?.name ?? "Payroll";
-    const date = p.paidAt
-      ? p.paidAt.toISOString()
-      : new Date(p.period + "-01").toISOString();
     entries.push({
       id: p.id,
-      date,
+      period: p.period,
+      date: (p.paidAt ?? p.createdAt).toISOString(),
       description: `${name} payroll — ${p.period}`,
       type: "payroll",
       credit: 0,
@@ -108,6 +115,7 @@ async function fetchOperatingEntries(): Promise<Omit<StatementEntry, "balance">[
   for (const d of distributions) {
     entries.push({
       id: d.id,
+      period: d.period,
       date: d.runAt.toISOString(),
       description: d.label ?? `Distribution — ${d.period}`,
       type: "distribution",
@@ -135,6 +143,7 @@ async function fetchStakeholderEntries(
 
   return items.map((item) => ({
     id: item.id,
+    period: item.distribution.period,
     date: item.distribution.runAt.toISOString(),
     description:
       item.distribution.label ?? `Distribution — ${item.distribution.period}`,
@@ -150,7 +159,6 @@ export async function getAccountStatement(
   accountId: string,
   period?: string
 ): Promise<AccountStatementResult> {
-  // 1. Load the account
   const account = await prisma.crmAccount.findUnique({
     where: { id: accountId },
     select: {
@@ -163,47 +171,31 @@ export async function getAccountStatement(
 
   if (!account) throw new Error("Account not found");
 
-  // 2. Fetch raw entries based on account type
   const rawEntries =
     account.type === "operating"
       ? await fetchOperatingEntries()
       : await fetchStakeholderEntries(accountId);
 
-  // 3. Sort all entries by date ascending (ISO string comparison is safe)
-  rawEntries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  rawEntries.sort((a, b) => {
+    const byDate = a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    if (byDate !== 0) return byDate;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
 
-  // 4. Stamp running balances starting from 0 (full history)
   const allEntries = computeRunningBalances(rawEntries, 0);
 
-  // 5. Apply period filter if requested
   if (period) {
-    const [yr, mo] = period.split("-").map(Number);
-    const periodStart = new Date(yr, mo - 1, 1).toISOString();
-    const periodEnd = new Date(yr, mo, 1).toISOString();
+    const priorRaw = rawEntries.filter((e) => e.period < period);
+    const priorEntries = computeRunningBalances(priorRaw, 0);
+    const openingBalance = priorEntries.length > 0 ? closingBalanceFrom(priorEntries) : 0;
 
-    // Opening balance = running balance of the last entry BEFORE periodStart
-    const lastBefore = [...allEntries]
-      .filter((e) => e.date < periodStart)
-      .pop();
-    const openingBalance = lastBefore?.balance ?? 0;
-
-    // Filter to the period window
-    const periodEntries = allEntries.filter(
-      (e) => e.date >= periodStart && e.date < periodEnd
-    );
-
-    // Recompute balances relative to the opening balance
-    const rebasedEntries = computeRunningBalances(
-      periodEntries.map(({ balance: _b, ...rest }) => rest),
-      openingBalance
-    );
+    const periodRaw = rawEntries.filter((e) => e.period === period);
+    const rebasedEntries = computeRunningBalances(periodRaw, openingBalance);
 
     const totalIn = rebasedEntries.reduce((s, e) => s + e.credit, 0);
     const totalOut = rebasedEntries.reduce((s, e) => s + e.debit, 0);
     const closingBalance =
-      rebasedEntries.length > 0
-        ? rebasedEntries[rebasedEntries.length - 1].balance
-        : openingBalance;
+      rebasedEntries.length > 0 ? closingBalanceFrom(rebasedEntries) : openingBalance;
 
     return {
       account: {
@@ -221,11 +213,9 @@ export async function getAccountStatement(
     };
   }
 
-  // 6. No period — return full history
   const totalIn = allEntries.reduce((s, e) => s + e.credit, 0);
   const totalOut = allEntries.reduce((s, e) => s + e.debit, 0);
-  const closingBalance =
-    allEntries.length > 0 ? allEntries[allEntries.length - 1].balance : 0;
+  const closingBalance = closingBalanceFrom(allEntries);
 
   return {
     account: {

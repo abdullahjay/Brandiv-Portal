@@ -423,9 +423,9 @@ export default function EditProjectModal({
         open={upsellModalOpen}
         onClose={() => { setUpsellModalOpen(false); onClose(); }}
         projectId={projectId}
-        currency={project?.currency ?? form?.currency ?? "USD"}
+        defaultCurrency={project?.currency ?? form?.currency ?? "USD"}
         onSaved={handleUpsellSaved}
-        initialAmountPkr={pendingDelta}
+        initialAmount={pendingDelta}
         initialTitle="Value increase"
       />
     )}

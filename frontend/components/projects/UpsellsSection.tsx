@@ -24,6 +24,14 @@ function fmtAmount(n: number, currency: string) {
   return `${currency} ${(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
+function upsellAmountUnits(upsell: ProjectUpsell) {
+  return (upsell.amountOriginal ?? upsell.amountPkr) / 100;
+}
+
+function upsellCurrency(upsell: ProjectUpsell, fallback: string) {
+  return upsell.currency ?? fallback;
+}
+
 function UpsellRow({ projectId, currency, upsell, onChanged, onEdit }: { projectId: string; currency: string; upsell: ProjectUpsell; onChanged: () => void; onEdit: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -69,7 +77,9 @@ function UpsellRow({ projectId, currency, upsell, onChanged, onEdit }: { project
     }
   }
 
-  const commissionPreview = (upsell.amountPkr / 100) * (upsell.commissionRatePct / 100);
+  const displayCurrency = upsellCurrency(upsell, currency);
+  const amountUnits = upsellAmountUnits(upsell);
+  const commissionPreview = amountUnits * (upsell.commissionRatePct / 100);
   const canEditOrDelete = upsell.status === "pending";
   const canCancel = ["pending", "approved", "active"].includes(upsell.status);
 
@@ -86,13 +96,13 @@ function UpsellRow({ projectId, currency, upsell, onChanged, onEdit }: { project
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           <Badge status={upsell.billingMode} size="sm" />
           <Badge status={upsell.status} size="sm" />
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>{fmtAmount(upsell.amountPkr, currency)}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)" }}>{fmtAmount((upsell.amountOriginal ?? upsell.amountPkr), displayCurrency)}</div>
         </div>
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontSize: 11, color: "var(--t3)" }}>
-          Commission preview: {upsell.commissionRatePct}% = {fmtAmount(commissionPreview * 100, currency)}
+          Commission preview: {upsell.commissionRatePct}% = {fmtAmount(commissionPreview * 100, displayCurrency)}
           {upsell.managingPartner && upsell.managingCommissionRatePct > 0 &&
             ` · managing ${upsell.managingCommissionRatePct}%`}
         </div>
@@ -176,7 +186,7 @@ export default function UpsellsSection({ projectId, currency, upsells, onChanged
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         projectId={projectId}
-        currency={currency}
+        defaultCurrency={currency}
         upsell={editing}
         onSaved={onChanged}
       />

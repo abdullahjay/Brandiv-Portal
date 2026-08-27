@@ -287,7 +287,7 @@ export default function DashboardPageClient() {
 
           {/* P&L breakdown */}
           <div className="dash-section">
-            <div className="dash-section-head"><span>P&amp;L — {periodLabel(period)}</span></div>
+            <div className="dash-section-head"><span>P&amp;L (accrual) — {periodLabel(period)}</span></div>
             {loading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} h={13} />)}
@@ -296,7 +296,7 @@ export default function DashboardPageClient() {
               <>
                 <PLRow label="Revenue" value={cp.incomePkr} color="var(--blue)" />
                 <PLRow label="Expenses" value={-cp.expensesPkr} color={cp.expensesPkr > 0 ? "var(--red)" : "var(--t3)"} indent />
-                <PLRow label="Payroll" value={-cp.payrollPkr} color={cp.payrollPkr > 0 ? "var(--red)" : "var(--t3)"} indent />
+                <PLRow label="Payroll (all)" value={-cp.payrollPkr} color={cp.payrollPkr > 0 ? "var(--red)" : "var(--t3)"} indent />
                 <PLRow label="Commissions" value={-cp.commissionsPkr} color={cp.commissionsPkr > 0 ? "var(--red)" : "var(--t3)"} indent />
                 <PLRow label="Net profit" value={cp.netProfitPkr} color={cp.netProfitPkr >= 0 ? "var(--green)" : "var(--red)"} border />
                 {cp.incomePkr > 0 && (

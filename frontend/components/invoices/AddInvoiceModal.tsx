@@ -210,11 +210,12 @@ export default function AddInvoiceModal({
         items[idx] = { ...items[idx], upsellId: null };
       } else {
         const upsell = selectableUpsells.find((u) => u.id === upsellId);
+        const upsellAmount = upsell ? (upsell.amountOriginal ?? upsell.amountPkr) / 100 : 0;
         items[idx] = {
           ...items[idx],
           upsellId,
           description: upsell ? upsell.title : items[idx].description,
-          rate: upsell ? String(upsell.amountPkr / 100) : items[idx].rate,
+          rate: upsell ? String(upsellAmount) : items[idx].rate,
         };
       }
       return { ...prev, lineItems: items };
@@ -438,9 +439,15 @@ export default function AddInvoiceModal({
                     style={{ height: 24, fontSize: 11, flex: 1 }}
                   >
                     <option value="">Select upsell…</option>
-                    {selectableUpsells.map((u) => (
-                      <option key={u.id} value={u.id}>{u.title} · PKR {(u.amountPkr / 100).toLocaleString()} ({u.billingMode === "recurring" ? "recurring" : "one-time"})</option>
-                    ))}
+                    {selectableUpsells.map((u) => {
+                      const amt = (u.amountOriginal ?? u.amountPkr) / 100;
+                      const cur = u.currency ?? form.currency;
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {u.title} · {cur} {amt.toLocaleString()} ({u.billingMode === "recurring" ? "recurring" : "one-time"})
+                        </option>
+                      );
+                    })}
                   </select>
                 )}
               </div>

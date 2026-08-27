@@ -4,18 +4,19 @@ import { useState, useEffect } from "react";
 import Modal from "@frontend/components/ui/Modal";
 import { createUpsellRequest, updateUpsellRequest } from "@frontend/hooks/useUpsells";
 import { useAccounts } from "@frontend/hooks/useAccounts";
+import { useAllLookups, lookupOptions } from "@frontend/hooks/useLookups";
 import type { ProjectUpsell, ApiResponse } from "@frontend/types";
 
 interface AddUpsellModalProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
-  /** The project's currency (e.g. "USD") — upsell amounts are entered in this currency, matching the project's own value field. */
-  currency: string;
+  /** Default currency when creating (usually the project's currency). */
+  defaultCurrency: string;
   upsell?: ProjectUpsell | null;
   onSaved: () => void;
-  /** Prefills the amount (in whole units, not paise) when creating a new upsell — e.g. from a project value-increase delta. */
-  initialAmountPkr?: number;
+  /** Prefills the amount when creating a new upsell — e.g. from a project value-increase delta. */
+  initialAmount?: number;
   initialTitle?: string;
 }
 
@@ -23,7 +24,8 @@ interface FormData {
   title: string;
   description: string;
   billingMode: "one_time" | "recurring";
-  amountPkr: string;
+  currency: string;
+  amountOriginal: string;
   earnerAccountId: string;
   commissionRatePct: string;
   managingPartnerId: string;
@@ -39,22 +41,38 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-const EMPTY_FORM: FormData = {
-  title: "",
-  description: "",
-  billingMode: "one_time",
-  amountPkr: "",
-  earnerAccountId: "",
-  commissionRatePct: "10",
-  managingPartnerId: "",
-  managingCommissionRatePct: "0",
-};
+function upsellDisplayAmount(upsell: ProjectUpsell) {
+  return (upsell.amountOriginal ?? upsell.amountPkr) / 100;
+}
 
-export default function AddUpsellModal({ open, onClose, projectId, currency, upsell, onSaved, initialAmountPkr, initialTitle }: AddUpsellModalProps) {
-  const [form, setForm] = useState<FormData>(EMPTY_FORM);
+export default function AddUpsellModal({
+  open,
+  onClose,
+  projectId,
+  defaultCurrency,
+  upsell,
+  onSaved,
+  initialAmount,
+  initialTitle,
+}: AddUpsellModalProps) {
+  const emptyForm = (currency: string): FormData => ({
+    title: "",
+    description: "",
+    billingMode: "one_time",
+    currency,
+    amountOriginal: "",
+    earnerAccountId: "",
+    commissionRatePct: "10",
+    managingPartnerId: "",
+    managingCommissionRatePct: "0",
+  });
+
+  const [form, setForm] = useState<FormData>(emptyForm(defaultCurrency));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: stakeholders } = useAccounts("stakeholder");
+  const { data: lookupMap, loading: lookupsLoading } = useAllLookups();
+  const currencies = lookupOptions(lookupMap, "currency");
 
   useEffect(() => {
     if (!open) { setError(null); return; }
@@ -63,14 +81,14 @@ export default function AddUpsellModal({ open, onClose, projectId, currency, ups
         title: upsell.title,
         description: upsell.description ?? "",
         billingMode: upsell.billingMode,
-        amountPkr: String(upsell.amountPkr / 100),
+        currency: upsell.currency ?? defaultCurrency,
+        amountOriginal: String(upsellDisplayAmount(upsell)),
         earnerAccountId: upsell.earnerAccountId,
         commissionRatePct: String(upsell.commissionRatePct),
         managingPartnerId: upsell.managingPartnerId ?? "",
         managingCommissionRatePct: String(upsell.managingCommissionRatePct ?? 0),
       });
     } else {
-      // Pull default rates from settings
       fetch("/api/settings")
         .then((r) => r.json())
         .then((json: ApiResponse<Record<string, unknown>>) => {
@@ -79,21 +97,21 @@ export default function AddUpsellModal({ open, onClose, projectId, currency, ups
             const rate = Number(s.upsell_commission_rate ?? 10);
             const managingRate = Number(s.upsell_managing_commission_rate ?? 0);
             setForm({
-              ...EMPTY_FORM,
-              title: initialTitle ?? EMPTY_FORM.title,
-              amountPkr: initialAmountPkr !== undefined ? String(initialAmountPkr) : EMPTY_FORM.amountPkr,
+              ...emptyForm(defaultCurrency),
+              title: initialTitle ?? "",
+              amountOriginal: initialAmount !== undefined ? String(initialAmount) : "",
               commissionRatePct: !isNaN(rate) ? String(rate) : "10",
               managingCommissionRatePct: !isNaN(managingRate) ? String(managingRate) : "0",
             });
           }
         })
         .catch(() => setForm({
-          ...EMPTY_FORM,
-          title: initialTitle ?? EMPTY_FORM.title,
-          amountPkr: initialAmountPkr !== undefined ? String(initialAmountPkr) : EMPTY_FORM.amountPkr,
+          ...emptyForm(defaultCurrency),
+          title: initialTitle ?? "",
+          amountOriginal: initialAmount !== undefined ? String(initialAmount) : "",
         }));
     }
-  }, [open, upsell, initialAmountPkr, initialTitle]);
+  }, [open, upsell, initialAmount, initialTitle, defaultCurrency]);
 
   function set<K extends keyof FormData>(field: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -107,7 +125,8 @@ export default function AddUpsellModal({ open, onClose, projectId, currency, ups
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         billingMode: form.billingMode,
-        amountPkr: parseFloat(form.amountPkr) || 0,
+        currency: form.currency,
+        amountOriginal: parseFloat(form.amountOriginal) || 0,
         earnerAccountId: form.earnerAccountId,
         commissionRatePct: parseFloat(form.commissionRatePct) || 0,
         managingPartnerId: form.managingPartnerId || undefined,
@@ -127,13 +146,13 @@ export default function AddUpsellModal({ open, onClose, projectId, currency, ups
     }
   }
 
-  const amount = parseFloat(form.amountPkr) || 0;
+  const amount = parseFloat(form.amountOriginal) || 0;
   const rate = parseFloat(form.commissionRatePct) || 0;
   const managingRate = parseFloat(form.managingCommissionRatePct) || 0;
   const commissionPreview = amount * rate / 100;
   const managingCommissionPreview = amount * managingRate / 100;
 
-  const canSubmit = !!(form.title.trim() && amount > 0 && form.earnerAccountId);
+  const canSubmit = !!(form.title.trim() && amount > 0 && form.earnerAccountId && form.currency);
 
   return (
     <Modal
@@ -167,16 +186,28 @@ export default function AddUpsellModal({ open, onClose, projectId, currency, ups
       </Field>
 
       <div className="f2">
-        <Field label={`Amount (${currency})`} required>
-          <input type="number" min="0" step="0.01" value={form.amountPkr} onChange={(e) => set("amountPkr", e.target.value)} placeholder="0.00" />
-        </Field>
-        <Field label="Billing mode" required>
-          <select value={form.billingMode} onChange={(e) => set("billingMode", e.target.value as "one_time" | "recurring")}>
-            <option value="one_time">One-time</option>
-            <option value="recurring">Recurring</option>
+        <Field label="Currency" required>
+          <select value={form.currency} onChange={(e) => set("currency", e.target.value)} disabled={lookupsLoading}>
+            <option value="">Select currency</option>
+            {currencies.map((c) => (
+              <option key={c.id} value={c.value}>{c.label}</option>
+            ))}
+            {!currencies.some((c) => c.value === form.currency) && form.currency && (
+              <option value={form.currency}>{form.currency}</option>
+            )}
           </select>
         </Field>
+        <Field label="Amount" required>
+          <input type="number" min="0" step="0.01" value={form.amountOriginal} onChange={(e) => set("amountOriginal", e.target.value)} placeholder="0.00" />
+        </Field>
       </div>
+
+      <Field label="Billing mode" required>
+        <select value={form.billingMode} onChange={(e) => set("billingMode", e.target.value as "one_time" | "recurring")}>
+          <option value="one_time">One-time</option>
+          <option value="recurring">Recurring</option>
+        </select>
+      </Field>
 
       <Field label="Earned by (partner)" required>
         <select value={form.earnerAccountId} onChange={(e) => set("earnerAccountId", e.target.value)}>
@@ -207,19 +238,19 @@ export default function AddUpsellModal({ open, onClose, projectId, currency, ups
         </Field>
       )}
 
-      {amount > 0 && (
+      {amount > 0 && form.currency && (
         <div style={{ background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", padding: "10px 14px", marginTop: 8 }}>
           <div style={{ fontSize: 10, fontWeight: 600, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
             Commission preview (on payment)
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
             <span>Upsell commission ({rate}%)</span>
-            <span style={{ fontWeight: 600 }}>{currency} {commissionPreview.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            <span style={{ fontWeight: 600 }}>{form.currency} {commissionPreview.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           {form.managingPartnerId && managingRate > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--green)" }}>
               <span>Managing commission ({managingRate}%)</span>
-              <span style={{ fontWeight: 600 }}>{currency} {managingCommissionPreview.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <span style={{ fontWeight: 600 }}>{form.currency} {managingCommissionPreview.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </div>
           )}
         </div>

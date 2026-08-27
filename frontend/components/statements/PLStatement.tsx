@@ -74,6 +74,11 @@ export default function PLStatement({ period }: Props) {
 
   return (
     <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", marginBottom: 16, fontSize: 11, color: "var(--t2)" }}>
+        <i className="ti ti-info-circle" style={{ fontSize: 14, color: "var(--blue)" }} />
+        Accrual basis — includes all payroll and approved/paid commissions for this period. Cash movement is on the Cash Flow tab.
+      </div>
+
       {/* Summary metrics */}
       <div className="metrics-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
         {[
@@ -99,6 +104,13 @@ export default function PLStatement({ period }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "var(--green-bg)", border: "0.5px solid var(--green)", borderRadius: "var(--rm)", marginBottom: 16, fontSize: 12, color: "var(--green)" }}>
           <i className="ti ti-circle-check" style={{ fontSize: 14 }} />
           Period distributed on {fmtDate(data.distributionRunAt)} · PKR {fmt(data.distributedPkr!)} paid out
+        </div>
+      )}
+
+      {data.pendingPayrollCount > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "var(--amber-bg)", border: "0.5px solid #f59e0b", borderRadius: "var(--rm)", marginBottom: 16, fontSize: 12, color: "#92400e" }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 14 }} />
+          {data.pendingPayrollCount} payroll record{data.pendingPayrollCount > 1 ? "s" : ""} still unpaid — included in accrual P&L (PKR {fmt(data.pendingPayrollPkr)})
         </div>
       )}
 
@@ -138,7 +150,7 @@ export default function PLStatement({ period }: Props) {
         {/* Operating expenses */}
         <SectionHeader title="Operating Expenses" icon="ti-arrow-up-right" />
         <Row label="Direct expenses" value={data.totalExpensesPkr} color="var(--red)" indent />
-        <Row label="Payroll" value={data.totalPayrollPkr} color="var(--red)" indent />
+        <Row label="Payroll (all records)" value={data.totalPayrollPkr} color="var(--red)" indent note={data.pendingPayrollCount > 0 ? `${data.pendingPayrollCount} unpaid` : undefined} />
         <Row label="Commissions (approved/paid)" value={data.totalCommissionPkr} color="var(--red)" indent note={data.pendingCommissionsCount > 0 ? `${data.pendingCommissionsCount} pending excluded` : undefined} />
         <Row label="Total deductions" value={totalDeductions} bold color="var(--red)" />
 

@@ -206,6 +206,11 @@ export default function AccountStatement({ onExportReady }: AccountStatementProp
         </div>
       </div>
 
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--bg2)", border: "0.5px solid var(--b3)", borderRadius: "var(--rm)", marginBottom: 14, fontSize: 11, color: "var(--t2)" }}>
+        <i className="ti ti-info-circle" style={{ fontSize: 14, color: "var(--blue)" }} />
+        Cash ledger — paid payroll only. Period filter uses the same <code style={{ fontSize: 10 }}>YYYY-MM</code> period field as P&amp;L and Cash Flow.
+      </div>
+
       {/* Summary metrics */}
       {stmt && (
         <div className="metrics-3" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>

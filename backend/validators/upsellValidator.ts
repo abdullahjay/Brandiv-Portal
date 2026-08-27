@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { SUPPORTED_CURRENCIES } from "@backend/lib/constants";
 
 export const createUpsellSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   description: z.string().optional().nullable(),
   billingMode: z.enum(["one_time", "recurring"]),
-  amountPkr: z.coerce.number().positive("Amount must be greater than 0"),
+  currency: z.enum(SUPPORTED_CURRENCIES),
+  amountOriginal: z.coerce.number().positive("Amount must be greater than 0"),
   earnerAccountId: z.string().uuid("Invalid earner account ID"),
   commissionRatePct: z.coerce.number().min(0).max(100),
   managingPartnerId: z.string().uuid().optional().nullable(),

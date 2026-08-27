@@ -44,6 +44,11 @@ export async function getPnLStatement(period: string) {
   const billableCommissions = commissions.filter((c) => c.status !== "pending");
   const totalCommissionPkr = billableCommissions.reduce((s, c) => s + Number(c.commissionPkr), 0);
 
+  const pendingPayrollPkr = payrolls
+    .filter((r) => r.status !== "paid")
+    .reduce((s, r) => s + Number(r.netPkr), 0);
+  const pendingPayrollCount = payrolls.filter((r) => r.status !== "paid").length;
+
   const netProfitPkr = totalIncomePkr - totalExpensesPkr - totalPayrollPkr - totalCommissionPkr;
   const grossMarginPct = totalIncomePkr > 0 ? (netProfitPkr / totalIncomePkr) * 100 : 0;
 
@@ -78,18 +83,29 @@ export async function getPnLStatement(period: string) {
     status: r.status,
   }));
 
-  // Commissions by stakeholder (all statuses shown)
-  const commByAccountMap = new Map<string, { name: string; amountPkr: number; status: string }>();
-  for (const c of commissions) {
+  // Commissions by stakeholder (approved/paid only — matches net profit calculation)
+  const commByAccountMap = new Map<string, { name: string; amountPkr: number; statuses: Set<string> }>();
+  for (const c of billableCommissions) {
     const key = c.stakeholderAccount.id;
     const existing = commByAccountMap.get(key);
     if (existing) {
       existing.amountPkr += Number(c.commissionPkr);
+      existing.statuses.add(c.status);
     } else {
-      commByAccountMap.set(key, { name: c.stakeholderAccount.name, amountPkr: Number(c.commissionPkr), status: c.status });
+      commByAccountMap.set(key, {
+        name: c.stakeholderAccount.name,
+        amountPkr: Number(c.commissionPkr),
+        statuses: new Set([c.status]),
+      });
     }
   }
-  const commissionByStakeholder = Array.from(commByAccountMap.values()).sort((a, b) => b.amountPkr - a.amountPkr);
+  const commissionByStakeholder = Array.from(commByAccountMap.values())
+    .map(({ name, amountPkr, statuses }) => ({
+      name,
+      amountPkr,
+      status: statuses.has("paid") ? "paid" : statuses.has("approved") ? "approved" : "pending",
+    }))
+    .sort((a, b) => b.amountPkr - a.amountPkr);
 
   // Gross WHT deducted (informational)
   const totalWhtPkr = incomes.reduce((s, r) => s + Number(r.whtAmountPkr), 0);
@@ -114,6 +130,8 @@ export async function getPnLStatement(period: string) {
     distributionRunAt: distribution?.runAt?.toISOString() ?? null,
     allCommissionsCount: commissions.length,
     pendingCommissionsCount: commissions.filter((c) => c.status === "pending").length,
+    pendingPayrollCount,
+    pendingPayrollPkr,
   };
 }
 
@@ -195,7 +213,7 @@ export async function getCashFlowStatement(period: string) {
       description: "Profit distribution",
       party: null,
       reference: period,
-      amountPkr: Number(distribution.totalDistributedPkr),
+      amountPkr: Number(distribution.operatingBalancePkr),
       type: "distribution",
     });
   }
