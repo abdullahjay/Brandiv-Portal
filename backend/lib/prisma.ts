@@ -17,7 +17,12 @@ function createClient() {
   // Rust query-engine process, which kept crashing on Hostinger.
   if (/\.neon\.tech/.test(url)) {
     neonConfig.webSocketConstructor = ws;
-    const adapter = new PrismaNeon(new Pool({ connectionString: url }));
+    // Neon's default URLs include channel_binding=require, which the serverless
+    // driver doesn't support ("Connection terminated unexpectedly").
+    const connectionString = url.replace(/([?&])channel_binding=[^&]*&?/, "$1").replace(/[?&]$/, "");
+    const pool = new Pool({ connectionString });
+    pool.on("error", (err) => console.error("[prisma] Neon pool error:", err.message));
+    const adapter = new PrismaNeon(pool);
     return new PrismaClient({ adapter, log: logLevels });
   }
 

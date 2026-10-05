@@ -35,7 +35,15 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  // ws must stay external: bundling it breaks its optional bufferutil lookup
+  // ("b.mask is not a function") and kills the Neon WebSocket connection.
+  serverExternalPackages: [
+    "@prisma/client",
+    "bcryptjs",
+    "ws",
+    "@neondatabase/serverless",
+    "@prisma/adapter-neon",
+  ],
 
   images: {
     domains: ["res.cloudinary.com"],
